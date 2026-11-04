@@ -1,0 +1,21 @@
+{
+  "name": "top10-platform",
+  "version": "1.0.0",
+  "description": "Top 10 Pay-for-Rank Auction Directory Platform",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test-all-flows.js",
+    "test:flows": "node test-all-flows.js",
+    "test:browser": "node test-browser-debug.js",
+    "test:scenarios": "node test-all-scenarios.js",
+    "test:universe": "node test-complete-universe.js",
+    "test:dashboard": "node test-dashboard.js",
+    "test:all": "node test-all-flows.js && node test-browser-debug.js && node test-all-scenarios.js && node test-complete-universe.js && node test-dashboard.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "mongodb": "^7.8.0",
+    "puppeteer-core": "^25.16.0"
+  }
+}

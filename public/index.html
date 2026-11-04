@@ -1,0 +1,2075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Top 10 — Independent Product Comparisons, Buying Guides &amp; Reviews (2026)</title>
+  <meta name="description" id="metaDescriptionTag" content="Explore side-by-side Top 10 buying guides, comparison tables, pros & cons, pricing breakdowns, and verified user reviews across software and hardware categories." />
+  <link rel="canonical" id="canonicalLinkTag" href="http://localhost:3456/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+  <script type="application/ld+json" id="seoJsonLdScript"></script>
+</head>
+<body>
+  <div class="outer-stage">
+    <div class="app-window">
+
+      <!-- =====================================================================
+           READER-FIRST TOP NAVIGATION BAR
+           Left: // Top 10 Logo (Home) + Category Guide Switcher
+           Right: Subtle "For Brands / Submit" link + Account Avatar
+           ===================================================================== -->
+      <header class="topbar" role="banner">
+        <div class="topbar-left">
+          <a href="/" class="brand-home-link" id="brandHomeBtn" title="Back to Top 10 Homepage">
+            <svg width="20" height="20" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+              <path d="M5.5 17.5L9.2 4.5H12.1L8.4 17.5H5.5Z" fill="#111827"/>
+              <path d="M11.2 17.5L14.9 4.5H17.8L14.1 17.5H11.2Z" fill="#111827"/>
+            </svg>
+            <span class="brand-wordmark">Top 10</span>
+          </a>
+
+          <!-- Category Guide Switcher Pill (Clean Text + Chevron) -->
+          <div class="category-switcher-wrap">
+            <button class="category-pill-btn" id="categoryDropdownBtn" type="button" aria-label="Switch Top 10 Buying Guide">
+              <span class="cat-pill-name" id="topCatName">All Buying Guides</span>
+              <svg class="cat-pill-chev" width="12" height="12" viewBox="0 0 16 16" fill="none">
+                <path d="M4 6L8 10L12 6" stroke="#6B7280" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+
+            <div class="category-dropdown-menu hidden" id="categoryDropdownMenu">
+              <div class="cat-menu-header">
+                <span>Browse Top 10 Guides</span>
+                <span class="cat-menu-count" id="catTotalCountBadge">5</span>
+              </div>
+              <div class="cat-menu-list" id="categoryMenuList"></div>
+              <div class="cat-menu-footer">
+                <button type="button" class="cat-menu-create-btn" id="dropdownCreateListBtn">
+                  <span>+ Launch a new Top 10 list</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Topbar Search Bar (Right next to Category Switcher Pill) -->
+          <div class="topbar-search-wrap" role="search">
+            <svg class="topbar-search-icon" width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.8"/>
+              <path d="M13.5 13.5L17.5 17.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <input
+              type="search"
+              id="topbarSearchInput"
+              class="topbar-search-input"
+              placeholder="Search lists or platforms..."
+              autocomplete="off"
+              aria-label="Search lists or platforms"
+            />
+            <kbd class="topbar-search-kbd" id="topbarSearchKbd" title="Press / to search">/</kbd>
+            <button type="button" class="topbar-search-clear hidden" id="topbarSearchClearBtn" aria-label="Clear search">&times;</button>
+
+            <!-- Instant Live Search Dropdown in Topbar -->
+            <div class="live-search-dropdown topbar-live-dropdown hidden" id="topbarLiveSearchDropdown"></div>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Topbar Nav Links: Lists, Blog, Admin -->
+          <nav class="topbar-nav" aria-label="Main Navigation">
+            <button type="button" class="topbar-nav-link" id="navGuidesBtn">Lists</button>
+            <button type="button" class="topbar-nav-link" id="navBlogBtn">Blog</button>
+            <button type="button" class="topbar-nav-link" id="navFounderPortalBtn">Founder Portal</button>
+            <button type="button" class="topbar-nav-link admin-pill-link" id="navAdminBtn">
+              <span class="admin-dot"></span> Dashboard
+            </button>
+          </nav>
+
+          <!-- 1-Click Dark / Light Mode Toggle -->
+          <button type="button" class="theme-toggle-btn" id="themeToggleBtn" title="Toggle Dark / Light Mode" aria-label="Toggle Dark / Light Mode">
+            <svg id="themeIconMoon" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+            </svg>
+            <svg id="themeIconSun" class="hidden" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="10" cy="10" r="4"/>
+              <path d="M10 2v2M10 16v2M4.93 4.93l1.41 1.41M13.66 13.66l1.41 1.41M2 10h2M16 10h2M4.93 15.07l1.41-1.41M13.66 6.34l1.41-1.41"/>
+            </svg>
+          </button>
+
+          <!-- Real-Time Activity Bell (SSE Live Auction & Outbid Stream) -->
+          <div class="notif-menu-wrap">
+            <button type="button" class="topbar-icon-pill" id="navNotificationBtn" title="Real-Time Auction &amp; Outbid Alerts" aria-label="Notifications">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="notif-badge hidden" id="topbarNotifBadge">0</span>
+            </button>
+            <div class="notif-dropdown-menu hidden" id="topbarNotifDropdown">
+              <div class="notif-dropdown-header">
+                <div class="notif-header-title">
+                  <span class="live-dot-pulse"></span> Live Auction &amp; Activity
+                </div>
+                <button type="button" class="notif-clear-btn" id="clearNotifsBtn">Clear</button>
+              </div>
+              <div class="notif-dropdown-list" id="notifDropdownList">
+                <div class="notif-empty-state">Listening to live auction stream...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Avatar Button (Opens Account & Profile Drawer) -->
+          <div class="user-menu-wrap">
+            <button type="button" class="avatar-trigger" id="userAvatarBtn" title="Open My Account &amp; Profile">
+              <span class="avatar-circle" id="currentUserAvatar">AK</span>
+              <span class="avatar-status-dot"></span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- =====================================================================
+           VIEW 1: MINIMALIST HOMEPAGE (Search + Instant Live Dropdown + Clean Grid)
+           ===================================================================== -->
+      <main id="homePageView" class="home-container">
+        <section class="home-hero">
+          <h1 class="home-hero-title">Find the Top 10 in Every Category.</h1>
+          <p class="home-hero-subtitle">
+            Curated product directories with transparent pricing, pros &amp; cons, and verified reader reviews.
+          </p>
+
+          <!-- BIG CENTERED SEARCH BAR + INSTANT LIVE DROPDOWN -->
+          <div class="big-search-wrap" role="search">
+            <svg class="big-search-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <circle cx="9" cy="9" r="6" stroke="#6B7280" stroke-width="1.8"/>
+              <path d="M13.5 13.5L17.5 17.5" stroke="#6B7280" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <input
+              type="search"
+              id="homeBigSearchInput"
+              class="big-search-input"
+              placeholder="Search any Top 10 list or product (e.g. Stripe, Sonos, Billing Software, AI Coding)..."
+              autocomplete="off"
+              aria-label="Search Top 10 Buying Guides"
+            />
+            <kbd class="search-kbd-badge" id="searchKbdBadge" title="Press / to search">/</kbd>
+            <button type="button" class="big-search-clear hidden" id="clearBigSearchBtn" aria-label="Clear search">&times;</button>
+
+            <!-- Instant Live Search Dropdown (Categories + Specific Products) -->
+            <div class="live-search-dropdown hidden" id="homeLiveSearchDropdown"></div>
+          </div>
+        </section>
+
+        <!-- NOT FOUND -> REQUEST / LAUNCH NEW LIST PAYWALL (Only shown when search has 0 matches) -->
+        <section id="searchNotFoundPaywall" class="not-found-paywall-card hidden">
+          <div class="nf-badge">Missing Category</div>
+          <h2 class="nf-title" id="nfHeadingText">We haven't published "Top 10 Video Editors" yet.</h2>
+          <p class="nf-desc">
+            Launch the official <strong id="nfListNameStrong">Top 10 Video Editors</strong> directory and feature your platform first.
+          </p>
+          <button type="button" class="btn-paywall-create" id="nfCreateListPaywallBtn">
+            Launch "<span id="nfBtnLabelSpan">Top 10 Video Editors</span>" ($99)
+          </button>
+        </section>
+
+        <!-- ALL TOP 10 LISTS GRID -->
+        <section class="home-lists-section" aria-labelledby="homeGridHeading">
+          <div class="home-section-header">
+            <h2 class="home-section-title" id="homeGridHeading">Top 10 Directories</h2>
+          </div>
+
+          <div class="home-lists-grid" id="homeListsGrid"></div>
+        </section>
+      </main>
+
+      <!-- =====================================================================
+           VIEW 2: MINIMALIST SINGLE LIST PAGE
+           ===================================================================== -->
+      <main id="singleListPageView" class="workspace-container hidden">
+
+        <article itemscope itemtype="https://schema.org/Article">
+          <!-- MINIMALIST HERO HEADER (SVG Icon + Title + 1-Click Share + Subtitle + Quick Filter Chips) -->
+          <header class="entity-header">
+            <div class="entity-top-row">
+              <div class="entity-logo-lg" id="heroCatIcon"></div>
+            </div>
+
+            <div class="entity-title-block">
+              <div class="entity-title-row">
+                <h1 class="entity-title" id="heroCatTitle" itemprop="headline">Top 10 Billing Software</h1>
+                <div class="entity-title-actions">
+                  <button type="button" class="btn-request-rfp-hero" id="openCategoryRfpBtn" title="Request Custom Quotes &amp; RFPs from Top 3">
+                    <span>📋 Request Quotes (Top 3)</span>
+                  </button>
+                  <button type="button" class="btn-share-ranking" id="openShareModalBtn" title="Share rankings on X / LinkedIn">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12.5" cy="3.5" r="2"/>
+                      <circle cx="3.5" cy="8" r="2"/>
+                      <circle cx="12.5" cy="12.5" r="2"/>
+                      <path d="M5.3 7.1l5.4-2.7M5.3 8.9l5.4 2.7"/>
+                    </svg>
+                    <span>Share</span>
+                  </button>
+                  <button type="button" class="copy-url-btn" id="copyListUrlBtn" title="Copy direct link to this Top 10 list" aria-label="Copy direct link">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M6.8 9.2a3.2 3.2 0 004.5 0l2.1-2.1a3.2 3.2 0 00-4.5-4.5L7.7 3.8"/>
+                      <path d="M9.2 6.8a3.2 3.2 0 00-4.5 0L2.6 8.9a3.2 3.2 0 004.5 4.5l1.2-1.2"/>
+                    </svg>
+                    <span id="copyListUrlLabel">Copy Link</span>
+                  </button>
+                </div>
+              </div>
+              <p class="entity-subtitle" id="heroCatSubtitle">Updated Oct 2026</p>
+            </div>
+
+            <!-- Subtle 1-Line Quick Filter Chip Bar -->
+            <div class="minimal-filter-chips" id="listQuickFilterBar"></div>
+          </header>
+
+          <!-- =================================================================
+               1. TOP 10 PLATFORMS (Unified Minimalist Cards with Real Favicons)
+               ================================================================= -->
+          <section id="tabPanelRankings" class="tab-panel">
+            <div class="clean-product-list" id="top10TimelineList"></div>
+
+            <!-- Additional Listed Platforms when Total Listings > 10 -->
+            <div class="more-listings-section hidden" id="moreListingsSection">
+              <div class="more-listings-header">
+                <span class="more-listings-title" id="moreListingsTitle">Other Listed Platforms</span>
+                <button type="button" class="btn-toggle-more-listings" id="toggleMoreListingsBtn">
+                  Show all listings ▾
+                </button>
+              </div>
+              <div class="clean-product-list hidden" id="moreListingsTimeline"></div>
+            </div>
+          </section>
+
+          <!-- =================================================================
+               2. UNDER THE 10 LISTS: BIG ANALYTICS (VIEWS · REVIEWS · TOTAL LISTINGS + GRAPHS)
+                  + INTERACTIVE 7D / 30D / 1Y TOGGLE + FULL-WIDTH "+ ADD YOUR PLATFORM" BUTTON
+               ================================================================= -->
+          <section class="below-list-stats-cta-card">
+            <div class="analytics-card-topbar">
+              <span class="analytics-card-eyebrow">Directory Analytics</span>
+              <div class="analytics-range-tabs" id="analyticsRangeTabs" role="tablist" aria-label="Analytics time range">
+                <button type="button" class="analytics-range-tab" data-range="7d">7D</button>
+                <button type="button" class="analytics-range-tab active" data-range="30d">30D</button>
+                <button type="button" class="analytics-range-tab" data-range="1y">1Y</button>
+              </div>
+            </div>
+
+            <div class="analytics-big-grid">
+              <!-- Views + Green Sparkline Graph -->
+              <div class="analytics-stat-card" title="Reader traffic trend">
+                <div class="asc-left">
+                  <span class="asc-label">Views <span class="asc-trend-pill up" id="trendViewsPill">+18%</span></span>
+                  <span class="asc-value" id="kpiViews">130.53k</span>
+                </div>
+                <svg class="asc-sparkline" id="sparkViewsSvg" viewBox="0 0 88 34" fill="none" aria-hidden="true">
+                  <path d="M4 28L20 21L36 24L52 14L68 16L84 6" stroke="#10B981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="4" cy="28" r="2.3" fill="#10B981"/>
+                  <circle cx="20" cy="21" r="2.3" fill="#10B981"/>
+                  <circle cx="36" cy="24" r="2.3" fill="#10B981"/>
+                  <circle cx="52" cy="14" r="2.3" fill="#10B981"/>
+                  <circle cx="68" cy="16" r="2.3" fill="#10B981"/>
+                  <circle cx="84" cy="6" r="2.8" fill="#10B981"/>
+                </svg>
+              </div>
+
+              <!-- Reviews + Blue Sparkline Graph -->
+              <div class="analytics-stat-card" title="Verified buyer reviews &amp; pricing notes">
+                <div class="asc-left">
+                  <span class="asc-label">Reviews <span class="asc-trend-pill blue" id="trendReviewsPill">+12%</span></span>
+                  <span class="asc-value" id="kpiReviews">7,304</span>
+                </div>
+                <svg class="asc-sparkline" id="sparkReviewsSvg" viewBox="0 0 88 34" fill="none" aria-hidden="true">
+                  <path d="M4 26L20 18L36 15L52 22L68 12L84 8" stroke="#0EA5E9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="4" cy="26" r="2.3" fill="#0EA5E9"/>
+                  <circle cx="20" cy="18" r="2.3" fill="#0EA5E9"/>
+                  <circle cx="36" cy="15" r="2.3" fill="#0EA5E9"/>
+                  <circle cx="52" cy="22" r="2.3" fill="#0EA5E9"/>
+                  <circle cx="68" cy="12" r="2.3" fill="#0EA5E9"/>
+                  <circle cx="84" cy="8" r="2.8" fill="#0EA5E9"/>
+                </svg>
+              </div>
+
+              <!-- Total Listings + Purple Sparkline Graph -->
+              <div class="analytics-stat-card" title="Total verified platforms evaluated in this category">
+                <div class="asc-left">
+                  <span class="asc-label">Total Listings <span class="asc-trend-pill purple" id="trendListingsPill">Live</span></span>
+                  <span class="asc-value" id="kpiTotalListings">14</span>
+                </div>
+                <svg class="asc-sparkline" id="sparkListingsSvg" viewBox="0 0 88 34" fill="none" aria-hidden="true">
+                  <path d="M4 27L20 23L36 20L52 13L68 15L84 7" stroke="#8B5CF6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="4" cy="27" r="2.3" fill="#8B5CF6"/>
+                  <circle cx="20" cy="23" r="2.3" fill="#8B5CF6"/>
+                  <circle cx="36" cy="20" r="2.3" fill="#8B5CF6"/>
+                  <circle cx="52" cy="13" r="2.3" fill="#8B5CF6"/>
+                  <circle cx="68" cy="15" r="2.3" fill="#8B5CF6"/>
+                  <circle cx="84" cy="7" r="2.8" fill="#8B5CF6"/>
+                </svg>
+              </div>
+            </div>
+
+            <div class="hero-big-cta-wrap">
+              <button type="button" class="btn-big-add-platform" id="heroBigAddPlatformBtn">
+                <span class="big-add-plus">+</span>
+                <span>Add Your Platform</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- =================================================================
+               3. UNDER STATS CARD: FREQUENTLY ASKED QUESTIONS (Closed by Default)
+               ================================================================= -->
+          <section class="faq-seo-section" id="faqSeoSection" aria-labelledby="faqHeading">
+            <div class="section-intro-row" style="margin-bottom: 12px;">
+              <h2 class="section-heading" id="faqHeading">Frequently Asked Questions</h2>
+            </div>
+            <div class="faq-accordion-list" id="faqAccordionList"></div>
+          </section>
+
+          <!-- =================================================================
+               4. AT THE END: CLEAN READER REVIEWS STREAM (With Platform Tag & Verified Badge)
+               ================================================================= -->
+          <section id="tabPanelContext" class="context-section">
+            <div class="reviews-stream-header">
+              <div class="rsh-left">
+                <h2 class="section-heading" style="margin-bottom:2px;">Verified Buyer &amp; Reader Reviews (<span id="verifiedReviewsCount">0</span>)</h2>
+                <span class="reviews-section-sub">Moderated feedback from verified operators &amp; engineering leaders</span>
+              </div>
+              <button type="button" class="btn-write-review-cta" id="openWriteReviewModalBtn">
+                <span>+</span> Write a Review
+              </button>
+            </div>
+
+            <div class="minimal-reviews-stream">
+              <div id="commentsTimelineContainer" class="minimal-reviews-list"></div>
+            </div>
+          </section>
+
+          <!-- =================================================================
+               5. RELATED TOP 10 DIRECTORIES FOOTER ROW (3 Compact Cards)
+               ================================================================= -->
+          <section class="related-directories-section" id="relatedDirectoriesSection" aria-labelledby="relatedDirsHeading">
+            <div class="related-dirs-header">
+              <h2 class="section-heading" id="relatedDirsHeading">Related Top 10 Directories</h2>
+              <button type="button" class="related-dirs-all-btn" id="viewAllDirectoriesFooterBtn">View all directories →</button>
+            </div>
+            <div class="related-dirs-grid" id="relatedDirectoriesGrid"></div>
+          </section>
+        </article>
+
+      </main>
+
+      <!-- =====================================================================
+           VIEW 3: EDITORIAL BUYING GUIDES & BLOG INDEX (/blog)
+           ===================================================================== -->
+      <section id="blogIndexSection" class="blog-index-view hidden">
+        <div class="blog-container">
+          <div class="blog-hero">
+            <div class="blog-hero-eyebrow">Top 10 Editorial &amp; Engineering</div>
+            <h1 class="blog-hero-title">In-Depth Buying Guides &amp; Teardowns</h1>
+            <p class="blog-hero-subtitle">
+              Rigorous benchmark tests, architecture comparisons, and independent teardowns to help you pick the best product in every category.
+            </p>
+          </div>
+
+          <!-- Featured Lead Teardown Card -->
+          <div id="blogFeaturedLead" class="blog-lead-card"></div>
+
+          <!-- 2-Column Article Grid -->
+          <div class="blog-grid-header">
+            <h2 class="blog-grid-title">All Teardowns &amp; Buying Guides</h2>
+            <span class="blog-grid-count" id="blogTotalCountBadge">6 Guides</span>
+          </div>
+          <div class="blog-grid" id="blogCardsGrid"></div>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           VIEW 4: EDITORIAL ARTICLE READER (/blog/:slug)
+           ===================================================================== -->
+      <section id="blogArticleSection" class="blog-article-view hidden">
+        <div class="blog-container article-container">
+          <nav class="article-breadcrumbs" aria-label="Breadcrumbs">
+            <button type="button" class="breadcrumb-link" id="articleBackToBlogBtn">← All Buying Guides</button>
+            <span class="breadcrumb-sep">/</span>
+            <span class="breadcrumb-current" id="articleBreadcrumbCat">Buying Guide</span>
+          </nav>
+
+          <header class="article-header">
+            <div class="article-meta-row">
+              <span class="article-badge" id="articleMetaCategory">SaaS</span>
+              <span class="article-meta-dot">•</span>
+              <span id="articleMetaReadTime">8 min read</span>
+              <span class="article-meta-dot">•</span>
+              <span id="articleMetaDate">Updated Oct 2026</span>
+            </div>
+            <h1 class="article-title" id="articleMainTitle">Article Title</h1>
+            <p class="article-subtitle" id="articleMainSubtitle">Article Subtitle</p>
+
+            <div class="article-author-card">
+              <div class="author-avatar" id="articleAuthorAvatar">AK</div>
+              <div class="author-info">
+                <div class="author-name" id="articleAuthorName">Ankush</div>
+                <div class="author-bio" id="articleAuthorBio">Lead Hardware &amp; Software Reviewer</div>
+              </div>
+            </div>
+          </header>
+
+          <!-- Key Takeaways Callout Box -->
+          <div class="article-takeaways-card">
+            <div class="takeaways-header">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2L12.5 7.5L18 8.5L14 12.5L15 18L10 15L5 18L6 12.5L2 8.5L7.5 7.5L10 2Z" fill="#10B981"/></svg>
+              <span>Key Takeaways &amp; TL;DR</span>
+            </div>
+            <ul class="takeaways-list" id="articleTakeawaysList"></ul>
+          </div>
+
+          <!-- Formatted Markdown/HTML Body -->
+          <div class="article-body" id="articleBodyContent"></div>
+
+          <!-- Featured Top 10 Products Strip in this Article -->
+          <div class="article-featured-strip" id="articleFeaturedStrip">
+            <div class="afs-header">
+              <h3 class="afs-title">Featured Products in this Guide</h3>
+              <button type="button" class="afs-view-list-btn" id="articleViewFullListBtn">View Full Top 10 List →</button>
+            </div>
+            <div class="afs-products-grid" id="articleFeaturedProductsGrid"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           VIEW 4B: PROGRAMMATIC HEAD-TO-HEAD COMPARISON (/compare/:cat/:p1-vs-:p2)
+           ===================================================================== -->
+      <section id="compareHeadToHeadView" class="compare-h2h-view hidden">
+        <div class="workspace-container" style="max-width: 980px; margin: 0 auto; padding-top: 16px;">
+          <!-- Navigation & Breadcrumb -->
+          <div class="h2h-breadcrumb-bar">
+            <button type="button" class="btn-back-breadcrumb" id="compareBackBtn">← Back to Category</button>
+            <div class="h2h-breadcrumb-path" id="compareBreadcrumb">
+              <span>Home</span> / <span id="compareCatNameCrumb">Billing Software</span> / <strong id="compareVersusTitle">Stripe vs Paddle</strong>
+            </div>
+            <button type="button" class="btn-share-ranking" id="compareShareBtn" style="margin-left:auto;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              <span>Share Comparison</span>
+            </button>
+          </div>
+
+          <!-- Hero Split Versus Card -->
+          <div class="h2h-hero-card">
+            <!-- Platform A -->
+            <div class="h2h-hero-col left" id="compareColA">
+              <div class="h2h-prod-header">
+                <span class="rank-node-badge rank-1" id="compareRankA">#1</span>
+                <div class="h2h-logo-wrap" id="compareLogoA"></div>
+                <div>
+                  <h2 class="h2h-prod-name" id="compareNameA">Stripe Billing</h2>
+                  <span class="h2h-company" id="compareCompanyA">by Stripe Inc</span>
+                </div>
+              </div>
+              <p class="h2h-tagline" id="compareTaglineA">Developer-first payment gateway with custom billing automation.</p>
+              <div class="h2h-price-row">
+                <span class="h2h-price" id="comparePriceA">0.5% per transaction</span>
+                <span class="h2h-trial" id="compareTrialA">Free Sandbox</span>
+              </div>
+              <a href="#" target="_blank" rel="noopener" class="h2h-visit-btn primary" id="compareVisitBtnA">Visit Stripe Billing ↗</a>
+            </div>
+
+            <!-- VS Badge & Quick Verdict -->
+            <div class="h2h-vs-center">
+              <div class="h2h-vs-badge">VS</div>
+              <span class="h2h-year-pill">2026 Showdown</span>
+            </div>
+
+            <!-- Platform B -->
+            <div class="h2h-hero-col right" id="compareColB">
+              <div class="h2h-prod-header">
+                <span class="rank-node-badge rank-2" id="compareRankB">#2</span>
+                <div class="h2h-logo-wrap" id="compareLogoB"></div>
+                <div>
+                  <h2 class="h2h-prod-name" id="compareNameB">Paddle Billing</h2>
+                  <span class="h2h-company" id="compareCompanyB">by Paddle Ltd</span>
+                </div>
+              </div>
+              <p class="h2h-tagline" id="compareTaglineB">Complete merchant of record managing global sales tax &amp; SaaS subscriptions.</p>
+              <div class="h2h-price-row">
+                <span class="h2h-price" id="comparePriceB">5% + 50¢ flat</span>
+                <span class="h2h-trial" id="compareTrialB">Free Sandbox</span>
+              </div>
+              <a href="#" target="_blank" rel="noopener" class="h2h-visit-btn primary" id="compareVisitBtnB">Visit Paddle Billing ↗</a>
+            </div>
+          </div>
+
+          <!-- Editorial Verdict Callout Banner -->
+          <div class="h2h-verdict-card">
+            <div class="h2h-verdict-header">
+              <span class="h2h-verdict-icon">⚖️</span>
+              <h3 class="h2h-verdict-title" id="compareVerdictTitle">The 2026 Head-to-Head Verdict</h3>
+            </div>
+            <p class="h2h-verdict-body" id="compareVerdictBody">
+              Choose <strong>Stripe Billing</strong> if you have in-house engineering and want raw developer APIs with custom payment pipelines. Choose <strong>Paddle Billing</strong> if you want an automated Merchant of Record to eliminate international VAT liability, currency conversion, and sales tax filing.
+            </p>
+            <div class="h2h-verdict-winners-grid" id="compareWinnersGrid">
+              <div class="h2h-winner-pill dev">
+                <span class="hw-label">🏆 Best for Developer Freedom:</span>
+                <strong id="compareWinnerDev">Stripe Billing</strong>
+              </div>
+              <div class="h2h-winner-pill value">
+                <span class="hw-label">🏆 Best for Global Tax &amp; MoR:</span>
+                <strong id="compareWinnerValue">Paddle Billing</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detailed Side-by-Side Comparison Shootout Table -->
+          <div class="h2h-matrix-wrap">
+            <h3 class="h2h-section-heading">Detailed Feature &amp; Spec Shootout</h3>
+            <div class="h2h-matrix-table-wrap">
+              <table class="h2h-matrix-table">
+                <thead>
+                  <tr>
+                    <th style="width:24%;">Feature / Metric</th>
+                    <th style="width:38%;" id="thMatrixNameA">Stripe Billing</th>
+                    <th style="width:38%;" id="thMatrixNameB">Paddle Billing</th>
+                  </tr>
+                </thead>
+                <tbody id="compareMatrixTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Pros & Cons Head-to-Head Shootout -->
+          <div class="h2h-pros-cons-grid">
+            <div class="h2h-pc-card" id="pcCardA">
+              <h4 class="h2h-pc-title"><span id="pcTitleNameA">Stripe Billing</span> Pros &amp; Cons</h4>
+              <div class="h2h-pc-content" id="pcContentA"></div>
+            </div>
+            <div class="h2h-pc-card" id="pcCardB">
+              <h4 class="h2h-pc-title"><span id="pcTitleNameB">Paddle Billing</span> Pros &amp; Cons</h4>
+              <div class="h2h-pc-content" id="pcContentB"></div>
+            </div>
+          </div>
+
+          <!-- Alternative Comparisons in this Category -->
+          <div class="h2h-alternatives-strip">
+            <h4 class="h2h-alt-heading">Other Popular Comparisons in this Category:</h4>
+            <div class="h2h-alt-chips" id="compareAltChips"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           VIEW 5: ADMIN OPERATIONS COMMAND CENTER (/admin)
+           ===================================================================== -->
+      <section id="adminViewSection" class="admin-view hidden">
+        <div class="admin-container">
+          <div class="admin-topbar">
+            <div>
+              <div class="admin-eyebrow">Executive Creator &amp; Monetization Suite</div>
+              <h1 class="admin-title">Platform Command Center &amp; Dashboard</h1>
+            </div>
+            <div class="admin-actions">
+              <span class="admin-status-pill"><span class="pulse-dot"></span> Live Auction Running</span>
+              <button type="button" class="btn-primary-compact" id="adminHeaderNewCatBtn">+ New Directory</button>
+              <button type="button" class="btn-primary-compact" id="adminHeaderNewBlogBtn" style="background:#7C3AED;">+ Write Article</button>
+              <button type="button" class="btn-secondary-compact" id="adminExitBtn">Exit to Site →</button>
+            </div>
+          </div>
+
+          <!-- 4 KPI Overview Cards -->
+          <div class="admin-kpi-grid">
+            <div class="admin-kpi-card">
+              <span class="admin-kpi-label">Total Auction Revenue</span>
+              <span class="admin-kpi-value" id="adminKpiRevenue">$0</span>
+              <span class="admin-kpi-sub">Programmatic Rank Bids + $99 Launches</span>
+            </div>
+            <div class="admin-kpi-card">
+              <span class="admin-kpi-label">Active Directories</span>
+              <span class="admin-kpi-value" id="adminKpiCategories">14</span>
+              <span class="admin-kpi-sub">Software, Hardware &amp; Lifestyle</span>
+            </div>
+            <div class="admin-kpi-card">
+              <span class="admin-kpi-label">Total Active Products</span>
+              <span class="admin-kpi-value" id="adminKpiProducts">140+</span>
+              <span class="admin-kpi-sub">Ranked across all directories</span>
+            </div>
+            <div class="admin-kpi-card">
+              <span class="admin-kpi-label">Buyer Leads Captured</span>
+              <span class="admin-kpi-value" id="adminKpiLeads">0</span>
+              <span class="admin-kpi-sub">High-intent RFP / Pricing inquiries</span>
+            </div>
+          </div>
+
+          <!-- Admin Tabs -->
+          <div class="admin-nav-tabs">
+            <button type="button" class="admin-tab active" data-admin-tab="products">⚡ Product &amp; Bid Manager</button>
+            <button type="button" class="admin-tab" data-admin-tab="overview">📊 Platform Overview &amp; Analytics</button>
+            <button type="button" class="admin-tab" data-admin-tab="categories">📁 Directory &amp; List Manager</button>
+            <button type="button" class="admin-tab" data-admin-tab="blogs">✍️ Blog &amp; Editorial <span class="admin-tab-badge" id="adminArticlesCountBadge" style="background:#8B5CF6;">6</span></button>
+            <button type="button" class="admin-tab" data-admin-tab="transactions">💰 Sales &amp; Revenue</button>
+            <button type="button" class="admin-tab" data-admin-tab="reviews">⭐ Review Moderation <span class="admin-tab-badge" id="adminPendingReviewsBadge">0</span></button>
+            <button type="button" class="admin-tab" data-admin-tab="leads">🎯 Buyer RFP Leads <span class="admin-tab-badge" id="adminLeadsCountBadge" style="background:#0284C7;">0</span></button>
+          </div>
+
+          <!-- Tab 0: Platform Overview & Revenue Analytics -->
+          <div class="admin-tab-content hidden" id="adminTabOverview">
+            <!-- Executive Revenue Stream Breakdown -->
+            <div class="dash-overview-hero">
+              <div class="dash-hero-text">
+                <h3 class="dash-hero-title">Platform Monetization &amp; Sales Analytics</h3>
+                <p class="dash-hero-sub">Complete breakdown of automated cashflow across paid launches, programmatic placement bids, recurring retainers, and lead unlocks.</p>
+              </div>
+              <div class="dash-hero-stat">
+                <span class="dash-hero-stat-label">Total Platform Volume</span>
+                <span class="dash-hero-stat-val" id="dashHeroTotalRevenue">$0</span>
+                <span class="dash-hero-stat-sub" id="dashHeroMrrSub">$0/mo Recurring MRR</span>
+              </div>
+            </div>
+
+            <!-- 4 Revenue Stream Cards -->
+            <div class="dash-stream-grid">
+              <div class="dash-stream-card stream-launches">
+                <div class="stream-icon-box">🚀</div>
+                <div class="stream-info">
+                  <span class="stream-title">$99 Directory Launches</span>
+                  <div class="stream-val" id="dashRevLaunches">$0</div>
+                  <span class="stream-sub" id="dashCountLaunches">0 launches recorded</span>
+                </div>
+              </div>
+              <div class="dash-stream-card stream-bids">
+                <div class="stream-icon-box">⚡</div>
+                <div class="stream-info">
+                  <span class="stream-title">Programmatic Placement Bids</span>
+                  <div class="stream-val" id="dashRevBids">$0</div>
+                  <span class="stream-sub" id="dashCountBids">0 placement bids</span>
+                </div>
+              </div>
+              <div class="dash-stream-card stream-retainers">
+                <div class="stream-icon-box">💎</div>
+                <div class="stream-info">
+                  <span class="stream-title">PayPal Monthly Retainers (MRR)</span>
+                  <div class="stream-val" id="dashRevMrr">$0/mo</div>
+                  <span class="stream-sub" id="dashCountRetainers">0 active subscribers</span>
+                </div>
+              </div>
+              <div class="dash-stream-card stream-leads">
+                <div class="stream-icon-box">🎯</div>
+                <div class="stream-info">
+                  <span class="stream-title">Enterprise Buyer Lead Unlocks</span>
+                  <div class="stream-val" id="dashRevLeads">$0</div>
+                  <span class="stream-sub" id="dashCountLeads">0 leads unlocked ($49/ea)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Platform Health & Performance Strip -->
+            <div class="dash-perf-strip">
+              <div class="perf-stat-item">
+                <span class="perf-label">Monthly Directory Traffic</span>
+                <strong class="perf-val" id="dashTrafficViews">0</strong>
+              </div>
+              <div class="perf-stat-item">
+                <span class="perf-label">Outbound Clicks</span>
+                <strong class="perf-val" id="dashOutboundClicks">0</strong>
+              </div>
+              <div class="perf-stat-item">
+                <span class="perf-label">Outbound Click-Through Rate</span>
+                <strong class="perf-val" id="dashCtrVal">3.85%</strong>
+              </div>
+              <div class="perf-stat-item">
+                <span class="perf-label">Live Curated Directories</span>
+                <strong class="perf-val" id="dashActiveDirs">16</strong>
+              </div>
+              <div class="perf-stat-item">
+                <span class="perf-label">Published Editorial Guides</span>
+                <strong class="perf-val" id="dashPublishedArticles">6</strong>
+              </div>
+            </div>
+
+            <!-- Two Column Overview: Category Monetization Table & Recent Platform Sales Feed -->
+            <div class="dash-two-col">
+              <!-- Left Widget: Directory Ranking & Monetization Performance -->
+              <div class="dash-widget">
+                <div class="dash-widget-header">
+                  <div>
+                    <h4 class="dash-widget-title">Directory Traffic &amp; Revenue Breakdown</h4>
+                    <p class="dash-widget-sub">Performance metrics by individual curated list</p>
+                  </div>
+                </div>
+                <div class="dash-widget-body">
+                  <div class="admin-table-wrap">
+                    <table class="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Directory</th>
+                          <th>Views</th>
+                          <th>Products</th>
+                          <th>Revenue</th>
+                          <th>Top Bidder</th>
+                        </tr>
+                      </thead>
+                      <tbody id="dashCategoryPerfTableBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right Widget: Real-Time Sales & Transaction Stream -->
+              <div class="dash-widget">
+                <div class="dash-widget-header">
+                  <div>
+                    <h4 class="dash-widget-title">Live Platform Sales Feed</h4>
+                    <p class="dash-widget-sub">Recent bids, launches, retainers &amp; unlocks</p>
+                  </div>
+                  <span class="admin-status-pill"><span class="pulse-dot"></span> Live</span>
+                </div>
+                <div class="dash-widget-body" id="dashSalesFeedContainer" style="max-height:360px;overflow-y:auto;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 1: Product & Bid Master Controller -->
+          <div class="admin-tab-content" id="adminTabProducts">
+            <div class="admin-table-controls">
+              <input type="search" id="adminProductSearchInput" class="admin-search-box" placeholder="Filter by product name, category, or founder email..." />
+              <select id="adminCategoryFilterSelect" class="admin-select-filter">
+                <option value="all">All Categories</option>
+              </select>
+              <button type="button" class="btn-primary-compact" id="adminAddProductBtn" style="margin-left:auto;">+ Add Product</button>
+            </div>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Product</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th>Current Bid</th>
+                    <th>Starting Price</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adminProductsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tab 2: Category & Directory Manager -->
+          <div class="admin-tab-content hidden" id="adminTabCategories">
+            <div class="admin-table-controls">
+              <input type="search" id="adminCategorySearchInput" class="admin-search-box" placeholder="Filter directories by title or slug..." />
+              <button type="button" class="btn-primary-compact" id="adminNewCategoryBtn" style="margin-left:auto;">+ Create New Directory</button>
+            </div>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Icon</th>
+                    <th>Directory Title</th>
+                    <th>Slug</th>
+                    <th>Products</th>
+                    <th>Monthly Views</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adminCategoriesTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tab 4: Blog & Editorial Manager -->
+          <div class="admin-tab-content hidden" id="adminTabBlogs">
+            <div class="admin-table-controls">
+              <input type="search" id="adminBlogSearchInput" class="admin-search-box" placeholder="Filter articles by title, author, or category..." />
+              <select id="adminBlogCategoryFilterSelect" class="admin-select-filter">
+                <option value="all">All Categories</option>
+              </select>
+              <button type="button" class="btn-primary-compact" id="adminNewBlogBtn" style="margin-left:auto;background:#7C3AED;">+ Write New Article</button>
+            </div>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Article</th>
+                    <th>URL Slug</th>
+                    <th>Category</th>
+                    <th>Author &amp; Read Time</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adminBlogsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tab 3: Transaction Audit Log & Recurring Subscriptions -->
+          <div class="admin-tab-content hidden" id="adminTabTransactions">
+            <div class="dashboard-section-header" style="margin-bottom:12px;">
+              <div>
+                <h4 style="margin:0;font-size:14px;font-weight:700;color:var(--text-main);">Active PayPal Retainer Subscriptions (MRR)</h4>
+                <p style="margin:2px 0 0;font-size:12px;color:var(--text-muted);">Recurring sponsorships automatically billing founders every 30 days</p>
+              </div>
+            </div>
+            <div class="admin-table-wrap" style="margin-bottom:20px;">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Subscription ID</th>
+                    <th>Company / Product</th>
+                    <th>Category</th>
+                    <th>Tier</th>
+                    <th>Monthly Rate</th>
+                    <th>Next Renewal</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="adminSubscriptionsTableBody"></tbody>
+              </table>
+            </div>
+
+            <div class="dashboard-section-header" style="margin-bottom:12px;">
+              <div>
+                <h4 style="margin:0;font-size:14px;font-weight:700;color:var(--text-main);">All Platform Transactions</h4>
+                <p style="margin:2px 0 0;font-size:12px;color:var(--text-muted);">Comprehensive audit ledger of all bids, paywall launches, renewals, and lead unlocks</p>
+              </div>
+            </div>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Buyer / Company</th>
+                    <th>Category</th>
+                    <th>Product / Description</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="adminTransactionsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tab 4: Review Moderation Queue -->
+          <div class="admin-tab-content hidden" id="adminTabReviews">
+            <div class="admin-table-controls">
+              <input type="search" id="adminReviewSearchInput" class="admin-search-box" placeholder="Filter reviews by reviewer, product, or keyword..." />
+              <div class="admin-filter-pills" id="adminReviewStatusFilter">
+                <button type="button" class="admin-filter-pill active" data-mod-filter="all">All Reviews</button>
+                <button type="button" class="admin-filter-pill" data-mod-filter="pending">Pending</button>
+                <button type="button" class="admin-filter-pill" data-mod-filter="approved">Approved</button>
+                <button type="button" class="admin-filter-pill" data-mod-filter="rejected">Rejected</button>
+              </div>
+            </div>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Reviewer</th>
+                    <th>Product &amp; Category</th>
+                    <th>Rating</th>
+                    <th>Review Content</th>
+                    <th>Status</th>
+                    <th>Moderate</th>
+                  </tr>
+                </thead>
+                <tbody id="adminReviewsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tab 5: Buyer RFP Leads Ledger -->
+          <div class="admin-tab-content hidden" id="adminTabLeads">
+            <div class="admin-table-controls">
+              <input type="search" id="adminLeadSearchInput" class="admin-search-box" placeholder="Filter buyer leads by company, buyer name, or category..." />
+              <div class="admin-filter-pills" id="adminLeadStatusFilter">
+                <button type="button" class="admin-filter-pill active" data-lead-filter="all">All Leads</button>
+                <button type="button" class="admin-filter-pill" data-lead-filter="new">New</button>
+                <button type="button" class="admin-filter-pill" data-lead-filter="contacted">Contacted</button>
+                <button type="button" class="admin-filter-pill" data-lead-filter="closed">Closed</button>
+              </div>
+              <button type="button" class="admin-action-btn-primary" id="adminExportLeadsCsvBtn" style="margin-left:auto;height:32px;font-size:12px;cursor:pointer;padding:0 12px;border-radius:6px;background:var(--bg-card);border:1px solid var(--border-card);color:var(--text-main);font-weight:600;">
+                📥 Export Leads CSV
+              </button>
+            </div>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Buyer &amp; Company</th>
+                    <th>Category</th>
+                    <th>Team Size &amp; Budget</th>
+                    <th>Timeline</th>
+                    <th>Target Vendors &amp; Scope</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adminLeadsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           SITE-WIDE 4-COLUMN FOOTER
+           ===================================================================== -->
+      <footer class="site-footer" role="contentinfo">
+        <div class="footer-inner">
+          <div class="footer-grid">
+            <!-- Col 1: Software & B2B -->
+            <div class="footer-col">
+              <div class="footer-col-title">Software &amp; B2B</div>
+              <ul class="footer-links">
+                <li><button type="button" class="footer-link-btn" data-footer-slug="billing-software">Billing Software</button></li>
+                <li><button type="button" class="footer-link-btn" data-footer-slug="crm-software">CRM Software</button></li>
+                <li><button type="button" class="footer-link-btn" data-footer-slug="cloud-hosting">Cloud Hosting</button></li>
+                <li><button type="button" class="footer-link-btn" data-footer-slug="ai-coding-assistants">AI Coding Assistants</button></li>
+                <li><button type="button" class="footer-link-btn" data-footer-slug="email-marketing">Email Marketing</button></li>
+              </ul>
+            </div>
+
+            <!-- Col 2: Hardware & Living -->
+            <div class="footer-col">
+              <div class="footer-col-title">Hardware &amp; Living</div>
+              <ul class="footer-links">
+                <li><button type="button" class="footer-link-btn" data-footer-slug="smart-tvs">Smart TVs (OLED &amp; Mini-LED)</button></li>
+                <li><button type="button" class="footer-link-btn" data-footer-slug="steam-and-wall-ovens">Combi-Steam &amp; Wall Ovens</button></li>
+                <li><button type="button" class="footer-link-btn" data-footer-slug="premium-headphones">Premium Audio &amp; ANC</button></li>
+                <li><button type="button" class="footer-link-btn" data-footer-slug="smart-home-hubs">Smart Home Hubs</button></li>
+              </ul>
+            </div>
+
+            <!-- Col 3: Lifestyle & Media -->
+            <div class="footer-col">
+              <div class="footer-col-title">Lifestyle &amp; Media</div>
+              <ul class="footer-links">
+                <li><button type="button" class="footer-link-btn" data-footer-slug="phone-cases">Phone Cases &amp; Protection</button></li>
+                <li><button type="button" class="footer-link-btn" data-footer-slug="mobile-games">Mobile Games (Buy-Once)</button></li>
+                <li><button type="button" class="footer-link-btn" data-footer-slug="audiobook-apps">Audiobook &amp; Spoken Audio</button></li>
+                <li><button type="button" class="footer-link-btn" data-footer-slug="online-gambling">Regulated Sportsbooks</button></li>
+              </ul>
+            </div>
+
+            <!-- Col 4: Platform & Editorial -->
+            <div class="footer-col">
+              <div class="footer-col-title">Editorial &amp; Platform</div>
+              <ul class="footer-links">
+                <li><button type="button" class="footer-link-btn" id="footerLinkAllGuides">All Buying Guides</button></li>
+                <li><button type="button" class="footer-link-btn" id="footerLinkBlog">Editorial Teardowns &amp; Blog</button></li>
+                <li><button type="button" class="footer-link-btn" id="footerLinkLaunchPaywall">+ Launch Directory ($99)</button></li>
+                <li><button type="button" class="footer-link-btn" id="footerLinkAdmin">Admin Dashboard</button></li>
+                <li><a href="/sitemap.xml" target="_blank" class="footer-link-a">XML Sitemap</a></li>
+                <li><a href="/llms.txt" target="_blank" class="footer-link-a">LLMs &amp; AI Manifest</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="footer-bottom-bar">
+            <div class="fbb-left">
+              <span class="footer-status-indicator">
+                <span class="status-pulse-dot"></span>
+                <span>All 14 directories operational · Updated October 2026</span>
+              </span>
+              <span class="fbb-copy">© 2026 Top 10 Media Inc. Independent &amp; transparent.</span>
+            </div>
+
+            <div class="fbb-right">
+              <button type="button" class="fbb-theme-toggle" id="footerThemeToggleBtn">
+                <span>Toggle Dark Mode</span>
+              </button>
+              <button type="button" class="fbb-back-to-top" id="footerBackToTopBtn">
+                ↑ Back to top
+              </button>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 1: "ADD YOUR PLATFORM" / "BOOST EXISTING PLATFORM" MODAL
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="bidModalBackdrop">
+    <div class="modal-window modal-sm">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow" id="bidModalCategoryPill">Top 10 Billing Software</span>
+          <h2 class="modal-title" id="bidModalHeadingTitle">Add Your Platform</h2>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeBidModalBtn">&times;</button>
+      </div>
+
+      <!-- 3-Pill Mode Toggle: New Platform vs. Boost Existing Platform vs. Retainer Subscriptions -->
+      <div class="mode-switch-tabs mode-switch-tabs-3" id="bidModeTabs" style="margin-bottom: 12px;">
+        <button type="button" class="mode-tab active" data-bid-mode="new">New Platform</button>
+        <button type="button" class="mode-tab" data-bid-mode="existing">Boost Existing</button>
+        <button type="button" class="mode-tab" data-bid-mode="retainer">Retainer Subscriptions</button>
+      </div>
+
+      <form id="bidCheckoutForm" class="modal-body">
+        <!-- Mode A: Add New Platform Fields -->
+        <div id="bidNewFieldsWrap">
+          <div class="form-field">
+            <label>Website URL * <span class="autofill-hint">Auto-fills name &amp; logo</span></label>
+            <div class="url-autofill-input-wrap">
+              <span class="url-favicon-preview" id="bidUrlFaviconPreview">🌐</span>
+              <input type="url" id="bidWebsite" class="modal-input" placeholder="https://linear.app" required />
+            </div>
+          </div>
+
+          <div class="form-row-2" style="margin-top: 10px;">
+            <div class="form-field">
+              <label>Platform Name *</label>
+              <input type="text" id="bidProductName" class="modal-input" placeholder="e.g. Linear" required />
+            </div>
+            <div class="form-field">
+              <label>Starting Price</label>
+              <input type="text" id="bidPricingTag" class="modal-input" placeholder="e.g. From $10/mo" />
+            </div>
+          </div>
+
+          <div class="form-field" style="margin-top: 10px;">
+            <label>1-Sentence Description *</label>
+            <input type="text" id="bidTagline" class="modal-input" placeholder="Briefly describe what your platform does best." required />
+          </div>
+        </div>
+
+        <!-- Mode B: Boost Existing Platform Selector -->
+        <div id="bidExistingFieldsWrap" class="hidden">
+          <div class="form-field">
+            <label for="bidExistingProductSelect">Select Your Listed Platform *</label>
+            <select id="bidExistingProductSelect" class="modal-input"></select>
+          </div>
+        </div>
+
+        <!-- Mode C: Recurring Sponsorship Retainers (PayPal MRR Only) -->
+        <div id="bidRetainerFieldsWrap" class="hidden">
+          <div class="form-field">
+            <label for="bidRetainerProductSelect">Select Platform to Sponsor *</label>
+            <select id="bidRetainerProductSelect" class="modal-input"></select>
+          </div>
+          <div class="retainer-tiers-grid" style="margin-top:10px;">
+            <div class="retainer-tier-card selected" data-retainer-tier="lock_rank_1" id="retainerCardLock1">
+              <div class="rtc-header">
+                <span class="rtc-badge gold">👑 Lock #1</span>
+                <span class="rtc-price">$299<span class="rtc-period">/mo</span></span>
+              </div>
+              <h4 class="rtc-title">Lock #1 for 30 Days</h4>
+              <p class="rtc-desc">Guaranteed #1 placement with auto-outbid immunity and prominent gold badge styling.</p>
+              <ul class="rtc-perks">
+                <li>✓ Guaranteed Rank #1 placement</li>
+                <li>✓ Auto-outbid defense protection</li>
+                <li>✓ Priority RFP lead unlocking</li>
+              </ul>
+            </div>
+            <div class="retainer-tier-card" data-retainer-tier="guaranteed_top_3" id="retainerCardTop3">
+              <div class="rtc-header">
+                <span class="rtc-badge blue">⭐ Guaranteed Top 3</span>
+                <span class="rtc-price">$149<span class="rtc-period">/mo</span></span>
+              </div>
+              <h4 class="rtc-title">Guaranteed Top 3</h4>
+              <p class="rtc-desc">Permanent high-converting presence in slots #1–#3 with auto-protection.</p>
+              <ul class="rtc-perks">
+                <li>✓ Guaranteed Top 3 placement</li>
+                <li>✓ Verified founder response badge</li>
+              </ul>
+            </div>
+          </div>
+          <div class="paypal-provider-box">
+            <span class="paypal-logo-pill">PayPal</span>
+            <span>Monthly recurring retainer billed via PayPal. Cancel anytime with 1 click.</span>
+          </div>
+        </div>
+
+        <!-- Hidden auto-populated fields to keep backend schema happy -->
+        <input type="hidden" id="bidCompanyName" value="" />
+        <input type="hidden" id="bidHighlightTag" value="@Featured" />
+        <input type="hidden" id="bidOwnerEmail" value="founder@company.com" />
+
+        <div class="form-field" id="bidAmountFieldsWrap">
+          <label for="bidPaymentAmount">Placement Amount (USD $)</label>
+          <input type="number" id="bidPaymentAmount" class="modal-input bid-amount-input" min="25" step="1" value="475" required />
+          <div class="rank-picker-grid hidden" id="modalRankPickerGrid"></div>
+          <div class="rank-simulation-banner" id="rankSimulationBanner">
+            Projected Placement: <strong>Featured in Top 10</strong>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="cancelBidModalBtn">Cancel</button>
+          <button type="submit" class="btn-submit-bid" id="submitBidBtn">
+            Add Platform
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 2: 1-STEP MINIMALIST "LAUNCH A NEW TOP 10 DIRECTORY" ($99)
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="createListModalBackdrop">
+    <div class="modal-window modal-sm">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow">New Directory · $99 Launch</span>
+          <h2 class="modal-title">Launch a New Top 10 List</h2>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeCreateListModalBtn">&times;</button>
+      </div>
+
+      <form id="createListPaywallForm" class="modal-body">
+        <div class="form-field">
+          <label>Directory Title *</label>
+          <input type="text" id="newListTitleInput" class="modal-input" placeholder="e.g. Top 10 Video Editing Software" required />
+        </div>
+
+        <div class="form-field">
+          <label>Your Platform Website URL *</label>
+          <input type="url" id="newListWebsite" class="modal-input" placeholder="https://descript.com" required />
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-field">
+            <label>Platform Name *</label>
+            <input type="text" id="newListProdName" class="modal-input" placeholder="e.g. Descript" required />
+          </div>
+          <div class="form-field">
+            <label>Starting Price</label>
+            <input type="text" id="newListPricing" class="modal-input" placeholder="e.g. From $19/mo" />
+          </div>
+        </div>
+
+        <input type="hidden" id="newListCompany" value="" />
+        <input type="hidden" id="newListHighlight" value="@Featured" />
+        <input type="hidden" id="newListEmail" value="founder@company.com" />
+        <input type="hidden" id="newListFeeInput" value="99" />
+
+        <div class="form-field">
+          <label>1-Sentence Description *</label>
+          <input type="text" id="newListTagline" class="modal-input" placeholder="Edit video and podcasts as easily as a doc." required />
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="cancelCreateListModalBtn">Cancel</button>
+          <button type="submit" class="btn-submit-bid" id="submitCreateListBtn">
+            Pay $99 &amp; Launch List
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 3: SIGN IN / SWITCH READER OR BRAND PROFILE
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="loginModalBackdrop">
+    <div class="modal-window modal-sm">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow">Reader &amp; Brand Account</span>
+          <h2 class="modal-title">Sign In or Switch Profile</h2>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeLoginModalBtn">&times;</button>
+      </div>
+
+      <form id="loginForm" class="modal-body">
+        <div class="form-field">
+          <label>Your Name *</label>
+          <input type="text" id="loginName" class="modal-input" placeholder="Sarah Jenkins" required />
+        </div>
+        <div class="form-field">
+          <label>Email *</label>
+          <input type="email" id="loginEmail" class="modal-input" placeholder="sarah@company.com" required />
+        </div>
+        <div class="form-field">
+          <label>Company / Role *</label>
+          <input type="text" id="loginCompany" class="modal-input" placeholder="Product Researcher" required />
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="cancelLoginModalBtn">Cancel</button>
+          <button type="submit" class="btn-submit-bid">Continue</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 4: 1-CLICK "RANKED ON TOP 10" EMBED BADGE GENERATOR (FOR FOUNDERS)
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="badgeModalBackdrop">
+    <div class="modal-window modal-sm">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow" id="badgeModalCategoryEyebrow">Verified Backlink Badge</span>
+          <h2 class="modal-title" id="badgeModalTitle">Embed "Featured on Top 10" Badge</h2>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeBadgeModalBtn">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="badge-preview-stage">
+          <img id="badgePreviewImg" src="" alt="Ranked on Top 10 Badge" class="badge-live-svg-img" />
+        </div>
+
+        <div class="form-field">
+          <div class="badge-code-header">
+            <label for="badgeHtmlCode">HTML Embed Snippet</label>
+            <button type="button" class="btn-copy-snippet" id="copyBadgeHtmlBtn">Copy HTML</button>
+          </div>
+          <textarea id="badgeHtmlCode" class="modal-input badge-code-box" rows="3" readonly></textarea>
+        </div>
+
+        <div class="form-field">
+          <div class="badge-code-header">
+            <label for="badgeMarkdownCode">Markdown (README / Docs)</label>
+            <button type="button" class="btn-copy-snippet" id="copyBadgeMdBtn">Copy Markdown</button>
+          </div>
+          <textarea id="badgeMarkdownCode" class="modal-input badge-code-box" rows="2" readonly></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="doneBadgeModalBtn">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 5: ON-DEMAND "COMPARE SAVED PLATFORMS" DRAWER / MODAL
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="compareSavedModalBackdrop">
+    <div class="modal-window modal-compare-lg">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow" id="compareModalEyebrow">Side-by-Side Shortlist</span>
+          <h2 class="modal-title" id="compareModalTitle">Compare Saved Platforms</h2>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeCompareModalBtn">&times;</button>
+      </div>
+
+      <div class="compare-saved-grid" id="compareSavedGrid"></div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 6: HIGH-RES PRODUCT IMAGE & HARDWARE LIGHTBOX MODAL
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="imageLightboxModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="lightboxModalTitle">
+    <div class="modal-window modal-lightbox">
+      <div class="modal-header" style="border-bottom:none;padding-bottom:0;">
+        <div>
+          <span class="modal-eyebrow" id="lightboxModalEyebrow">Studio Showcase</span>
+          <h2 class="modal-title" id="lightboxModalTitle">Product Photo</h2>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeLightboxModalBtn" aria-label="Close photo view">&times;</button>
+      </div>
+
+      <div class="lightbox-stage">
+        <img src="" alt="" id="lightboxLargeImg" class="lightbox-large-img" />
+        <span class="lightbox-spec-tag hidden" id="lightboxSpecTag"></span>
+      </div>
+
+      <div class="lightbox-footer">
+        <span class="lightbox-caption" id="lightboxCaption"></span>
+        <a href="#" target="_blank" rel="noopener" class="btn-primary-compact" id="lightboxVisitBtn">Visit Official Website ↗</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 7: COMPLETE ACCOUNT & PROFILE DRAWER / MODAL
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="accountModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
+    <div class="modal-window modal-account">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow">User Profile &amp; Control</span>
+          <h2 class="modal-title" id="accountModalTitle">My Account</h2>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeAccountModalBtn">&times;</button>
+      </div>
+
+      <!-- Account Identity Banner -->
+      <div class="account-identity-banner">
+        <div class="account-avatar-lg" id="accBannerAvatar">AK</div>
+        <div class="account-identity-details">
+          <div class="acc-name-role-row">
+            <span class="acc-display-name" id="accBannerName">Ankush</span>
+            <span class="acc-role-pill admin" id="accBannerRole">Platform Admin</span>
+          </div>
+          <div class="acc-email-org-row">
+            <span class="acc-email" id="accBannerEmail">admin@top10.io</span>
+            <span class="acc-dot">•</span>
+            <span class="acc-company" id="accBannerCompany">Top 10 HQ</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Account Tabs -->
+      <div class="account-tab-bar">
+        <button type="button" class="account-tab active" data-acc-tab="profile">Profile</button>
+        <button type="button" class="account-tab" data-acc-tab="bookmarks">Saved Bookmarks (<span id="accBookmarksCount">0</span>)</button>
+        <button type="button" class="account-tab" data-acc-tab="sponsorships">My Sponsored Listings</button>
+        <button type="button" class="account-tab" data-acc-tab="receipts">Billing &amp; Receipts</button>
+      </div>
+
+      <!-- Tab 1: Profile -->
+      <div class="account-tab-panel" id="accPanelProfile">
+        <form id="accProfileForm" class="acc-form">
+          <div class="form-field">
+            <label for="accInputName">Full Name</label>
+            <input type="text" id="accInputName" class="modal-input" required />
+          </div>
+          <div class="form-row-2" style="margin-top: 10px;">
+            <div class="form-field">
+              <label for="accInputEmail">Email Address</label>
+              <input type="email" id="accInputEmail" class="modal-input" required />
+            </div>
+            <div class="form-field">
+              <label for="accInputCompany">Company / Organization</label>
+              <input type="text" id="accInputCompany" class="modal-input" placeholder="e.g. Acme Inc" />
+            </div>
+          </div>
+          <div class="modal-footer" style="padding-top:16px;">
+            <button type="submit" class="btn-submit-bid">Save Profile</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Tab 2: Bookmarks -->
+      <div class="account-tab-panel hidden" id="accPanelBookmarks">
+        <div class="acc-empty-state hidden" id="accBookmarksEmpty">
+          <div class="acc-empty-icon">🔖</div>
+          <div class="acc-empty-title">No saved platforms yet</div>
+          <p class="acc-empty-text">Click the bookmark icon on any product card in a Top 10 list to save it to your shortlist.</p>
+        </div>
+        <div class="acc-bookmarks-list" id="accBookmarksList"></div>
+      </div>
+
+      <!-- Tab 3: Sponsorships & Bids -->
+      <div class="account-tab-panel hidden" id="accPanelSponsorships">
+        <div class="acc-sponsored-list" id="accSponsoredList"></div>
+      </div>
+
+      <!-- Tab 4: Billing Receipts -->
+      <div class="account-tab-panel hidden" id="accPanelReceipts">
+        <div class="acc-receipts-list" id="accReceiptsList"></div>
+      </div>
+
+      <!-- Quick Profile Switcher Footer -->
+      <div class="account-switch-footer">
+        <div class="acc-switch-label">Switch Profile:</div>
+        <div class="acc-switch-pills" id="accSwitchPills"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating "Compare Saved (2+)" Pill (Only shown when 2+ platforms are saved in active list) -->
+  <button type="button" class="floating-compare-saved-pill hidden" id="compareSavedPill">
+    <span id="compareSavedPillText">Compare 2 Saved →</span>
+  </button>
+
+  <!-- Minimalist Floating Back-to-Top Pill (Shown only on deep scroll) -->
+  <button type="button" class="floating-back-top-pill hidden" id="backToTopPill" title="Scroll back to top" aria-label="Scroll back to top">
+    ↑ Top
+  </button>
+
+  <!-- =========================================================================
+       MODAL: WRITE A VERIFIED REVIEW WITH STAR RATING (#writeReviewModalBackdrop)
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="writeReviewModalBackdrop">
+    <div class="modal-window modal-sm">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow" id="reviewModalCategoryEyebrow">Top 10 Billing Software</span>
+          <h2 class="modal-title">Write a Review</h2>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeWriteReviewModalBtn">&times;</button>
+      </div>
+
+      <form id="writeReviewForm" class="modal-body">
+        <div class="form-field">
+          <label for="reviewProductSelect">Platform You Are Reviewing</label>
+          <select id="reviewProductSelect" class="modal-input"></select>
+        </div>
+
+        <div class="form-field" style="margin-top: 10px;">
+          <label>Overall Rating *</label>
+          <div class="star-rating-picker" id="starRatingPicker">
+            <button type="button" class="star-pick-btn active" data-star="1">★</button>
+            <button type="button" class="star-pick-btn active" data-star="2">★</button>
+            <button type="button" class="star-pick-btn active" data-star="3">★</button>
+            <button type="button" class="star-pick-btn active" data-star="4">★</button>
+            <button type="button" class="star-pick-btn active" data-star="5">★</button>
+            <span class="star-rating-text" id="starRatingLabel">5.0 — Exceptional</span>
+          </div>
+          <input type="hidden" id="reviewStarValue" value="5" />
+        </div>
+
+        <div class="form-row-2" style="margin-top: 10px;">
+          <div class="form-field">
+            <label for="reviewAuthorName">Your Full Name *</label>
+            <input type="text" id="reviewAuthorName" class="modal-input" placeholder="e.g. Sarah Jenkins" required />
+          </div>
+          <div class="form-field">
+            <label for="reviewAuthorEmail">Work Email * <span class="autofill-hint">Verified badge</span></label>
+            <input type="email" id="reviewAuthorEmail" class="modal-input" placeholder="sarah@company.com" required />
+          </div>
+        </div>
+
+        <div class="form-field" style="margin-top: 10px;">
+          <label for="reviewAuthorRole">Job Title / Company</label>
+          <input type="text" id="reviewAuthorRole" class="modal-input" placeholder="e.g. VP of Finance at ScaleWorks" />
+        </div>
+
+        <div class="form-field" style="margin-top: 10px;">
+          <label for="reviewBodyText">Your Honest Review * <span class="autofill-hint">Use @Platform to mention</span></label>
+          <textarea id="reviewBodyText" class="modal-input" rows="3" placeholder="Share your experience, pricing feedback, team onboarding ease, or workflow tips..." required></textarea>
+        </div>
+
+        <div class="form-field" style="margin-top: 10px;">
+          <label>Favorite Highlights / Pros (Click to add)</label>
+          <div class="sentiment-chips-grid" id="reviewProsChips">
+            <button type="button" class="sentiment-chip" data-sentiment="Easy Onboarding">+ Easy Onboarding</button>
+            <button type="button" class="sentiment-chip" data-sentiment="Reliable Uptime">+ Reliable Uptime</button>
+            <button type="button" class="sentiment-chip" data-sentiment="Fast Support">+ Fast Support</button>
+            <button type="button" class="sentiment-chip" data-sentiment="Fair Pricing">+ Fair Pricing</button>
+            <button type="button" class="sentiment-chip" data-sentiment="Clean UI">+ Clean UI</button>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="cancelWriteReviewBtn">Cancel</button>
+          <button type="submit" class="btn-submit-bid" id="submitReviewBtn">Submit Review for Moderation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: "CLAIM THIS LISTING" FOUNDER VERIFICATION (#claimListingModalBackdrop)
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="claimListingModalBackdrop">
+    <div class="modal-window modal-sm">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow">Founder Verification</span>
+          <h2 class="modal-title" id="claimModalTitle">Claim This Listing</h2>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeClaimModalBtn">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="claim-step-indicator">
+          <span class="claim-step active" id="claimStep1Pill">1. Work Email</span>
+          <span class="claim-step-arrow">→</span>
+          <span class="claim-step" id="claimStep2Pill">2. 6-Digit Code</span>
+          <span class="claim-step-arrow">→</span>
+          <span class="claim-step" id="claimStep3Pill">3. Verified ✓</span>
+        </div>
+
+        <!-- Step 1: Request Code -->
+        <form id="claimSendCodeForm">
+          <p class="claim-helper-text">
+            Verify official ownership of <strong id="claimTargetProdName">Platform</strong>. Enter your company email matching the website domain to receive a secure 6-digit confirmation code.
+          </p>
+          <div class="form-field">
+            <label for="claimWorkEmail">Official Work Email *</label>
+            <input type="email" id="claimWorkEmail" class="modal-input" placeholder="founder@company.com" required />
+          </div>
+          <div class="modal-footer" style="padding-top: 14px;">
+            <button type="button" class="btn-secondary" id="cancelClaimBtn">Cancel</button>
+            <button type="submit" class="btn-submit-bid" id="sendClaimCodeBtn">Send Verification Code</button>
+          </div>
+        </form>
+
+        <!-- Step 2: Verify Code -->
+        <form id="claimVerifyCodeForm" class="hidden">
+          <div class="dev-otp-banner" id="devOtpBanner" style="display:none;"></div>
+          <p class="claim-helper-text">
+            Enter the 6-digit verification code sent to <strong id="claimSentEmailLabel">founder@company.com</strong>:
+          </p>
+          <div class="form-field">
+            <label for="claimOtpInput">6-Digit Verification Code *</label>
+            <input type="text" id="claimOtpInput" class="modal-input otp-code-box" maxlength="6" placeholder="123456" required />
+          </div>
+          <div class="modal-footer" style="padding-top: 14px;">
+            <button type="button" class="btn-secondary" id="backToClaimEmailBtn">Back</button>
+            <button type="submit" class="btn-submit-bid" id="verifyClaimCodeBtn">Verify &amp; Claim Listing</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL: 1-CLICK VIRAL SOCIAL SHARING (#shareRankingModalBackdrop)
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="shareRankingModalBackdrop">
+    <div class="modal-window modal-sm">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow">Viral SEO &amp; Social Backlinks</span>
+          <h2 class="modal-title" id="shareModalTitle">Share Rankings</h2>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeShareModalBtn">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Live OpenGraph Card Image Preview -->
+        <div class="og-preview-stage">
+          <img src="/api/og/billing-software.svg" id="shareOgPreviewImg" alt="Top 10 Rankings Preview" class="og-banner-img" />
+        </div>
+
+        <div class="form-field" style="margin-top: 12px;">
+          <label>Pre-Formatted Viral Post Copy</label>
+          <textarea id="sharePostCopyText" class="modal-input share-copy-box" rows="2" readonly></textarea>
+        </div>
+
+        <div class="social-share-buttons-grid">
+          <button type="button" class="btn-social-share twitter" id="shareTwitterBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            <span>Post on X</span>
+          </button>
+          <button type="button" class="btn-social-share linkedin" id="shareLinkedinBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.59 1.59 0 1 0 0-3.18 1.59 1.59 0 0 0 0 3.18m1.4 9.74v-8.37H5.06v8.37z"/></svg>
+            <span>Share on LinkedIn</span>
+          </button>
+          <button type="button" class="btn-social-share whatsapp" id="shareWhatsappBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.41a8.17 8.17 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.188 8.188 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.53c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.79.97-.14.17-.29.19-.54.07-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.14.17-.25.25-.41.08-.17.04-.31-.02-.43s-.56-1.34-.76-1.84c-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.22.25-.86.84-.86 2.05s.88 2.38 1 2.55c.12.17 1.74 2.65 4.21 3.72.59.25 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.15-1.18-.06-.11-.22-.18-.47-.3"/></svg>
+            <span>WhatsApp</span>
+          </button>
+          <button type="button" class="btn-social-share copylink" id="shareCopyLinkBtn">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M3.5 10.5h-1a1 1 0 01-1-1v-6a1 1 0 011-1h6a1 1 0 011 1v1"/></svg>
+            <span>Copy Link</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 10: B2B CUSTOM QUOTES / ENTERPRISE RFP (#requestRfpModalBackdrop)
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="requestRfpModalBackdrop">
+    <div class="modal-window modal-md">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow">Enterprise Concierge</span>
+          <h2 class="modal-title" id="rfpModalTitle">Request Custom Quotes &amp; RFPs</h2>
+          <p class="modal-subtitle" style="margin-top:2px;">Get competitive pricing, volume discounts, and architecture demos directly from verified vendors.</p>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeRfpModalBtn">&times;</button>
+      </div>
+
+      <form id="requestRfpForm" class="modal-body">
+        <input type="hidden" id="rfpCategorySlug" value="" />
+
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="rfpBuyerName">Your Full Name *</label>
+            <input type="text" id="rfpBuyerName" class="modal-input" placeholder="e.g. Alex Mercer" required />
+          </div>
+          <div class="form-field">
+            <label for="rfpBuyerEmail">Work Business Email *</label>
+            <input type="email" id="rfpBuyerEmail" class="modal-input" placeholder="alex@company.com" required />
+          </div>
+        </div>
+
+        <div class="form-row-2" style="margin-top:10px;">
+          <div class="form-field">
+            <label for="rfpCompanyName">Company Name *</label>
+            <input type="text" id="rfpCompanyName" class="modal-input" placeholder="e.g. Acme Corp" required />
+          </div>
+          <div class="form-field">
+            <label for="rfpTeamSize">Team Size *</label>
+            <select id="rfpTeamSize" class="modal-input">
+              <option value="1–10 employees">1–10 employees (Startup)</option>
+              <option value="11–50 employees" selected>11–50 employees (Growth)</option>
+              <option value="51–250 employees">51–250 employees (Scaleup)</option>
+              <option value="250+ employees">250+ employees (Enterprise)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row-2" style="margin-top:10px;">
+          <div class="form-field">
+            <label for="rfpEstimatedBudget">Estimated Monthly Budget *</label>
+            <select id="rfpEstimatedBudget" class="modal-input">
+              <option value="<$500/mo">&lt; $500/mo (Seed)</option>
+              <option value="$500–$2,000/mo" selected>$500 – $2,000/mo</option>
+              <option value="$2,000–$10,000/mo">$2,000 – $10,000/mo</option>
+              <option value="$10,000+/mo">$10,000+/mo (Custom Enterprise)</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="rfpTimeline">Decision Timeline *</label>
+            <select id="rfpTimeline" class="modal-input">
+              <option value="Immediately (1–2 weeks)">Immediately (within 1–2 weeks)</option>
+              <option value="Within 1 month" selected>Within 1 month</option>
+              <option value="Within 3 months">Within 3 months</option>
+              <option value="Researching / Exploratory">Just evaluating / Exploratory</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-field" style="margin-top:10px;">
+          <label>Target Platforms to Receive Your RFP *</label>
+          <div class="rfp-vendors-picker" id="rfpVendorsPicker"></div>
+        </div>
+
+        <div class="form-field" style="margin-top:10px;">
+          <label for="rfpNotes">Project Requirements &amp; Must-Have Features</label>
+          <textarea id="rfpNotes" class="modal-textarea" rows="3" placeholder="Describe your current tech stack, billing volume, compliance requirements (e.g. SOC2, GDPR, MoR)..."></textarea>
+        </div>
+
+        <div class="modal-footer" style="margin-top:14px;">
+          <button type="button" class="btn-secondary" id="cancelRfpModalBtn">Cancel</button>
+          <button type="submit" class="btn-submit-bid" id="submitRfpBtn">
+            Submit RFP Request (Free to Buyers)
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 11: FOUNDER SELF-SERVE PORTAL & LISTING EDITOR (#founderPortalModalBackdrop)
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="founderPortalModalBackdrop">
+    <div class="modal-window modal-lg">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow">Founder Self-Serve Command Center</span>
+          <h2 class="modal-title" id="founderPortalTitle">Manage Your Listed Platform</h2>
+          <p class="modal-subtitle">Update your public specifications, track reader CTR analytics, and manage retainer subscriptions.</p>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeFounderPortalBtn">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding-top:10px;">
+        <!-- Selector if user has multiple or switching -->
+        <div class="founder-prod-selector-row">
+          <label for="founderProductSelect">Select Platform:</label>
+          <select id="founderProductSelect" class="modal-input" style="max-width:320px;"></select>
+          <span class="verified-claim-badge" style="margin-left:auto;">👑 Verified Brand Representative</span>
+        </div>
+
+        <!-- 4 Metrics KPI Bar -->
+        <div class="founder-metrics-grid">
+          <div class="f-metric-tile">
+            <span class="fmt-label">30-Day Views</span>
+            <strong class="fmt-value" id="founderMetricViews">480</strong>
+          </div>
+          <div class="f-metric-tile">
+            <span class="fmt-label">Outbound Clicks</span>
+            <strong class="fmt-value" id="founderMetricClicks">34</strong>
+          </div>
+          <div class="f-metric-tile">
+            <span class="fmt-label">Visitor CTR</span>
+            <strong class="fmt-value" id="founderMetricCtr">7.1%</strong>
+          </div>
+          <div class="f-metric-tile">
+            <span class="fmt-label">Shortlist Saves</span>
+            <strong class="fmt-value" id="founderMetricSaves">18</strong>
+          </div>
+        </div>
+
+        <!-- Founder Tabs: Editor, Retainer MRR, Buyer Leads -->
+        <div class="mode-switch-tabs" id="founderPortalTabs" style="margin:14px 0 12px 0;">
+          <button type="button" class="mode-tab active" data-founder-tab="editor">Edit Specifications</button>
+          <button type="button" class="mode-tab" data-founder-tab="retainer">Sponsorship Retainers</button>
+          <button type="button" class="mode-tab" data-founder-tab="leads">Buyer RFP Leads <span class="admin-tab-badge" id="founderLeadsBadge" style="background:#059669;">0</span></button>
+        </div>
+
+        <!-- Sub-panel 1: Listing Spec Editor Form -->
+        <form id="founderEditorForm" class="founder-subpanel">
+          <input type="hidden" id="fEditCategorySlug" value="" />
+          <input type="hidden" id="fEditProductId" value="" />
+
+          <div class="form-row-2">
+            <div class="form-field">
+              <label for="fEditName">Platform Display Name *</label>
+              <input type="text" id="fEditName" class="modal-input" required />
+            </div>
+            <div class="form-field">
+              <label for="fEditWebsite">Official Website URL *</label>
+              <input type="url" id="fEditWebsite" class="modal-input" required />
+            </div>
+          </div>
+
+          <div class="form-field" style="margin-top:10px;">
+            <label for="fEditTagline">1-Sentence Value Proposition *</label>
+            <input type="text" id="fEditTagline" class="modal-input" required />
+          </div>
+
+          <div class="form-row-2" style="margin-top:10px;">
+            <div class="form-field">
+              <label for="fEditPrice">Starting Price Spec</label>
+              <input type="text" id="fEditPrice" class="modal-input" placeholder="e.g. Free sandbox / $49/mo" />
+            </div>
+            <div class="form-field">
+              <label for="fEditTrial">Free Trial / Sandbox Spec</label>
+              <input type="text" id="fEditTrial" class="modal-input" placeholder="e.g. 14-day free trial" />
+            </div>
+          </div>
+
+          <div class="form-row-2" style="margin-top:10px;">
+            <div class="form-field">
+              <label for="fEditIdealFor">Ideal For (Target Audience)</label>
+              <input type="text" id="fEditIdealFor" class="modal-input" placeholder="e.g. Modern Developer Teams" />
+            </div>
+            <div class="form-field">
+              <label for="fEditPlatforms">Platform / Cloud Architecture</label>
+              <input type="text" id="fEditPlatforms" class="modal-input" placeholder="e.g. Web, Cloud, REST &amp; GraphQL APIs" />
+            </div>
+          </div>
+
+          <div class="form-row-2" style="margin-top:10px;">
+            <div class="form-field">
+              <label for="fEditPro1">Top Pro #1 (Bullet)</label>
+              <input type="text" id="fEditPro1" class="modal-input" placeholder="e.g. Comprehensive developer SDKs" />
+            </div>
+            <div class="form-field">
+              <label for="fEditPro2">Top Pro #2 (Bullet)</label>
+              <input type="text" id="fEditPro2" class="modal-input" placeholder="e.g. 99.999% uptime reliability" />
+            </div>
+          </div>
+
+          <div class="form-row-2" style="margin-top:10px;">
+            <div class="form-field">
+              <label for="fEditCon1">Tradeoff / Con #1</label>
+              <input type="text" id="fEditCon1" class="modal-input" placeholder="e.g. Complex multi-region pricing" />
+            </div>
+            <div class="form-field">
+              <label for="fEditCon2">Tradeoff / Con #2</label>
+              <input type="text" id="fEditCon2" class="modal-input" placeholder="e.g. Requires dedicated engineering" />
+            </div>
+          </div>
+
+          <div class="form-row-2" style="margin-top:10px;">
+            <div class="form-field">
+              <label for="fEditHeroImage">Studio Screenshot / Hardware Image URL</label>
+              <input type="url" id="fEditHeroImage" class="modal-input" placeholder="https://images.unsplash.com/..." />
+            </div>
+            <div class="form-field">
+              <label for="fEditOverlayTag">Image Overlay Spec Chip</label>
+              <input type="text" id="fEditOverlayTag" class="modal-input" placeholder="e.g. Developer Console" />
+            </div>
+          </div>
+
+          <div class="modal-footer" style="margin-top:14px;">
+            <button type="submit" class="btn-submit-bid" id="saveFounderSpecsBtn">
+              Save &amp; Publish Updates
+            </button>
+          </div>
+        </form>
+
+        <!-- Sub-panel 2: PayPal Sponsorship Retainers Hub -->
+        <div id="founderRetainerPanel" class="founder-subpanel hidden">
+          <div class="founder-sub-status-box" id="founderCurrentSubBox">
+            <div>
+              <span class="f-sub-badge" id="founderSubBadge">Active Retainer</span>
+              <h4 class="f-sub-title" id="founderSubTitle">Lock #1 for 30 Days</h4>
+              <p class="f-sub-desc" id="founderSubDesc">Your platform is immune to outbids with guaranteed #1 placement.</p>
+            </div>
+            <div style="text-align:right;">
+              <div class="f-sub-price" id="founderSubPrice">$299<span style="font-size:12px;font-weight:normal;">/mo</span></div>
+              <button type="button" class="btn-cancel-sub" id="founderCancelSubBtn">Cancel Subscription</button>
+            </div>
+          </div>
+
+          <div class="retainer-tiers-grid" style="margin-top:14px;">
+            <div class="retainer-tier-card" id="fUpgradeLock1">
+              <div class="rtc-header">
+                <span class="rtc-badge gold">👑 Lock #1</span>
+                <span class="rtc-price">$299<span class="rtc-period">/mo</span></span>
+              </div>
+              <h4 class="rtc-title">Lock #1 for 30 Days</h4>
+              <p class="rtc-desc">Guaranteed #1 placement with auto-outbid defense and free buyer RFP contact unlocking.</p>
+              <button type="button" class="btn-submit-bid" id="fBtnUpgradeLock1" style="width:100%;margin-top:10px;">
+                Subscribe via PayPal ($299/mo)
+              </button>
+            </div>
+            <div class="retainer-tier-card" id="fUpgradeTop3">
+              <div class="rtc-header">
+                <span class="rtc-badge blue">⭐ Guaranteed Top 3</span>
+                <span class="rtc-price">$149<span class="rtc-period">/mo</span></span>
+              </div>
+              <h4 class="rtc-title">Guaranteed Top 3</h4>
+              <p class="rtc-desc">Permanent high-converting presence in slots #1–#3 with verified founder badges.</p>
+              <button type="button" class="btn-submit-bid" id="fBtnUpgradeTop3" style="width:100%;margin-top:10px;">
+                Subscribe via PayPal ($149/mo)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-panel 3: Qualified Category Buyer RFP Leads -->
+        <div id="founderLeadsPanel" class="founder-subpanel hidden">
+          <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 10px 0;">Qualified enterprise practitioners actively evaluating platforms in your category:</p>
+          <div class="founder-leads-list" id="founderLeadsList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 8: DIRECTORY & LIST ARCHITECTURE EDITOR (#categoryEditorModalBackdrop)
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="categoryEditorModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="catModalHeading">
+    <div class="modal-window modal-md">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow">Directory Architecture &amp; Curation</span>
+          <h2 class="modal-title" id="catModalHeading">Create or Edit Top 10 List</h2>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeCategoryEditorModalBtn">&times;</button>
+      </div>
+      <form id="categoryEditorForm" class="modal-body">
+        <input type="hidden" id="catEditIsUpdate" value="false" />
+        <input type="hidden" id="catEditOriginalSlug" value="" />
+
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="catEditTitle">Directory Title *</label>
+            <input type="text" id="catEditTitle" class="modal-input" placeholder="e.g. Top 10 Video Editing Software" required />
+          </div>
+          <div class="form-field">
+            <label for="catEditSlug">URL Slug *</label>
+            <input type="text" id="catEditSlug" class="modal-input" placeholder="video-editing-software" />
+          </div>
+        </div>
+
+        <div class="form-row-2" style="margin-top:10px;">
+          <div class="form-field">
+            <label for="catEditIcon">Icon Emoji / Symbol *</label>
+            <input type="text" id="catEditIcon" class="modal-input" placeholder="🎬" value="📁" required />
+          </div>
+          <div class="form-field">
+            <label for="catEditViews">Estimated Monthly Views</label>
+            <input type="number" id="catEditViews" class="modal-input" placeholder="15000" value="12000" />
+          </div>
+        </div>
+
+        <div class="form-field" style="margin-top:10px;">
+          <label for="catEditTagline">Short Tagline *</label>
+          <input type="text" id="catEditTagline" class="modal-input" placeholder="Best-in-class video and timeline editing suites for creators &amp; studios." required />
+        </div>
+
+        <div class="form-field" style="margin-top:10px;">
+          <label for="catEditDescription">Full Editorial Description</label>
+          <textarea id="catEditDescription" class="modal-textarea" rows="2" placeholder="Comprehensive buyer benchmark and side-by-side comparison for modern video workflows..."></textarea>
+        </div>
+
+        <div class="form-field" style="margin-top:10px;">
+          <label for="catEditCriteria">Evaluation Criteria (1 per line)</label>
+          <textarea id="catEditCriteria" class="modal-textarea" rows="3" placeholder="Timeline scrubbing performance &amp; multi-cam editing
+Hardware-accelerated rendering and export codecs
+Collaboration &amp; cloud review workflows"></textarea>
+        </div>
+
+        <div class="form-field" style="margin-top:10px;">
+          <label for="catEditFaqs">Buyer's Guide FAQs (Formatted as Q: ... and A: ...)</label>
+          <textarea id="catEditFaqs" class="modal-textarea" rows="3" placeholder="Q: How is this Top 10 directory ranked?
+A: Placements are determined algorithmically through live developer benchmarks and market auction bidding."></textarea>
+        </div>
+
+        <div class="modal-footer" style="margin-top:16px;">
+          <button type="button" class="btn-secondary" id="cancelCategoryEditorBtn">Cancel</button>
+          <button type="submit" class="btn-submit-bid" id="saveCategoryEditorBtn">Save Directory</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 9: BLOG & EDITORIAL ARTICLE EDITOR (#blogEditorModalBackdrop)
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="blogEditorModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="blogModalHeading">
+    <div class="modal-window modal-lg">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow">Editorial Publication Suite</span>
+          <h2 class="modal-title" id="blogModalHeading">Write or Edit Article</h2>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeBlogEditorModalBtn">&times;</button>
+      </div>
+      <form id="blogEditorForm" class="modal-body">
+        <input type="hidden" id="blogEditIsUpdate" value="false" />
+        <input type="hidden" id="blogEditOriginalSlug" value="" />
+
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="blogEditTitle">Article Title *</label>
+            <input type="text" id="blogEditTitle" class="modal-input" placeholder="e.g. Next-Gen Video Render Engines (2026)" required />
+          </div>
+          <div class="form-field">
+            <label for="blogEditSlug">URL Slug *</label>
+            <input type="text" id="blogEditSlug" class="modal-input" placeholder="next-gen-video-render-engines-2026" required />
+          </div>
+        </div>
+
+        <div class="form-row-2" style="margin-top:10px;">
+          <div class="form-field">
+            <label for="blogEditCategorySelect">Directory / Category Link</label>
+            <select id="blogEditCategorySelect" class="modal-input">
+              <option value="billing-software">Billing Software</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="blogEditReadTime">Estimated Reading Time</label>
+            <input type="text" id="blogEditReadTime" class="modal-input" placeholder="6 min read" value="6 min read" />
+          </div>
+        </div>
+
+        <div class="form-row-2" style="margin-top:10px;">
+          <div class="form-field">
+            <label for="blogEditAuthorName">Author Name &amp; Title</label>
+            <input type="text" id="blogEditAuthorName" class="modal-input" placeholder="Sarah Jenkins" value="Sarah Jenkins" />
+          </div>
+          <div class="form-field">
+            <label for="blogEditCoverEmoji">Cover Emoji / Icon</label>
+            <input type="text" id="blogEditCoverEmoji" class="modal-input" placeholder="📝" value="⚡" />
+          </div>
+        </div>
+
+        <div class="form-field" style="margin-top:10px;">
+          <label for="blogEditSubtitle">Subtitle / Teaser Summary *</label>
+          <input type="text" id="blogEditSubtitle" class="modal-input" placeholder="A comprehensive teardown of performance benchmarks, codecs, and cloud pipelines." required />
+        </div>
+
+        <div class="form-field" style="margin-top:10px;">
+          <label for="blogEditTakeaways">Key Takeaways (1 bullet per line)</label>
+          <textarea id="blogEditTakeaways" class="modal-textarea" rows="2" placeholder="Real-time multi-cam scrubbing now requires hardware ProRes decoding
+Cloud proxies reduce network transfer overhead by 70%"></textarea>
+        </div>
+
+        <!-- Tabbed Content: Write / Preview -->
+        <div style="margin-top:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <label style="font-size:12px;font-weight:700;color:var(--text-main);">Article Body (Markdown / HTML) *</label>
+            <div class="blog-editor-tabs">
+              <button type="button" class="btn-xs-tab active" id="blogTabWriteBtn">Write</button>
+              <button type="button" class="btn-xs-tab" id="blogTabPreviewBtn">Live Preview</button>
+            </div>
+          </div>
+          <div id="blogWritePane">
+            <textarea id="blogEditContent" class="modal-textarea" rows="8" placeholder="## Architectural Deep Dive&#10;&#10;In this engineering guide, we break down how top platforms compare..." required></textarea>
+          </div>
+          <div id="blogPreviewPane" class="blog-preview-box hidden" style="min-height:160px;max-height:260px;overflow-y:auto;padding:12px;background:var(--bg-subtle);border:1px solid var(--border-card);border-radius:8px;"></div>
+        </div>
+
+        <div class="modal-footer" style="margin-top:16px;">
+          <button type="button" class="btn-secondary" id="cancelBlogEditorBtn">Cancel</button>
+          <button type="submit" class="btn-submit-bid" id="saveBlogEditorBtn">Save &amp; Publish Article</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 10: ADMIN PRODUCT CATALOG & PLACEMENT EDITOR (#adminProductEditorModalBackdrop)
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="adminProductEditorModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="prodModalHeading">
+    <div class="modal-window modal-md">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow">Product Catalog &amp; Placement</span>
+          <h2 class="modal-title" id="prodModalHeading">Add or Edit Product</h2>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeAdminProductEditorModalBtn">&times;</button>
+      </div>
+      <form id="adminProductEditorForm" class="modal-body">
+        <input type="hidden" id="adminProdEditIsUpdate" value="false" />
+        <input type="hidden" id="adminProdEditOriginalId" value="" />
+
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="adminProdEditCategory">Target Directory *</label>
+            <select id="adminProdEditCategory" class="modal-input" required></select>
+          </div>
+          <div class="form-field">
+            <label for="adminProdEditName">Product Name *</label>
+            <input type="text" id="adminProdEditName" class="modal-input" placeholder="e.g. Supabase DB" required />
+          </div>
+        </div>
+
+        <div class="form-row-2" style="margin-top:10px;">
+          <div class="form-field">
+            <label for="adminProdEditCompany">Company / Brand</label>
+            <input type="text" id="adminProdEditCompany" class="modal-input" placeholder="e.g. Supabase Inc" />
+          </div>
+          <div class="form-field">
+            <label for="adminProdEditWebsite">Website URL *</label>
+            <input type="url" id="adminProdEditWebsite" class="modal-input" placeholder="https://supabase.com" required />
+          </div>
+        </div>
+
+        <div class="form-row-2" style="margin-top:10px;">
+          <div class="form-field">
+            <label for="adminProdEditPrice">Starting Price / Tier</label>
+            <input type="text" id="adminProdEditPrice" class="modal-input" placeholder="From $25/mo" value="Free tier available" />
+          </div>
+          <div class="form-field">
+            <label for="adminProdEditBid">Placement Bid ($ USD)</label>
+            <input type="number" id="adminProdEditBid" class="modal-input" placeholder="0" value="0" />
+          </div>
+        </div>
+
+        <div class="form-row-2" style="margin-top:10px;">
+          <div class="form-field">
+            <label for="adminProdEditBadge">Highlight Badge</label>
+            <input type="text" id="adminProdEditBadge" class="modal-input" placeholder="e.g. Best Overall, Top Pick" value="Verified" />
+          </div>
+          <div class="form-field">
+            <label for="adminProdEditLogo">Logo Initial / Text</label>
+            <input type="text" id="adminProdEditLogo" class="modal-input" placeholder="SB" value="" />
+          </div>
+        </div>
+
+        <div class="form-field" style="margin-top:10px;">
+          <label for="adminProdEditTagline">1-Sentence Tagline *</label>
+          <input type="text" id="adminProdEditTagline" class="modal-input" placeholder="Open source Firebase alternative with real-time Postgres." required />
+        </div>
+
+        <div class="form-field" style="margin-top:10px;">
+          <label for="adminProdEditSpecs">Key Specifications (1 bullet per line)</label>
+          <textarea id="adminProdEditSpecs" class="modal-textarea" rows="3" placeholder="Dedicated PostgreSQL database
+Realtime subscriptions over WebSockets
+Row Level Security (RLS) enforcement
+Automated daily backups &amp; branching"></textarea>
+        </div>
+
+        <div class="modal-footer" style="margin-top:16px;">
+          <button type="button" class="btn-secondary" id="cancelAdminProductEditorBtn">Cancel</button>
+          <button type="submit" class="btn-submit-bid" id="saveAdminProductEditorBtn">Save Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div class="toast-notification hidden" id="toastNotification"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

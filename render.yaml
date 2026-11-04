@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: top10-auction-directory
+    env: node
+    plan: starter
+    buildCommand: echo "Zero external build needed"
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 3456
