@@ -6,10 +6,16 @@
 const assert = require('assert');
 
 const BASE_URL = 'http://localhost:3456';
+let adminToken = null;
+const createdCategorySlugs = [];
 
 async function req(path, options = {}) {
   const url = `${BASE_URL}${path}`;
-  const res = await fetch(url, options);
+  const headers = { ...(options.headers || {}) };
+  if (adminToken && !headers['Authorization'] && !options.skipAuth) {
+    headers['Authorization'] = `Bearer ${adminToken}`;
+  }
+  const res = await fetch(url, { ...options, headers });
   const contentType = res.headers.get('content-type') || '';
   let data;
   if (contentType.includes('application/json')) {
@@ -41,6 +47,20 @@ async function req(path, options = {}) {
       });
   }
 
+  // Authenticate as Admin first
+  await test('Flow 0: Admin authentication with PBKDF2 hash verification', async () => {
+    const res = await req('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'admin@top10.io', password: 'Top10Admin2026!' }),
+      skipAuth: true
+    });
+    assert.strictEqual(res.status, 200, 'Expected 200 OK for admin login');
+    assert(res.data.token, 'Expected session token in response');
+    assert.strictEqual(res.data.user.role, 'admin');
+    adminToken = res.data.token;
+  });
+
   // --------------------------------------------------------------------------
   // FLOW 1: DATABASE & SYSTEM HEALTH
   // --------------------------------------------------------------------------
@@ -51,12 +71,19 @@ async function req(path, options = {}) {
     assert(res.data.collections.categories >= 14, 'Must have at least 14 categories');
   });
 
-  await test('Flow 1b: Full state endpoint returns populated schema', async () => {
-    const res = await req('/api/state');
-    assert.strictEqual(res.status, 200);
-    assert(Array.isArray(res.data.categories) && res.data.categories.length >= 14);
-    assert(Array.isArray(res.data.users) && res.data.users.length > 0);
-    assert(Array.isArray(res.data.transactions));
+  await test('Flow 1b: Full state endpoint returns populated schema for admin & strips PII for public', async () => {
+    // Authenticated admin state check
+    const adminRes = await req('/api/state');
+    assert.strictEqual(adminRes.status, 200);
+    assert(Array.isArray(adminRes.data.categories) && adminRes.data.categories.length >= 14);
+    assert(Array.isArray(adminRes.data.users) && adminRes.data.users.length > 0);
+    assert(Array.isArray(adminRes.data.transactions));
+
+    // Public visitor state check (skipAuth = true) -> PII must be protected!
+    const publicRes = await req('/api/state', { skipAuth: true });
+    assert.strictEqual(publicRes.status, 200);
+    assert.strictEqual(publicRes.data.users.length, 0, 'Public state must not leak user accounts');
+    assert.strictEqual(publicRes.data.buyerLeads.length, 0, 'Public state must not leak buyer leads');
   });
 
   // --------------------------------------------------------------------------
@@ -91,6 +118,7 @@ async function req(path, options = {}) {
     assert(res.data.category && res.data.category.slug === testSlug);
     assert.strictEqual(res.data.category.top10[0].name, 'Runway Gen-3');
     assert.strictEqual(res.data.category.top10[0].rank, 1);
+    createdCategorySlugs.push(testSlug);
   });
 
   // --------------------------------------------------------------------------
@@ -271,8 +299,9 @@ async function req(path, options = {}) {
       })
     });
     assert.strictEqual(res.status, 200);
-    assert(res.data.code && res.data.code.length === 6, 'Should return 6-digit OTP code');
-    testOtpCode = res.data.code;
+    const otp = res.data.devCode || res.data.code;
+    assert(otp && otp.length === 6, 'Should return 6-digit OTP code in development');
+    testOtpCode = otp;
   });
 
   await test('Flow 6b: Claim Listing verify-code confirms founder ownership', async () => {
@@ -492,6 +521,13 @@ async function req(path, options = {}) {
     assert(res.headers.get('content-type').includes('svg'));
     assert(res.data.includes('<svg'));
   });
+
+  // Clean up any test-created categories to maintain zero database pollution
+  for (const slug of createdCategorySlugs) {
+    try {
+      await req(`/api/admin/categories/${slug}`, { method: 'DELETE' });
+    } catch {}
+  }
 
   // --------------------------------------------------------------------------
   // FINAL REPORT

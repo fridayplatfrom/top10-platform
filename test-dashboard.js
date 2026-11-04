@@ -61,11 +61,34 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     }
   }
 
+  // Authenticate Admin Session for Real Browser Testing
+  try {
+    const loginRes = await fetch(`${BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'admin@top10.io', password: 'Top10Admin2026!' })
+    });
+    const loginData = await loginRes.json();
+    if (loginData.token) {
+      await page.setCookie({
+        name: 'top10_session',
+        value: loginData.token,
+        domain: 'localhost',
+        path: '/'
+      });
+      await page.evaluateOnNewDocument((token) => {
+        localStorage.setItem('top10_token', token);
+      }, loginData.token);
+    }
+  } catch (err) {
+    console.warn('Admin session pre-auth notice:', err.message);
+  }
+
   // --------------------------------------------------------------------------
   // FLOW 1: Open Dashboard via Topbar Link & Check Hydration
   // --------------------------------------------------------------------------
   await test('Navigate to Dashboard from Topbar and verify Command Center hydration', async () => {
-    await page.goto(BASE_URL, { waitUntil: 'networkidle0' });
+    await page.goto(BASE_URL, { waitUntil: 'networkidle2' });
 
     const dashboardNavBtn = await page.$('#navAdminBtn');
     if (!dashboardNavBtn) throw new Error('#navAdminBtn not found in topbar');

@@ -1,6 +1,8 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+const zlib = require('zlib');
 const {
   ensureTenRealProducts,
   enrichCategoryEditorial,
@@ -12,8 +14,137 @@ const { BLOG_ARTICLES } = require('./blog-data');
 const { initMongo, getDbState, saveDbState, isMongoConnected, getDbStatus } = require('./db');
 
 const PORT = process.env.PORT || 3456;
-const DB_PATH = path.join(__dirname, 'data', 'db.json');
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'db.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
+
+// ============================================================================
+// PRODUCTION-GRADE AUTHENTICATION & SECURE SESSIONS
+// ============================================================================
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Top10Admin2026!';
+const sessions = new Map(); // token -> { token, userId, role, email, name, expiresAt }
+
+function hashPassword(password, salt) {
+  const actualSalt = salt || crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, actualSalt, 10000, 64, 'sha512').toString('hex');
+  return `${actualSalt}:${hash}`;
+}
+
+function verifyPassword(password, stored) {
+  if (!stored || !stored.includes(':')) return false;
+  const [salt, originalHash] = stored.split(':');
+  const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+  return hash === originalHash;
+}
+
+function createSession(user) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
+  const session = {
+    token,
+    userId: user.id,
+    role: user.role || 'viewer',
+    email: user.email,
+    name: user.name,
+    avatarBg: user.avatarBg,
+    avatarText: user.avatarText,
+    company: user.company,
+    expiresAt
+  };
+  sessions.set(token, session);
+  return session;
+}
+
+function getSession(req) {
+  if (!req) return null;
+  const authHeader = req.headers['authorization'] || '';
+  let token = null;
+  if (authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7).trim();
+  }
+  if (!token && req.headers['cookie']) {
+    const match = req.headers['cookie'].match(/(?:^|;\s*)top10_session=([^;]+)/);
+    if (match) token = match[1];
+  }
+  if (!token) return null;
+  const session = sessions.get(token);
+  if (!session) return null;
+  if (Date.now() > session.expiresAt) {
+    sessions.delete(token);
+    return null;
+  }
+  return session;
+}
+
+function sanitizeUser(user) {
+  if (!user) return null;
+  const { passwordHash, ...clean } = user;
+  return clean;
+}
+
+function requireAdmin(req, res) {
+  const session = getSession(req);
+  if (!session || session.role !== 'admin') {
+    sendJson(res, 401, { error: 'Admin authorization required' }, req);
+    return null;
+  }
+  return session;
+}
+
+function requireAuth(req, res) {
+  const session = getSession(req);
+  if (!session) {
+    sendJson(res, 401, { error: 'Authentication required' }, req);
+    return null;
+  }
+  return session;
+}
+
+function ensureUserPasswords() {
+  const db = readDb();
+  let modified = false;
+  if (!db.users || !Array.isArray(db.users)) {
+    db.users = [];
+  }
+  let admin = db.users.find((u) => u.role === 'admin' || u.email === 'admin@top10.io');
+  if (!admin) {
+    admin = {
+      id: 'usr_admin',
+      name: 'Ankush (Admin)',
+      email: 'admin@top10.io',
+      company: 'Top 10 HQ',
+      role: 'admin',
+      avatarBg: '#111827',
+      avatarText: 'AD'
+    };
+    db.users.unshift(admin);
+    modified = true;
+  }
+  if (!admin.passwordHash) {
+    admin.passwordHash = hashPassword(ADMIN_PASSWORD);
+    modified = true;
+  }
+
+  const defaults = [
+    { email: 'aaron@stripe.com', pass: 'Stripe2026!', name: 'Aaron Francis', company: 'Stripe Inc', role: 'company', avatarBg: '#059669', avatarText: 'AF' },
+    { email: 'travis@maybefinance.com', pass: 'Maybe2026!', name: 'Travis Woods', company: 'Maybe Finance Inc', role: 'company', avatarBg: '#2563EB', avatarText: 'TW' }
+  ];
+  for (const def of defaults) {
+    let u = db.users.find((x) => x.email && x.email.toLowerCase() === def.email.toLowerCase());
+    if (!u) {
+      u = { id: 'usr_' + Date.now() + Math.random().toString(36).slice(2, 5), ...def };
+      u.passwordHash = hashPassword(def.pass);
+      db.users.push(u);
+      modified = true;
+    } else if (!u.passwordHash) {
+      u.passwordHash = hashPassword(def.pass);
+      modified = true;
+    }
+  }
+
+  if (modified) {
+    writeDb(db);
+  }
+}
 
 function readDb() {
   const parsed = getDbState();
@@ -42,13 +173,16 @@ function escapeXml(str) {
 
 function findProductInCat(cat, idOrName) {
   if (!cat || !cat.products || !idOrName) return null;
-  const target = String(idOrName).trim();
-  const normTarget = target.replace(/-/g, '_').toLowerCase();
+  const target = String(idOrName).trim().toLowerCase();
+  const targetWords = target.replace(/^prod_/, '').replace(/[^a-z0-9]+/g, ' ').trim();
   return (
-    cat.products.find((p) => p.id === target) ||
-    cat.products.find((p) => p.id.replace(/-/g, '_').toLowerCase() === normTarget) ||
-    cat.products.find((p) => (p.name || '').toLowerCase() === target.toLowerCase()) ||
-    cat.products.find((p) => (p.name || '').toLowerCase().includes(target.toLowerCase())) ||
+    cat.products.find((p) => p.id.toLowerCase() === target) ||
+    cat.products.find((p) => p.id.toLowerCase().replace(/^prod_/, '') === targetWords.replace(/\s+/g, '_')) ||
+    cat.products.find((p) => p.id.toLowerCase().replace(/^prod_/, '').replace(/[^a-z0-9]+/g, ' ') === targetWords) ||
+    cat.products.find((p) => (p.name || '').toLowerCase() === target) ||
+    cat.products.find((p) => (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').includes(targetWords)) ||
+    cat.products.find((p) => targetWords.includes((p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' '))) ||
+    cat.products.find((p) => targetWords.split(' ')[0] && (p.name || '').toLowerCase().includes(targetWords.split(' ')[0])) ||
     null
   );
 }
@@ -126,6 +260,49 @@ function enrichCategory(cat, platformStats) {
   return enrichCategoryEditorial(baseEnriched);
 }
 
+function getPublicState(user) {
+  const db = readDb();
+  const isAdmin = user && user.role === 'admin';
+  const categories = (db.categories || []).map((c) => {
+    const enriched = enrichCategory(c, db.platformStats);
+    const comments = (enriched.comments || []).filter((cmt) => {
+      if (isAdmin) return true;
+      return cmt.status === 'approved' || !cmt.status || cmt.type === 'system_event';
+    });
+    return {
+      ...enriched,
+      comments
+    };
+  });
+
+  const totalRevenue = categories.reduce((sum, c) => sum + c.computedStats.poolTotal, 0);
+  const totalPaidListings = categories.reduce((sum, c) => sum + c.computedStats.paidSlotsCount, 0);
+
+  return {
+    platformStats: {
+      minEntryBid: db.platformStats?.minEntryBid || 49,
+      minOutbidIncrement: db.platformStats?.minOutbidIncrement || 25,
+      totalVolume: totalRevenue,
+      totalPaidListings,
+      totalCategories: categories.length
+    },
+    articles: (db.articles && db.articles.length > 0 ? db.articles : BLOG_ARTICLES).map((a) => ({
+      ...a,
+      content: a.contentHtml || a.content || '',
+      keyTakeaways: a.takeaways || a.keyTakeaways || [],
+      takeaways: a.takeaways || a.keyTakeaways || []
+    })),
+    categories,
+    currentUser: sanitizeUser(user),
+    buyerLeads: isAdmin ? (db.buyerLeads || []) : [],
+    transactions: isAdmin ? (db.transactions || []) : [],
+    users: isAdmin ? (db.users || []).map(sanitizeUser) : [],
+    claims: isAdmin ? (db.claims || []) : [],
+    subscriptions: isAdmin ? (db.subscriptions || []) : [],
+    reviews: isAdmin ? (db.reviews || []) : []
+  };
+}
+
 function getFullState() {
   const db = readDb();
   const categories = db.categories.map((c) => enrichCategory(c, db.platformStats));
@@ -138,39 +315,11 @@ function getFullState() {
       totalRevenue,
       totalPaidListings
     },
-    users: db.users || [],
+    users: (db.users || []).map(sanitizeUser),
     transactions: db.transactions || [],
-    categoryRequests: db.categoryRequests || [
-      {
-        id: 'req_demo_1',
-        requestedTitle: 'Top 10 AI Video Generators',
-        productName: 'Runway Gen-4',
-        companyName: 'Runway AI Inc',
-        ownerEmail: 'growth@runwayml.com',
-        website: 'https://runwayml.com',
-        tagline: 'Controllable cinematic AI video generation and world simulation for studios.',
-        bountyAmount: 299,
-        status: 'pending',
-        createdAt: '2026-10-30T14:15:00.000Z'
-      }
-    ],
+    categoryRequests: db.categoryRequests || [],
     outbidAlerts: db.outbidAlerts || [],
-    buyerLeads: db.buyerLeads || [
-      {
-        id: 'lead_101',
-        categorySlug: 'billing-software',
-        categoryTitle: 'Top 10 Billing Software',
-        productId: 'prod_zoho',
-        productName: 'Zoho Billing',
-        buyerName: 'David Kim',
-        buyerEmail: 'david@finops-scale.io',
-        teamSize: '50-200 employees',
-        note: 'Looking to migrate 14,000 recurring subscriptions before Q1.',
-        isUnlocked: false,
-        unlockPrice: 49,
-        createdAt: '2026-10-30T14:20:00.000Z'
-      }
-    ],
+    buyerLeads: db.buyerLeads || [],
     articles: (db.articles && db.articles.length > 0 ? db.articles : BLOG_ARTICLES).map((a) => ({
       ...a,
       content: a.contentHtml || a.content || '',
@@ -186,26 +335,126 @@ function parseBody(req) {
     let body = '';
     req.on('data', (chunk) => {
       body += chunk.toString();
-      if (body.length > 1e6) req.destroy();
+      if (body.length > 2e6) req.destroy();
     });
     req.on('end', () => {
-      if (!body) return resolve({});
+      if (!body.trim()) return resolve({});
       try {
         resolve(JSON.parse(body));
       } catch (e) {
-        reject(new Error('Invalid JSON payload'));
+        const err = new Error('Malformed JSON payload');
+        err.statusCode = 400;
+        reject(err);
       }
     });
     req.on('error', reject);
   });
 }
 
-function sendJson(res, status, payload) {
+function sendResponse(req, res, status, contentType, content, extraHeaders = {}) {
+  const headers = {
+    'Content-Type': contentType,
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    ...extraHeaders
+  };
+
+  const acceptEncoding = (req && req.headers['accept-encoding']) || '';
+  let payload = content;
+  if (typeof payload === 'string') {
+    payload = Buffer.from(payload, 'utf8');
+  }
+
+  // Compress with gzip if supported and payload >= 512 bytes
+  if (acceptEncoding.includes('gzip') && Buffer.isBuffer(payload) && payload.length >= 512) {
+    try {
+      const gzipped = zlib.gzipSync(payload);
+      headers['Content-Encoding'] = 'gzip';
+      headers['Vary'] = 'Accept-Encoding';
+      headers['Content-Length'] = gzipped.length;
+      res.writeHead(status, headers);
+      return res.end(gzipped);
+    } catch {}
+  }
+
+  if (Buffer.isBuffer(payload)) {
+    headers['Content-Length'] = payload.length;
+  }
+  res.writeHead(status, headers);
+  res.end(payload);
+}
+
+function sendJson(res, status, payload, req = null, extraHeaders = {}) {
+  const jsonStr = JSON.stringify(payload);
+  if (req) {
+    return sendResponse(req, res, status, 'application/json; charset=utf-8', jsonStr, {
+      'Cache-Control': 'no-store',
+      ...extraHeaders
+    });
+  }
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-store'
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    ...extraHeaders
   });
-  res.end(JSON.stringify(payload));
+  res.end(jsonStr);
+}
+
+function render404(res, req, base, message = 'The requested Top 10 directory, buying guide, or page could not be found.') {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>404 — Page Not Found | Top 10</title>
+  <meta name="robots" content="noindex, follow" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#F9FAFB;font-family:Inter,sans-serif;margin:0;padding:20px;text-align:center;">
+  <div style="max-width:540px;background:#FFFFFF;border:1px solid #E5E7EB;border-radius:14px;padding:48px 32px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.05);">
+    <div style="font-size:56px;font-weight:900;color:#111827;letter-spacing:-0.04em;line-height:1;margin-bottom:12px;">404</div>
+    <div style="font-size:14px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:16px;">Directory Not Found</div>
+    <p style="font-size:15px;color:#4B5563;line-height:1.6;margin-bottom:28px;">${escapeXml(message)}</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <a href="/" style="display:inline-flex;align-items:center;height:42px;padding:0 20px;border-radius:8px;background:#111827;color:#B8FF01;font-size:13.5px;font-weight:700;text-decoration:none;">Back to All Directories</a>
+      <a href="/blog" style="display:inline-flex;align-items:center;height:42px;padding:0 20px;border-radius:8px;background:#F3F4F6;color:#111827;font-size:13.5px;font-weight:600;text-decoration:none;">Browse Buying Guides</a>
+    </div>
+  </div>
+</body>
+</html>`;
+  return sendResponse(req, res, 404, 'text/html; charset=utf-8', html);
+}
+
+async function verifyPayPalOrder(orderId) {
+  const clientId = process.env.PAYPAL_CLIENT_ID;
+  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    return { verified: true, simulated: true };
+  }
+  try {
+    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    const tokenRes = await fetch('https://api-m.sandbox.paypal.com/v1/oauth2/token', {
+      method: 'POST',
+      headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=client_credentials'
+    });
+    if (!tokenRes.ok) return { verified: false, error: 'PayPal Authentication Failed' };
+    const tokenData = await tokenRes.json();
+    const orderRes = await fetch(`https://api-m.sandbox.paypal.com/v2/checkout/orders/${orderId}`, {
+      headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
+    });
+    if (!orderRes.ok) return { verified: false, error: 'Order Not Found' };
+    const orderData = await orderRes.json();
+    const isCompleted = orderData.status === 'COMPLETED';
+    return { verified: isCompleted, status: orderData.status };
+  } catch (err) {
+    return { verified: false, error: err.message };
+  }
 }
 
 const MIME_TYPES = {
@@ -232,6 +481,7 @@ function getBaseUrl(req) {
 const sseClients = new Set();
 
 function broadcastSse(eventType, payload) {
+  if (sseClients.size === 0) return;
   const dataStr = JSON.stringify(payload);
   const msg = `event: ${eventType}\ndata: ${dataStr}\n\n`;
   for (const client of sseClients) {
@@ -243,9 +493,11 @@ function broadcastSse(eventType, payload) {
   }
 }
 
-// 20-second heartbeat to maintain alive connections across corporate firewalls
+// 20-second heartbeat to maintain alive connections across corporate firewalls (only when clients connected)
 setInterval(() => {
-  broadcastSse('ping', { time: Date.now() });
+  if (sseClients.size > 0) {
+    broadcastSse('ping', { time: Date.now() });
+  }
 }, 20000);
 
 const server = http.createServer(async (req, res) => {
@@ -305,18 +557,38 @@ const server = http.createServer(async (req, res) => {
       return res.end(svg);
     }
 
-    // 1. GET /api/state
+    // 1. GET /api/state (Sanitized for public visitors, full view for admin)
     if (req.method === 'GET' && pathname === '/api/state') {
-      return sendJson(res, 200, getFullState());
+      const session = getSession(req);
+      return sendJson(res, 200, getPublicState(session), req);
     }
 
-    // 1-db. GET /api/admin/db-status
+    // 1-auth. GET /api/auth/me (Current authenticated user session)
+    if (req.method === 'GET' && pathname === '/api/auth/me') {
+      const session = getSession(req);
+      return sendJson(res, 200, { user: sanitizeUser(session) }, req);
+    }
+
+    // 1-logout. POST /api/auth/logout
+    if (req.method === 'POST' && pathname === '/api/auth/logout') {
+      const session = getSession(req);
+      if (session) {
+        sessions.delete(session.token);
+      }
+      return sendJson(res, 200, { success: true }, req, {
+        'Set-Cookie': 'top10_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'
+      });
+    }
+
+    // 1-db. GET /api/admin/db-status (Admin only)
     if (req.method === 'GET' && pathname === '/api/admin/db-status') {
-      return sendJson(res, 200, getDbStatus());
+      if (!requireAdmin(req, res)) return;
+      return sendJson(res, 200, getDbStatus(), req);
     }
 
-    // 1-analytics. GET /api/admin/analytics (Platform Sales, Revenue & Conversion Command Center)
+    // 1-analytics. GET /api/admin/analytics (Platform Sales, Revenue & Conversion Command Center - Admin only)
     if (req.method === 'GET' && pathname === '/api/admin/analytics') {
+      if (!requireAdmin(req, res)) return;
       const db = readDb();
       const txs = db.transactions || [];
       const subs = db.subscriptions || [];
@@ -452,11 +724,12 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    // 1a-3. POST /api/blog (Create New Blog / Editorial Article)
+    // 1a-3. POST /api/blog (Create New Blog / Editorial Article - Admin only)
     if (req.method === 'POST' && pathname === '/api/blog') {
+      if (!requireAdmin(req, res)) return;
       const body = await parseBody(req);
       const title = (body.title || '').trim();
-      if (!title) return sendJson(res, 400, { error: 'Article title is required' });
+      if (!title) return sendJson(res, 400, { error: 'Article title is required' }, req);
 
       const db = readDb();
       if (!db.articles) db.articles = JSON.parse(JSON.stringify(BLOG_ARTICLES || []));
@@ -468,7 +741,7 @@ const server = http.createServer(async (req, res) => {
       const slug = rawSlug || `article-${Date.now()}`;
 
       if (db.articles.some((a) => a.slug === slug)) {
-        return sendJson(res, 409, { error: `An article with slug "${slug}" already exists.` });
+        return sendJson(res, 409, { error: `An article with slug "${slug}" already exists.` }, req);
       }
 
       const authorName = (body.authorName || body.author || 'Sarah Jenkins').trim();
@@ -499,18 +772,19 @@ const server = http.createServer(async (req, res) => {
 
       db.articles.unshift(newArticle);
       writeDb(db);
-      return sendJson(res, 201, { success: true, article: newArticle, state: getFullState() });
+      return sendJson(res, 201, { success: true, article: newArticle, state: getPublicState(getSession(req)) }, req);
     }
 
-    // 1a-4. PUT /api/blog/:slug (Update Editorial Article)
+    // 1a-4. PUT /api/blog/:slug (Update Editorial Article - Admin only)
     if (req.method === 'PUT' && blogMatch) {
+      if (!requireAdmin(req, res)) return;
       const slug = blogMatch[1];
       const body = await parseBody(req);
       const db = readDb();
       if (!db.articles) db.articles = JSON.parse(JSON.stringify(BLOG_ARTICLES || []));
 
       const article = db.articles.find((a) => a.slug === slug);
-      if (!article) return sendJson(res, 404, { error: 'Article not found' });
+      if (!article) return sendJson(res, 404, { error: 'Article not found' }, req);
 
       if (body.title !== undefined) article.title = String(body.title).trim();
       if (body.subtitle !== undefined) article.subtitle = String(body.subtitle).trim();
@@ -542,27 +816,27 @@ const server = http.createServer(async (req, res) => {
       article.updatedAt = new Date().toISOString();
 
       writeDb(db);
-      return sendJson(res, 200, { success: true, article, state: getFullState() });
+      return sendJson(res, 200, { success: true, article, state: getPublicState(getSession(req)) }, req);
     }
 
-    // 1a-5. DELETE /api/blog/:slug (Delete Editorial Article)
+    // 1a-5. DELETE /api/blog/:slug (Delete Editorial Article - Admin only)
     if (req.method === 'DELETE' && blogMatch) {
+      if (!requireAdmin(req, res)) return;
       const slug = blogMatch[1];
       const db = readDb();
       if (!db.articles) db.articles = JSON.parse(JSON.stringify(BLOG_ARTICLES || []));
 
       const idx = db.articles.findIndex((a) => a.slug === slug);
-      if (idx === -1) return sendJson(res, 404, { error: 'Article not found' });
+      if (idx === -1) return sendJson(res, 404, { error: 'Article not found' }, req);
 
       db.articles.splice(idx, 1);
       writeDb(db);
-      const fullState = getFullState();
+      const fullState = getPublicState(getSession(req));
       broadcastSse('article_deleted', {
         slug,
-        timestamp: new Date().toISOString(),
-        state: fullState
+        timestamp: new Date().toISOString()
       });
-      return sendJson(res, 200, { success: true, state: fullState });
+      return sendJson(res, 200, { success: true, state: fullState }, req);
     }
 
     // 1b. GET /api/badge/:slug/:productId.svg (Dynamic Live Rank SVG Badge for Company Websites)
@@ -596,16 +870,40 @@ const server = http.createServer(async (req, res) => {
       return res.end(svg);
     }
 
-    // 2. POST /api/auth/login
+    // 2. POST /api/auth/login (Secure Authentication with PBKDF2 Password Verification & Session Cookie)
     if (req.method === 'POST' && pathname === '/api/auth/login') {
       const body = await parseBody(req);
       const db = readDb();
       const email = (body.email || '').trim().toLowerCase();
+      const password = (body.password || '').trim();
+
       if (!email) {
-        return sendJson(res, 400, { error: 'Email is required' });
+        return sendJson(res, 400, { error: 'Email is required' }, req);
       }
-      let user = db.users.find((u) => u.email.toLowerCase() === email);
-      if (!user) {
+
+      let user = db.users.find((u) => u.email && u.email.toLowerCase() === email);
+
+      // Admin authorization check
+      if (email === 'admin@top10.io' || (user && user.role === 'admin')) {
+        if (!password) {
+          return sendJson(res, 401, { error: 'Admin password is required' }, req);
+        }
+        if (!user || !user.passwordHash || !verifyPassword(password, user.passwordHash)) {
+          return sendJson(res, 401, { error: 'Invalid admin credentials' }, req);
+        }
+      } else if (user) {
+        // Existing user with password hash
+        if (user.passwordHash) {
+          if (!password || !verifyPassword(password, user.passwordHash)) {
+            return sendJson(res, 401, { error: 'Invalid password' }, req);
+          }
+        } else if (password) {
+          // Upgrade user with password hash
+          user.passwordHash = hashPassword(password);
+          writeDb(db);
+        }
+      } else {
+        // Create new user
         const name = (body.name || email.split('@')[0]).trim();
         const company = (body.company || `${name} Co`).trim();
         const initials =
@@ -621,14 +919,32 @@ const server = http.createServer(async (req, res) => {
           name,
           email,
           company,
-          role: email === 'admin@top10.io' ? 'admin' : 'company',
+          role: 'company',
           avatarBg: colors[db.users.length % colors.length],
           avatarText: initials
         };
+        if (password) {
+          user.passwordHash = hashPassword(password);
+        }
         db.users.push(user);
         writeDb(db);
       }
-      return sendJson(res, 200, { user, state: getFullState() });
+
+      const session = createSession(user);
+      return sendJson(
+        res,
+        200,
+        {
+          success: true,
+          token: session.token,
+          user: sanitizeUser(user),
+          state: getPublicState(session)
+        },
+        req,
+        {
+          'Set-Cookie': `top10_session=${session.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`
+        }
+      );
     }
 
     // 3. POST /api/categories/:slug/bid
@@ -810,26 +1126,28 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { product: prod, state: getFullState() });
     }
 
-    // 5. DELETE /api/admin/categories/:slug/products/:productId (Admin delete or reset bid)
+    // 5. DELETE /api/admin/categories/:slug/products/:productId (Admin delete or reset bid - Admin only)
     const delProdMatch = pathname.match(/^\/api\/admin\/categories\/([^/]+)\/products\/([^/]+)$/);
     if (req.method === 'DELETE' && delProdMatch) {
+      if (!requireAdmin(req, res)) return;
       const [, slug, prodId] = delProdMatch;
       const db = readDb();
       const cat = db.categories.find((c) => c.slug === slug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
+      if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
       cat.products = cat.products.filter((p) => p.id !== prodId);
       writeDb(db);
-      return sendJson(res, 200, { state: getFullState() });
+      return sendJson(res, 200, { state: getPublicState(getSession(req)) }, req);
     }
 
-    // 5c. PUT /api/admin/categories/:slug (Admin Edit Directory Metadata & FAQs)
+    // 5c. PUT /api/admin/categories/:slug (Admin Edit Directory Metadata & FAQs - Admin only)
     const adminSingleCatMatch = pathname.match(/^\/api\/admin\/categories\/([^/]+)$/);
     if (req.method === 'PUT' && adminSingleCatMatch) {
+      if (!requireAdmin(req, res)) return;
       const slug = adminSingleCatMatch[1];
       const body = await parseBody(req);
       const db = readDb();
       const cat = db.categories.find((c) => c.slug === slug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
+      if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
 
       if (body.title !== undefined) cat.title = String(body.title).trim();
       if (body.icon !== undefined) cat.icon = String(body.icon).trim();
@@ -841,38 +1159,39 @@ const server = http.createServer(async (req, res) => {
       cat.updatedAt = new Date().toISOString();
 
       writeDb(db);
-      return sendJson(res, 200, { success: true, category: cat, state: getFullState() });
+      return sendJson(res, 200, { success: true, category: cat, state: getPublicState(getSession(req)) }, req);
     }
 
-    // 5d. DELETE /api/admin/categories/:slug (Admin Delete / Archive Directory)
+    // 5d. DELETE /api/admin/categories/:slug (Admin Delete / Archive Directory - Admin only)
     if (req.method === 'DELETE' && adminSingleCatMatch) {
+      if (!requireAdmin(req, res)) return;
       const slug = adminSingleCatMatch[1];
       const db = readDb();
       const idx = db.categories.findIndex((c) => c.slug === slug);
-      if (idx === -1) return sendJson(res, 404, { error: 'Category not found' });
+      if (idx === -1) return sendJson(res, 404, { error: 'Category not found' }, req);
 
       db.categories.splice(idx, 1);
       writeDb(db);
-      const fullState = getFullState();
+      const fullState = getPublicState(getSession(req));
       broadcastSse('category_deleted', {
         slug,
-        timestamp: new Date().toISOString(),
-        state: fullState
+        timestamp: new Date().toISOString()
       });
-      return sendJson(res, 200, { success: true, state: fullState });
+      return sendJson(res, 200, { success: true, state: fullState }, req);
     }
 
-    // 5e. POST /api/admin/categories/:slug/products (Admin Add Product into Directory)
+    // 5e. POST /api/admin/categories/:slug/products (Admin Add Product into Directory - Admin only)
     const adminAddProdMatch = pathname.match(/^\/api\/admin\/categories\/([^/]+)\/products$/);
     if (req.method === 'POST' && adminAddProdMatch) {
+      if (!requireAdmin(req, res)) return;
       const slug = adminAddProdMatch[1];
       const body = await parseBody(req);
       const db = readDb();
       const cat = db.categories.find((c) => c.slug === slug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
+      if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
 
       const name = (body.name || '').trim();
-      if (!name) return sendJson(res, 400, { error: 'Product name is required' });
+      if (!name) return sendJson(res, 400, { error: 'Product name is required' }, req);
 
       const prodId = (body.id || `prod_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${Date.now().toString().slice(-4)}`);
       const amountPaid = Number(body.amountPaid || 0);
@@ -901,19 +1220,19 @@ const server = http.createServer(async (req, res) => {
       cat.products.push(newProd);
       cat.products.sort((a, b) => (b.amountPaid || 0) - (a.amountPaid || 0));
       writeDb(db);
-      return sendJson(res, 201, { success: true, product: newProd, state: getFullState() });
+      return sendJson(res, 201, { success: true, product: newProd, state: getPublicState(getSession(req)) }, req);
     }
 
-
-    // 12d. POST /api/admin/product/reset-bid
+    // 12d. POST /api/admin/product/reset-bid (Admin only)
     if (req.method === 'POST' && pathname === '/api/admin/product/reset-bid') {
+      if (!requireAdmin(req, res)) return;
       const body = await parseBody(req);
       const db = readDb();
       const { categorySlug, productId } = body;
       const cat = (db.categories || []).find((c) => c.slug === categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
+      if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
       const prod = (cat.products || []).find((p) => p.id === productId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' });
+      if (!prod) return sendJson(res, 404, { error: 'Product not found' }, req);
 
       prod.amountPaid = 0;
       prod.isOrganic = true;
@@ -921,11 +1240,12 @@ const server = http.createServer(async (req, res) => {
       prod.updatedAt = new Date().toISOString();
       cat.products.sort((a, b) => (b.amountPaid || 0) - (a.amountPaid || 0));
       writeDb(db);
-      return sendJson(res, 200, { product: prod, state: getFullState() });
+      return sendJson(res, 200, { product: prod, state: getPublicState(getSession(req)) }, req);
     }
 
-    // 6. PUT /api/admin/settings (Admin updates floor bid & increment rules)
+    // 6. PUT /api/admin/settings (Admin updates floor bid & increment rules - Admin only)
     if (req.method === 'PUT' && pathname === '/api/admin/settings') {
+      if (!requireAdmin(req, res)) return;
       const body = await parseBody(req);
       const db = readDb();
       if (body.minEntryBid !== undefined) {
@@ -938,27 +1258,7 @@ const server = http.createServer(async (req, res) => {
         db.platformStats.stripeKeyHint = String(body.stripeKeyHint).trim();
       }
       writeDb(db);
-      return sendJson(res, 200, { state: getFullState() });
-    }
-
-
-    // 12d. POST /api/admin/product/reset-bid
-    if (req.method === 'POST' && pathname === '/api/admin/product/reset-bid') {
-      const body = await parseBody(req);
-      const db = readDb();
-      const { categorySlug, productId } = body;
-      const cat = (db.categories || []).find((c) => c.slug === categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
-      const prod = (cat.products || []).find((p) => p.id === productId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' });
-
-      prod.amountPaid = 0;
-      prod.isOrganic = true;
-      prod.highlightTag = '@Unclaimed Organic';
-      prod.updatedAt = new Date().toISOString();
-      cat.products.sort((a, b) => (b.amountPaid || 0) - (a.amountPaid || 0));
-      writeDb(db);
-      return sendJson(res, 200, { product: prod, state: getFullState() });
+      return sendJson(res, 200, { state: getPublicState(getSession(req)) }, req);
     }
 
     // 7. POST /api/categories/:slug/comments
@@ -1016,55 +1316,17 @@ const server = http.createServer(async (req, res) => {
     }
 
 
-    // 12d. POST /api/admin/product/reset-bid
-    if (req.method === 'POST' && pathname === '/api/admin/product/reset-bid') {
-      const body = await parseBody(req);
-      const db = readDb();
-      const { categorySlug, productId } = body;
-      const cat = (db.categories || []).find((c) => c.slug === categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
-      const prod = (cat.products || []).find((p) => p.id === productId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' });
-
-      prod.amountPaid = 0;
-      prod.isOrganic = true;
-      prod.highlightTag = '@Unclaimed Organic';
-      prod.updatedAt = new Date().toISOString();
-      cat.products.sort((a, b) => (b.amountPaid || 0) - (a.amountPaid || 0));
-      writeDb(db);
-      return sendJson(res, 200, { product: prod, state: getFullState() });
-    }
-
-    // 9. DELETE /api/admin/categories/:slug/comments/:commentId
+    // 9. DELETE /api/admin/categories/:slug/comments/:commentId (Admin only)
     const delCommentMatch = pathname.match(/^\/api\/admin\/categories\/([^/]+)\/comments\/([^/]+)$/);
     if (req.method === 'DELETE' && delCommentMatch) {
+      if (!requireAdmin(req, res)) return;
       const [, slug, cmtId] = delCommentMatch;
       const db = readDb();
       const cat = db.categories.find((c) => c.slug === slug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
+      if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
       cat.comments = (cat.comments || []).filter((c) => c.id !== cmtId);
       writeDb(db);
-      return sendJson(res, 200, { state: getFullState() });
-    }
-
-
-    // 12d. POST /api/admin/product/reset-bid
-    if (req.method === 'POST' && pathname === '/api/admin/product/reset-bid') {
-      const body = await parseBody(req);
-      const db = readDb();
-      const { categorySlug, productId } = body;
-      const cat = (db.categories || []).find((c) => c.slug === categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
-      const prod = (cat.products || []).find((p) => p.id === productId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' });
-
-      prod.amountPaid = 0;
-      prod.isOrganic = true;
-      prod.highlightTag = '@Unclaimed Organic';
-      prod.updatedAt = new Date().toISOString();
-      cat.products.sort((a, b) => (b.amountPaid || 0) - (a.amountPaid || 0));
-      writeDb(db);
-      return sendJson(res, 200, { product: prod, state: getFullState() });
+      return sendJson(res, 200, { state: getPublicState(getSession(req)) }, req);
     }
 
     // 10. POST /api/categories/:slug/products/:productId/interact
@@ -1074,9 +1336,9 @@ const server = http.createServer(async (req, res) => {
       const body = await parseBody(req);
       const db = readDb();
       const cat = db.categories.find((c) => c.slug === slug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
+      if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
       const prod = findProductInCat(cat, prodId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' });
+      if (!prod) return sendJson(res, 404, { error: 'Product not found' }, req);
 
       if (body.action === 'upvote') {
         prod.upvotes = Number(prod.upvotes || 0) + 1;
@@ -1084,7 +1346,7 @@ const server = http.createServer(async (req, res) => {
         prod.clicks = Number(prod.clicks || 0) + 1;
       }
       writeDb(db);
-      return sendJson(res, 200, { clicks: prod.clicks, upvotes: prod.upvotes, state: getFullState() });
+      return sendJson(res, 200, { clicks: prod.clicks, upvotes: prod.upvotes, state: getPublicState(getSession(req)) }, req);
     }
 
     // 10b. POST /api/products/click (Convenience click tracker)
@@ -1092,32 +1354,12 @@ const server = http.createServer(async (req, res) => {
       const body = await parseBody(req);
       const db = readDb();
       const cat = db.categories.find((c) => c.slug === body.categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
+      if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
       const prod = findProductInCat(cat, body.productId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' });
+      if (!prod) return sendJson(res, 404, { error: 'Product not found' }, req);
       prod.clicks = Number(prod.clicks || 0) + 1;
       writeDb(db);
-      return sendJson(res, 200, { success: true, clicks: prod.clicks, state: getFullState() });
-    }
-
-
-    // 12d. POST /api/admin/product/reset-bid
-    if (req.method === 'POST' && pathname === '/api/admin/product/reset-bid') {
-      const body = await parseBody(req);
-      const db = readDb();
-      const { categorySlug, productId } = body;
-      const cat = (db.categories || []).find((c) => c.slug === categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
-      const prod = (cat.products || []).find((p) => p.id === productId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' });
-
-      prod.amountPaid = 0;
-      prod.isOrganic = true;
-      prod.highlightTag = '@Unclaimed Organic';
-      prod.updatedAt = new Date().toISOString();
-      cat.products.sort((a, b) => (b.amountPaid || 0) - (a.amountPaid || 0));
-      writeDb(db);
-      return sendJson(res, 200, { product: prod, state: getFullState() });
+      return sendJson(res, 200, { success: true, clicks: prod.clicks, state: getPublicState(getSession(req)) }, req);
     }
 
     // 11. POST /api/lists/create-paid (Paywall to create a new Top 10 list + optional #1 founding product)
@@ -1261,12 +1503,13 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { category: formattedCat, state });
     }
 
-    // 11b. POST /api/admin/categories (Admin creates a new Top 10 page)
+    // 11b. POST /api/admin/categories (Admin creates a new Top 10 page - Admin only)
     if (req.method === 'POST' && pathname === '/api/admin/categories') {
+      if (!requireAdmin(req, res)) return;
       const body = await parseBody(req);
       const db = readDb();
       const title = (body.title || '').trim();
-      if (!title) return sendJson(res, 400, { error: 'Category title is required' });
+      if (!title) return sendJson(res, 400, { error: 'Category title is required' }, req);
 
       const slug = (body.slug || title)
         .toLowerCase()
@@ -1274,7 +1517,7 @@ const server = http.createServer(async (req, res) => {
         .replace(/^-|-$/g, '');
 
       if (db.categories.some((c) => c.slug === slug)) {
-        return sendJson(res, 400, { error: 'A category with this slug already exists' });
+        return sendJson(res, 400, { error: 'A category with this slug already exists' }, req);
       }
 
       const shortName = title.replace(/^Top\s+10\s+/i, '').trim() || title;
@@ -1382,27 +1625,27 @@ const server = http.createServer(async (req, res) => {
 
       db.categories.push(newCategory);
       writeDb(db);
-      const state = getFullState();
+      const state = getPublicState(getSession(req));
       const formattedCat = (state.categories || []).find((c) => c.slug === slug) || newCategory;
       broadcastSse('new_directory', {
         categorySlug: slug,
-        title,
-        state
+        title
       });
-      return sendJson(res, 200, { success: true, category: formattedCat, state });
+      return sendJson(res, 200, { success: true, category: formattedCat, state }, req);
     }
 
-    // 12. POST /api/admin/categories/:slug/organic
+    // 12. POST /api/admin/categories/:slug/organic (Admin only)
     const addOrgMatch = pathname.match(/^\/api\/admin\/categories\/([^/]+)\/organic$/);
     if (req.method === 'POST' && addOrgMatch) {
+      if (!requireAdmin(req, res)) return;
       const slug = addOrgMatch[1];
       const body = await parseBody(req);
       const db = readDb();
       const cat = db.categories.find((c) => c.slug === slug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
+      if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
 
       const name = (body.name || '').trim();
-      if (!name) return sendJson(res, 400, { error: 'Product name is required' });
+      if (!name) return sendJson(res, 400, { error: 'Product name is required' }, req);
 
       cat.products.push({
         id: 'prod_org_' + Date.now(),
@@ -1424,30 +1667,10 @@ const server = http.createServer(async (req, res) => {
       });
 
       writeDb(db);
-      return sendJson(res, 200, { state: getFullState() });
+      return sendJson(res, 200, { state: getPublicState(getSession(req)) }, req);
     }
 
-
-    // 12d. POST /api/admin/product/reset-bid
-    if (req.method === 'POST' && pathname === '/api/admin/product/reset-bid') {
-      const body = await parseBody(req);
-      const db = readDb();
-      const { categorySlug, productId } = body;
-      const cat = (db.categories || []).find((c) => c.slug === categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
-      const prod = (cat.products || []).find((p) => p.id === productId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' });
-
-      prod.amountPaid = 0;
-      prod.isOrganic = true;
-      prod.highlightTag = '@Unclaimed Organic';
-      prod.updatedAt = new Date().toISOString();
-      cat.products.sort((a, b) => (b.amountPaid || 0) - (a.amountPaid || 0));
-      writeDb(db);
-      return sendJson(res, 200, { product: prod, state: getFullState() });
-    }
-
-// 12b. POST /api/user/profile (Update current user display profile)
+    // 12b. POST /api/user/profile (Update current user display profile)
     if (req.method === 'POST' && pathname === '/api/user/profile') {
       const body = await parseBody(req);
       const db = readDb();
@@ -1463,20 +1686,21 @@ const server = http.createServer(async (req, res) => {
           user.avatarText = user.avatarText.toUpperCase();
         }
         writeDb(db);
-        return sendJson(res, 200, { user, state: getFullState() });
+        return sendJson(res, 200, { user: sanitizeUser(user), state: getPublicState(getSession(req)) }, req);
       }
-      return sendJson(res, 404, { error: 'User not found' });
+      return sendJson(res, 404, { error: 'User not found' }, req);
     }
 
-    // 12c. POST /api/admin/product/update (Admin inline product editor)
+    // 12c. POST /api/admin/product/update (Admin inline product editor - Admin only)
     if (req.method === 'POST' && pathname === '/api/admin/product/update') {
+      if (!requireAdmin(req, res)) return;
       const body = await parseBody(req);
       const db = readDb();
       const { categorySlug, productId, amountPaid, pricingTag, tagline, name } = body;
       const cat = (db.categories || []).find((c) => c.slug === categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
+      if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
       const prod = (cat.products || []).find((p) => p.id === productId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' });
+      if (!prod) return sendJson(res, 404, { error: 'Product not found' }, req);
 
       if (amountPaid !== undefined) {
         const amt = parseFloat(amountPaid) || 0;
@@ -1494,7 +1718,7 @@ const server = http.createServer(async (req, res) => {
       // Re-sort category products by amountPaid desc
       cat.products.sort((a, b) => (b.amountPaid || 0) - (a.amountPaid || 0));
       writeDb(db);
-      return sendJson(res, 200, { product: prod, state: getFullState() });
+      return sendJson(res, 200, { product: prod, state: getPublicState(getSession(req)) }, req);
     }
 
     // 13. GET /sitemap.xml (Dynamic SEO XML Sitemap for Google, Bing & AI Indexing)
@@ -2123,8 +2347,9 @@ ${items}
       return sendJson(res, 200, { success: true, review: cmt, state: getFullState() });
     }
 
-    // 13m. GET /api/admin/reviews (Review Moderation Queue)
+    // 13m. GET /api/admin/reviews (Review Moderation Queue - Admin only)
     if (req.method === 'GET' && pathname === '/api/admin/reviews') {
+      if (!requireAdmin(req, res)) return;
       const db = readDb();
       const allReviews = [];
       for (const cat of (db.categories || [])) {
@@ -2135,11 +2360,12 @@ ${items}
         }
       }
       const pendingCount = allReviews.filter((r) => r.status === 'pending').length;
-      return sendJson(res, 200, { reviews: allReviews, pendingCount });
+      return sendJson(res, 200, { reviews: allReviews, pendingCount }, req);
     }
 
-    // 13n. POST /api/admin/reviews/:reviewId/moderate (Approve, Reject, or Delete Review)
+    // 13n. POST /api/admin/reviews/:reviewId/moderate (Approve, Reject, or Delete Review - Admin only)
     if (req.method === 'POST' && pathname.match(/^\/api\/admin\/reviews\/([^/]+)\/moderate$/)) {
+      if (!requireAdmin(req, res)) return;
       const reviewId = pathname.match(/^\/api\/admin\/reviews\/([^/]+)\/moderate$/)[1];
       const body = await parseBody(req);
       const db = readDb();
@@ -2168,14 +2394,13 @@ ${items}
       }
 
       writeDb(db);
-      const fullState = getFullState();
+      const fullState = getPublicState(getSession(req));
       broadcastSse('review_moderated', {
         reviewId,
         action,
-        timestamp: new Date().toISOString(),
-        state: fullState
+        timestamp: new Date().toISOString()
       });
-      return sendJson(res, 200, { success: true, state: fullState });
+      return sendJson(res, 200, { success: true, state: fullState }, req);
     }
 
     // 13o. POST /api/claim/send-code (Founder "Claim This Listing" OTP Dispatch)
@@ -2183,14 +2408,14 @@ ${items}
       const body = await parseBody(req);
       const db = readDb();
       const cat = db.categories.find((c) => c.slug === body.categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
+      if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
 
       const prod = findProductInCat(cat, body.productId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' });
+      if (!prod) return sendJson(res, 404, { error: 'Product not found' }, req);
 
       const founderEmail = (body.founderEmail || body.workEmail || body.ownerEmail || '').trim().toLowerCase();
       if (!founderEmail || !founderEmail.includes('@')) {
-        return sendJson(res, 400, { error: 'Valid company work email is required' });
+        return sendJson(res, 400, { error: 'Valid company work email is required' }, req);
       }
 
       const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -2207,12 +2432,15 @@ ${items}
       });
 
       writeDb(db);
-      return sendJson(res, 200, {
+      const isDev = process.env.NODE_ENV !== 'production';
+      const responsePayload = {
         success: true,
-        message: `Verification code sent to ${founderEmail}`,
-        devCode: code,
-        code: code
-      });
+        message: `Verification code sent to ${founderEmail}`
+      };
+      if (isDev) {
+        responsePayload.devCode = code;
+      }
+      return sendJson(res, 200, responsePayload, req);
     }
 
     // 13p. POST /api/claim/verify (Verify OTP & Link Founder Ownership)
@@ -2220,10 +2448,10 @@ ${items}
       const body = await parseBody(req);
       const db = readDb();
       const cat = db.categories.find((c) => c.slug === body.categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
+      if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
 
       const prod = findProductInCat(cat, body.productId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' });
+      if (!prod) return sendJson(res, 404, { error: 'Product not found' }, req);
 
       const founderEmail = (body.founderEmail || body.workEmail || body.ownerEmail || '').trim().toLowerCase();
       const code = (body.code || '').trim();
@@ -2236,8 +2464,9 @@ ${items}
         Date.now() < c.expiresAt
       );
 
-      if (!claimRecord && code !== '123456') {
-        return sendJson(res, 400, { error: 'Invalid or expired verification code' });
+      const isDev = process.env.NODE_ENV !== 'production';
+      if (!claimRecord && (!isDev || code !== '123456')) {
+        return sendJson(res, 400, { error: 'Invalid or expired verification code' }, req);
       }
 
       prod.isClaimed = true;
@@ -2333,9 +2562,10 @@ ${items}
       return sendJson(res, 200, { request: newReq, state: getFullState() });
     }
 
-    // 16. POST /api/admin/category-requests/:reqId/approve (Admin approves & launches requested page!)
+    // 16. POST /api/admin/category-requests/:reqId/approve (Admin approves & launches requested page! - Admin only)
     const approveReqMatch = pathname.match(/^\/api\/admin\/category-requests\/([^/]+)\/approve$/);
     if (req.method === 'POST' && approveReqMatch) {
+      if (!requireAdmin(req, res)) return;
       const reqId = approveReqMatch[1];
       const db = readDb();
       if (!db.categoryRequests) db.categoryRequests = [];
@@ -2444,7 +2674,7 @@ ${items}
       });
 
       writeDb(db);
-      return sendJson(res, 200, { category: newCat, state: getFullState() });
+      return sendJson(res, 200, { category: newCat, state: getPublicState(getSession(req)) }, req);
     }
 
     // 17. POST /api/categories/:slug/products/:productId/lead (Buyer submits a Quote / Demo lead)
@@ -2711,30 +2941,31 @@ ${items}
         categoryTitle: cat.title,
         companyName,
         selectedPlatforms,
-        timestamp: new Date().toISOString(),
-        state: fullState
+        timestamp: new Date().toISOString()
       });
-      return sendJson(res, 200, { success: true, lead: newLead, state: fullState });
+      return sendJson(res, 200, { success: true, lead: newLead, state: getPublicState(getSession(req)) }, req);
     }
 
-    // 24. GET /api/admin/leads (Admin B2B RFP Leads Ledger)
+    // 24. GET /api/admin/leads (Admin B2B RFP Leads Ledger - Admin only)
     if (req.method === 'GET' && pathname === '/api/admin/leads') {
+      if (!requireAdmin(req, res)) return;
       const db = readDb();
-      return sendJson(res, 200, { leads: db.buyerLeads || [] });
+      return sendJson(res, 200, { leads: db.buyerLeads || [] }, req);
     }
 
-    // 25. POST /api/admin/leads/:leadId/status
+    // 25. POST /api/admin/leads/:leadId/status (Admin only)
     if (req.method === 'POST' && pathname.match(/^\/api\/admin\/leads\/([^/]+)\/status$/)) {
+      if (!requireAdmin(req, res)) return;
       const leadId = pathname.match(/^\/api\/admin\/leads\/([^/]+)\/status$/)[1];
       const body = await parseBody(req);
       const db = readDb();
       const lead = (db.buyerLeads || []).find((l) => l.id === leadId);
-      if (!lead) return sendJson(res, 404, { error: 'Lead not found' });
+      if (!lead) return sendJson(res, 404, { error: 'Lead not found' }, req);
 
       lead.status = body.status || 'contacted';
       lead.updatedAt = new Date().toISOString();
       writeDb(db);
-      return sendJson(res, 200, { success: true, lead, state: getFullState() });
+      return sendJson(res, 200, { success: true, lead, state: getPublicState(getSession(req)) }, req);
     }
 
     // 26. GET /api/compare/:catSlug/:slugA/:slugB (Head-to-Head Comparison Data)
@@ -2744,12 +2975,11 @@ ${items}
       const cat = (state.categories || []).find((c) => c.slug === catSlug);
       if (!cat) return sendJson(res, 404, { error: 'Category not found' });
 
-      const allProds = [...(cat.top10 || []), ...(cat.pushedOut || [])];
-      const prodA = allProds.find((p) => p.id === idA || p.id.replace(/-/g, '_') === idA.replace(/-/g, '_'));
-      const prodB = allProds.find((p) => p.id === idB || p.id.replace(/-/g, '_') === idB.replace(/-/g, '_'));
+      const prodA = findProductInCat(cat, idA);
+      const prodB = findProductInCat(cat, idB);
 
       if (!prodA || !prodB) {
-        return sendJson(res, 404, { error: 'One or both products not found in category' });
+        return sendJson(res, 404, { error: 'One or both products not found in category' }, req);
       }
 
       const comparison = {
@@ -2768,124 +2998,141 @@ ${items}
     }
 
     // Static file serving + Server-Side SEO / JSON-LD / AI Crawler Injection for index.html
-    let filePath =
-      pathname === '/' ? path.join(PUBLIC_DIR, 'index.html') : path.join(PUBLIC_DIR, pathname);
-    if (!filePath.startsWith(PUBLIC_DIR)) {
-      res.writeHead(403);
-      return res.end('Forbidden');
-    }
-    if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-      filePath = path.join(PUBLIC_DIR, 'index.html');
-    }
-
-    if (path.basename(filePath) === 'index.html') {
-      const state = getFullState();
-      const listPathMatch = pathname.match(/^\/list\/([^/]+)$/);
-      const blogArticleMatch = pathname.match(/^\/blog\/([^/]+)$/);
-      const isBlogIndex = pathname === '/blog';
-      const isAdminView = pathname === '/admin';
-
-      let activeCat = null;
-      let activeArticle = null;
-      let pageTitle = 'Top 10 — Independent Product Comparisons, Buying Guides & Reviews (2026)';
-      let pageDesc = 'Explore side-by-side Top 10 buying guides, comparison tables, pros & cons, pricing breakdowns, and verified user reviews across software and hardware categories.';
-      let canonicalUrl = `${base}/`;
-
-      if (listPathMatch || parsedUrl.searchParams.get('list')) {
-        const activeSlug = listPathMatch ? listPathMatch[1] : parsedUrl.searchParams.get('list');
-        activeCat = (state.categories || []).find((c) => c.slug === activeSlug);
-        if (activeCat) {
-          pageTitle = `${activeCat.title} (2026) — Comparison Table, Pros & Cons, Reviews`;
-          pageDesc = `${activeCat.editorialGuide?.intro || activeCat.subtitle} Compare #1 ${activeCat.top10[0]?.name || ''} vs top alternatives.`;
-          canonicalUrl = `${base}/list/${activeCat.slug}`;
-        }
-      } else if (blogArticleMatch) {
-        const artSlug = blogArticleMatch[1];
-        const allArts = (state.articles && state.articles.length > 0 ? state.articles : BLOG_ARTICLES);
-        activeArticle = allArts.find((a) => a.slug === artSlug);
-        if (activeArticle) {
-          pageTitle = `${activeArticle.title} — Top 10 Editorial Guide`;
-          pageDesc = activeArticle.subtitle || pageDesc;
-          canonicalUrl = `${base}/blog/${activeArticle.slug}`;
-        }
-      } else if (isBlogIndex) {
-        pageTitle = 'Top 10 Editorial & Buying Guides (2026) — Deep Dives & Teardowns';
-        pageDesc = 'Independent buying guides, engineering teardowns, and side-by-side architecture comparisons across SaaS, hardware, smart TVs, and developer tools.';
-        canonicalUrl = `${base}/blog`;
-      } else if (isAdminView) {
-        pageTitle = 'Admin Operations Dashboard — Top 10 Platform';
-        pageDesc = 'Internal command center for managing listings, editorial reviews, programmatic bids, and real-time transaction ledgers.';
-        canonicalUrl = `${base}/admin`;
+    const hasStaticFile = pathname !== '/' && fs.existsSync(path.join(PUBLIC_DIR, pathname)) && !fs.statSync(path.join(PUBLIC_DIR, pathname)).isDirectory();
+    if (hasStaticFile) {
+      const filePath = path.join(PUBLIC_DIR, pathname);
+      if (!filePath.startsWith(PUBLIC_DIR)) {
+        res.writeHead(403);
+        return res.end('Forbidden');
       }
+      const ext = path.extname(filePath).toLowerCase();
+      const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+      const fileBuf = fs.readFileSync(filePath);
+      return sendResponse(req, res, 200, contentType, fileBuf, {
+        'Cache-Control': ext === '.svg' || ext === '.png' || ext === '.jpg' ? 'public, max-age=86400' : 'no-cache'
+      });
+    }
 
-      const compareMatch = pathname.match(/^\/compare\/([^/]+)\/([^/]+)-vs-([^/]+)$/);
-      if (compareMatch) {
-        const [, cSlug, idA, idB] = compareMatch;
-        activeCat = (state.categories || []).find((c) => c.slug === cSlug);
-        if (activeCat) {
-          const allProds = [...(activeCat.top10 || []), ...(activeCat.pushedOut || [])];
-          const prodA = allProds.find((p) => p.id === idA || p.id.replace(/-/g, '_') === idA.replace(/-/g, '_'));
-          const prodB = allProds.find((p) => p.id === idB || p.id.replace(/-/g, '_') === idB.replace(/-/g, '_'));
-          const nameA = prodA ? prodA.name : idA;
-          const nameB = prodB ? prodB.name : idB;
-          pageTitle = `${nameA} vs ${nameB} (2026 Comparison) — Which Is Better? | Top 10`;
-          pageDesc = `Side-by-side comparison of ${nameA} vs ${nameB} in ${activeCat.title}. Pricing teardown, pros & cons, specs, and verified practitioner reviews.`;
-          canonicalUrl = `${base}/compare/${activeCat.slug}/${idA}-vs-${idB}`;
-        }
+    // SSR & Client-side Route Matching with Real 404s
+    const listPathMatch = pathname.match(/^\/list\/([^/]+)$/);
+    const blogArticleMatch = pathname.match(/^\/blog\/([^/]+)$/);
+    const compareMatch = pathname.match(/^\/compare\/([^/]+)\/([^/]+)-vs-([^/]+)$/);
+    const isHome = pathname === '/';
+    const isBlogIndex = pathname === '/blog';
+    const isAdminView = pathname === '/admin';
+    const isClaimView = pathname.startsWith('/claim/');
+    const isPricingView = pathname === '/pricing';
+
+    // Read state for SEO injection & route verification
+    const db = readDb();
+    const categories = (db.categories || []).map((c) => enrichCategory(c, db.platformStats));
+    const articles = (db.articles && db.articles.length > 0 ? db.articles : BLOG_ARTICLES);
+
+    let activeCat = null;
+    let activeArticle = null;
+    let pageTitle = 'Top 10 — Independent Product Comparisons, Buying Guides & Reviews (2026)';
+    let pageDesc = 'Explore side-by-side Top 10 buying guides, comparison tables, pros & cons, pricing breakdowns, and verified user reviews across software and hardware categories.';
+    let canonicalUrl = `${base}/`;
+
+    if (listPathMatch || parsedUrl.searchParams.get('list')) {
+      const activeSlug = listPathMatch ? listPathMatch[1] : parsedUrl.searchParams.get('list');
+      activeCat = categories.find((c) => c.slug === activeSlug);
+      if (!activeCat) {
+        return render404(res, req, base, `The Top 10 directory "${escapeXml(activeSlug)}" does not exist or has been archived.`);
       }
+      pageTitle = `${activeCat.title} (2026) — Comparison Table, Pros & Cons, Reviews`;
+      pageDesc = `${activeCat.editorialGuide?.intro || activeCat.subtitle || activeCat.tagline || ''} Compare #1 ${activeCat.top10[0]?.name || ''} vs top alternatives.`;
+      canonicalUrl = `${base}/list/${activeCat.slug}`;
+    } else if (blogArticleMatch) {
+      const artSlug = blogArticleMatch[1];
+      activeArticle = articles.find((a) => a.slug === artSlug);
+      if (!activeArticle) {
+        return render404(res, req, base, `The editorial buying guide "${escapeXml(artSlug)}" could not be found.`);
+      }
+      pageTitle = `${activeArticle.title} — Top 10 Editorial Guide`;
+      pageDesc = activeArticle.subtitle || pageDesc;
+      canonicalUrl = `${base}/blog/${activeArticle.slug}`;
+    } else if (compareMatch) {
+      const [, cSlug, idA, idB] = compareMatch;
+      activeCat = categories.find((c) => c.slug === cSlug);
+      if (!activeCat) {
+        return render404(res, req, base, `The comparison category "${escapeXml(cSlug)}" does not exist.`);
+      }
+      const prodA = findProductInCat(activeCat, idA);
+      const prodB = findProductInCat(activeCat, idB);
+      if (!prodA || !prodB) {
+        return render404(res, req, base, `One or both comparison products could not be found in ${activeCat.title}.`);
+      }
+      pageTitle = `${prodA.name} vs ${prodB.name} (2026 Comparison) — Which Is Better? | Top 10`;
+      pageDesc = `Side-by-side comparison of ${prodA.name} vs ${prodB.name} in ${activeCat.title}. Pricing teardown, pros & cons, specs, and verified practitioner reviews.`;
+      canonicalUrl = `${base}/compare/${activeCat.slug}/${idA}-vs-${idB}`;
+    } else if (isBlogIndex) {
+      pageTitle = 'Top 10 Editorial & Buying Guides (2026) — Deep Dives & Teardowns';
+      pageDesc = 'Independent buying guides, engineering teardowns, and side-by-side architecture comparisons across SaaS, hardware, smart TVs, and developer tools.';
+      canonicalUrl = `${base}/blog`;
+    } else if (isAdminView) {
+      pageTitle = 'Admin Operations Dashboard — Top 10 Platform';
+      pageDesc = 'Internal command center for managing listings, editorial reviews, programmatic bids, and real-time transaction ledgers.';
+      canonicalUrl = `${base}/admin`;
+    } else if (!isHome && !isClaimView && !isPricingView) {
+      // Unknown route that doesn't correspond to any page or static file -> Return Real 404!
+      return render404(res, req, base, `The requested URL "${escapeXml(pathname)}" was not found on this platform.`);
+    }
 
-      const jsonLd = activeCat
-        ? buildSeoJsonLd(activeCat, state.categories || [], base)
-        : activeArticle
-        ? JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'Article',
-            headline: activeArticle.title,
-            description: activeArticle.subtitle,
-            author: { '@type': 'Person', name: activeArticle.author },
-            datePublished: activeArticle.publishedDate,
-            publisher: { '@type': 'Organization', name: 'Top 10 Media' },
-          })
-        : JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'WebSite',
-            name: 'Top 10',
-            url: base,
-            description: pageDesc,
-          });
+    const jsonLd = activeCat
+      ? buildSeoJsonLd(activeCat, categories, base)
+      : activeArticle
+      ? JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: activeArticle.title,
+          description: activeArticle.subtitle,
+          author: { '@type': 'Person', name: activeArticle.author?.name || activeArticle.author },
+          datePublished: activeArticle.date || activeArticle.publishedDate,
+          publisher: { '@type': 'Organization', name: 'Top 10 Media' },
+        })
+      : JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'WebSite',
+          name: 'Top 10',
+          url: base,
+          description: pageDesc,
+        });
 
-      let html = fs.readFileSync(filePath, 'utf-8');
-      html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeXml(pageTitle)}</title>`);
+    let html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf-8');
 
-      const seoHeadInjection = `
-  <meta name="description" content="${escapeXml(pageDesc)}" id="metaDescriptionTag" />
+    // Replace SEO tags in-place without duplicating tags in <head>
+    html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeXml(pageTitle)}</title>`);
+    html = html.replace(/<meta name="description" id="metaDescriptionTag"[^>]*>/i, `<meta name="description" id="metaDescriptionTag" content="${escapeXml(pageDesc)}" />`);
+    html = html.replace(/<link rel="canonical" id="canonicalLinkTag"[^>]*>/i, `<link rel="canonical" id="canonicalLinkTag" href="${escapeXml(canonicalUrl)}" />`);
+    html = html.replace(/<script type="application\/ld\+json" id="seoJsonLdScript">[\s\S]*?<\/script>/i, `<script type="application/ld+json" id="seoJsonLdScript">${jsonLd}</script>`);
+
+    // Add OpenGraph / robots metadata if not already injected
+    if (!html.includes('property="og:title"')) {
+      const extraSeo = `
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
-  <link rel="canonical" href="${escapeXml(canonicalUrl)}" id="canonicalLinkTag" />
   <link rel="alternate" type="text/plain" title="LLMs Structured Guide" href="${base}/llms.txt" />
-  <meta property="og:type" content="article" />
-  <meta property="og:title" content="${escapeXml(pageTitle)}" id="ogTitleTag" />
-  <meta property="og:description" content="${escapeXml(pageDesc)}" id="ogDescTag" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="${escapeXml(pageTitle)}" />
+  <meta property="og:description" content="${escapeXml(pageDesc)}" />
   <meta property="og:url" content="${escapeXml(canonicalUrl)}" />
-  <script type="application/ld+json" id="seoJsonLdScript">${jsonLd}</script>
 </head>`;
-      html = html.replace(/<\/head>/i, seoHeadInjection);
-
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
-      return res.end(html);
+      html = html.replace(/<\/head>/i, extraSeo);
     }
 
-    const ext = path.extname(filePath).toLowerCase();
-    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-cache' });
-    fs.createReadStream(filePath).pipe(res);
+    return sendResponse(req, res, 200, 'text/html; charset=utf-8', html, {
+      'Cache-Control': 'no-cache'
+    });
   } catch (err) {
     console.error('Server error:', err);
-    sendJson(res, 500, { error: err.message || 'Internal Server Error' });
+    const status = err.statusCode || (err.message && err.message.includes('Malformed') ? 400 : 500);
+    sendJson(res, status, { error: err.message || 'Internal Server Error' }, req);
   }
 });
 
 server.listen(PORT, async () => {
   console.log(`Top 10 Auction Directory running at http://localhost:${PORT}`);
+  ensureUserPasswords();
   try {
     await initMongo();
   } catch (err) {

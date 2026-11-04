@@ -7696,6 +7696,55 @@ html[data-theme="dark"] .takeaways-header {
   border-color: #B8FF01 !important;
 }
 
+/* =========================================================================
+   COMPREHENSIVE MOBILE VIEWPORT OPTIMIZATIONS (<= 640px)
+   Eliminates horizontal overflow, adapts topbar navigation, ensures 100% fluid layout
+   ========================================================================= */
+@media (max-width: 640px) {
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+  }
+  .outer-stage, .app-window {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .topbar {
+    padding: 0 12px !important;
+    gap: 8px !important;
+  }
+  .topbar-nav {
+    display: none !important;
+  }
+  .topbar-search-wrap {
+    display: none !important;
+  }
+  .topbar-right {
+    gap: 8px !important;
+  }
+  .category-switcher-wrap {
+    max-width: 180px;
+  }
+  .cat-pill-name {
+    max-width: 130px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .hero-container, .main-container, .blog-container, .admin-container {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    overflow-x: hidden !important;
+  }
+  .admin-table-wrap, .table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+
 
 
 

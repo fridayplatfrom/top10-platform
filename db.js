@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { MongoClient } = require('mongodb');
 
-const DB_PATH = path.join(__dirname, 'data', 'db.json');
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'db.json');
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/top10';
 const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME || 'top10';
 
@@ -125,7 +125,11 @@ function readLocalDb() {
 
 function writeLocalDb(data) {
   try {
-    fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    const dir = path.dirname(DB_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const tmpPath = `${DB_PATH}.${Date.now()}.${Math.random().toString(36).slice(2, 7)}.tmp`;
+    fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
+    fs.renameSync(tmpPath, DB_PATH);
   } catch (err) {
     console.error('[Database] Error writing local db:', err.message);
   }

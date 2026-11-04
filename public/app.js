@@ -4,6 +4,30 @@
 // ============================================================================
 
 (function () {
+  // Automatic Bearer Token Interceptor for Authenticated API Requests
+  const originalFetch = window.fetch;
+  window.fetch = function (url, options = {}) {
+    const token = localStorage.getItem('top10_token');
+    if (token && typeof url === 'string' && url.startsWith('/api/')) {
+      options = options || {};
+      options.headers = options.headers || {};
+      if (options.headers instanceof Headers) {
+        if (!options.headers.has('Authorization')) {
+          options.headers.set('Authorization', `Bearer ${token}`);
+        }
+      } else if (Array.isArray(options.headers)) {
+        if (!options.headers.some(([k]) => k.toLowerCase() === 'authorization')) {
+          options.headers.push(['Authorization', `Bearer ${token}`]);
+        }
+      } else {
+        if (!options.headers['Authorization']) {
+          options.headers['Authorization'] = `Bearer ${token}`;
+        }
+      }
+    }
+    return originalFetch.call(this, url, options);
+  };
+
   let appState = null;
   let currentUser = null;
   let currentView = 'home'; // 'home' | 'list' | 'blog' | 'article' | 'admin' | 'compare'
@@ -672,10 +696,20 @@
   // STATE FETCH & MASTER RENDER
   // =========================================================================
   async function fetchState() {
-    const res = await fetch('/api/state');
-    appState = await res.json();
-    if (!currentUser && appState.users && appState.users.length > 0) {
-      currentUser = appState.users[0];
+    try {
+      const res = await fetch('/api/state');
+      appState = await res.json();
+      if (appState.currentUser) {
+        currentUser = appState.currentUser;
+      } else {
+        const meRes = await fetch('/api/auth/me');
+        if (meRes.ok) {
+          const meData = await meRes.json();
+          if (meData.user) currentUser = meData.user;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load platform state:', err);
     }
     renderAll();
   }
@@ -689,11 +723,12 @@
     updateDynamicSeoHead(cat);
 
     // Update nav links active states
+    const isAdmin = currentUser && currentUser.role === 'admin';
     if (navGuidesBtn) navGuidesBtn.classList.toggle('active', currentView === 'home' || currentView === 'list');
     if (navBlogBtn) navBlogBtn.classList.toggle('active', currentView === 'blog' || currentView === 'article');
     if (navAdminBtn) {
-      const isAdmin = currentUser && currentUser.role === 'admin';
       navAdminBtn.classList.toggle('hidden', !isAdmin);
+      navAdminBtn.style.display = isAdmin ? 'inline-flex' : 'none';
       navAdminBtn.classList.toggle('active', currentView === 'admin');
     }
 
@@ -726,6 +761,16 @@
       if (compareHeadToHeadView) compareHeadToHeadView.classList.add('hidden');
       renderBlogArticle(currentBlogSlug);
     } else if (currentView === 'admin') {
+      if (!isAdmin) {
+        currentView = 'home';
+        if (loginModalBackdrop) {
+          loginModalBackdrop.classList.remove('hidden');
+          if (loginEmail) loginEmail.value = 'admin@top10.io';
+        }
+        showToast('Admin authorization required to access Command Center');
+        renderHomePage();
+        return;
+      }
       topCatName.textContent = 'Admin Operations';
       homePageView.classList.add('hidden');
       singleListPageView.classList.add('hidden');
@@ -3241,10 +3286,11 @@
         claimSendCodeForm.classList.add('hidden');
         if (claimVerifyCodeForm) claimVerifyCodeForm.classList.remove('hidden');
 
-        if (data.code && devOtpBanner) {
-          devOtpBanner.innerHTML = `Simulated Email Sent! Your 6-digit OTP code is: <strong>${escapeHtml(data.code)}</strong>`;
+        const otpCode = data.devCode || data.code;
+        if (otpCode && devOtpBanner) {
+          devOtpBanner.innerHTML = `Simulated Email Sent! Your 6-digit OTP code is: <strong>${escapeHtml(otpCode)}</strong>`;
           devOtpBanner.classList.remove('hidden');
-          if (claimOtpInput) claimOtpInput.value = data.code;
+          if (claimOtpInput) claimOtpInput.value = otpCode;
         }
         showToast(`Verification code sent to ${email}`);
       } catch {
@@ -3377,10 +3423,14 @@
     const findProd = (idOrSlug) => {
       if (!idOrSlug) return null;
       const clean = idOrSlug.toLowerCase().replace(/[-_]/g, '');
+      const raw = idOrSlug.toLowerCase().replace(/^prod_/, '').replace(/[^a-z0-9]/g, '');
       return allP.find(
         (p) =>
           p.id.toLowerCase().replace(/[-_]/g, '') === clean ||
-          p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === clean
+          p.id.toLowerCase().replace(/^prod_/, '').replace(/[^a-z0-9]/g, '') === raw ||
+          p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === clean ||
+          p.name.toLowerCase().replace(/[^a-z0-9]/g, '').includes(raw) ||
+          (raw && p.name.toLowerCase().replace(/[^a-z0-9]/g, '').includes(raw.split(/[a-z0-9]{3}/)[0]))
       );
     };
 
@@ -4304,23 +4354,47 @@
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: loginName.value.trim(),
-          email: loginEmail.value.trim(),
-          company: loginCompany.value.trim()
-        })
-      });
-      const data = await res.json();
-      if (data.user) {
-        currentUser = data.user;
-        appState = data.state;
-        loginModalBackdrop.classList.add('hidden');
-        loginForm.reset();
-        renderAll();
-        showToast(`Signed in as ${currentUser.name}`);
+      const loginErrorMsg = document.getElementById('loginErrorMsg');
+      if (loginErrorMsg) loginErrorMsg.classList.add('hidden');
+
+      const passInput = document.getElementById('loginPassword');
+      const password = passInput ? passInput.value.trim() : '';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: loginName.value.trim(),
+            email: loginEmail.value.trim(),
+            company: loginCompany.value.trim(),
+            password
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          if (loginErrorMsg) {
+            loginErrorMsg.textContent = data.error || 'Failed to sign in';
+            loginErrorMsg.classList.remove('hidden');
+          } else {
+            showToast(data.error || 'Failed to sign in');
+          }
+          return;
+        }
+        if (data.user) {
+          currentUser = data.user;
+          if (data.token) localStorage.setItem('top10_token', data.token);
+          if (data.state) appState = data.state;
+          loginModalBackdrop.classList.add('hidden');
+          loginForm.reset();
+          renderAll();
+          showToast(`Signed in as ${currentUser.name}`);
+        }
+      } catch (err) {
+        if (loginErrorMsg) {
+          loginErrorMsg.textContent = 'Network error while signing in';
+          loginErrorMsg.classList.remove('hidden');
+        }
       }
     });
   }

@@ -83,7 +83,7 @@
             <button type="button" class="topbar-nav-link" id="navGuidesBtn">Lists</button>
             <button type="button" class="topbar-nav-link" id="navBlogBtn">Blog</button>
             <button type="button" class="topbar-nav-link" id="navFounderPortalBtn">Founder Portal</button>
-            <button type="button" class="topbar-nav-link admin-pill-link" id="navAdminBtn">
+            <button type="button" class="topbar-nav-link admin-pill-link hidden" id="navAdminBtn" style="display:none;">
               <span class="admin-dot"></span> Dashboard
             </button>
           </nav>
@@ -738,7 +738,7 @@
           <div class="admin-tab-content" id="adminTabProducts">
             <div class="admin-table-controls">
               <input type="search" id="adminProductSearchInput" class="admin-search-box" placeholder="Filter by product name, category, or founder email..." />
-              <select id="adminCategoryFilterSelect" class="admin-select-filter">
+              <select id="adminCategoryFilterSelect" class="admin-select-filter" aria-label="Filter products by directory category">
                 <option value="all">All Categories</option>
               </select>
               <button type="button" class="btn-primary-compact" id="adminAddProductBtn" style="margin-left:auto;">+ Add Product</button>
@@ -788,7 +788,7 @@
           <div class="admin-tab-content hidden" id="adminTabBlogs">
             <div class="admin-table-controls">
               <input type="search" id="adminBlogSearchInput" class="admin-search-box" placeholder="Filter articles by title, author, or category..." />
-              <select id="adminBlogCategoryFilterSelect" class="admin-select-filter">
+              <select id="adminBlogCategoryFilterSelect" class="admin-select-filter" aria-label="Filter blog articles by category">
                 <option value="all">All Categories</option>
               </select>
               <button type="button" class="btn-primary-compact" id="adminNewBlogBtn" style="margin-left:auto;background:#7C3AED;">+ Write New Article</button>
@@ -1200,6 +1200,11 @@
           <label>Company / Role *</label>
           <input type="text" id="loginCompany" class="modal-input" placeholder="Product Researcher" required />
         </div>
+        <div class="form-field">
+          <label>Password (Required for Admin / Verified Accounts)</label>
+          <input type="password" id="loginPassword" class="modal-input" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+        <div id="loginErrorMsg" class="form-error hidden" style="color:#DC2626;font-size:12px;font-weight:600;margin-top:6px;"></div>
         <div class="modal-footer">
           <button type="button" class="btn-secondary" id="cancelLoginModalBtn">Cancel</button>
           <button type="submit" class="btn-submit-bid">Continue</button>
@@ -1538,7 +1543,7 @@
 
         <div class="form-field" style="margin-top: 12px;">
           <label>Pre-Formatted Viral Post Copy</label>
-          <textarea id="sharePostCopyText" class="modal-input share-copy-box" rows="2" readonly></textarea>
+          <textarea id="sharePostCopyText" class="modal-input share-copy-box" rows="2" readonly aria-label="Pre-formatted social share post copy"></textarea>
         </div>
 
         <div class="social-share-buttons-grid">

@@ -61,11 +61,34 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     }
   }
 
+  // Authenticate Admin Session for Real Browser Testing
+  try {
+    const loginRes = await fetch(`${BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'admin@top10.io', password: 'Top10Admin2026!' })
+    });
+    const loginData = await loginRes.json();
+    if (loginData.token) {
+      await page.setCookie({
+        name: 'top10_session',
+        value: loginData.token,
+        domain: 'localhost',
+        path: '/'
+      });
+      await page.evaluateOnNewDocument((token) => {
+        localStorage.setItem('top10_token', token);
+      }, loginData.token);
+    }
+  } catch (err) {
+    console.warn('Admin session pre-auth notice:', err.message);
+  }
+
   // --------------------------------------------------------------------------
   // FLOW 1: Embed "Ranked on Top 10" Badge Modal Lifecycle
   // --------------------------------------------------------------------------
   await audit('Embed "Ranked on Top 10" Badge Modal, Previews & Snippet Copy', async () => {
-    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle0' });
+    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle2' });
 
     const badgeBtn = await page.$('#top10TimelineList .btn-embed-badge');
     if (!badgeBtn) throw new Error('.btn-embed-badge not found on product card');
@@ -93,7 +116,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // FLOW 2: Studio Showcase High-Res Media Lightbox Modal
   // --------------------------------------------------------------------------
   await audit('Studio Media Showcase Lightbox Open & Dismissal', async () => {
-    await page.goto(`${BASE_URL}/list/smart-tvs`, { waitUntil: 'networkidle0' });
+    await page.goto(`${BASE_URL}/list/smart-tvs`, { waitUntil: 'networkidle2' });
 
     const mediaStage = await page.$('#top10TimelineList .card-media-stage');
     if (!mediaStage) throw new Error('.card-media-stage not found in smart-tvs');
@@ -114,7 +137,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // FLOW 3: User Account & Persona Switcher Modal
   // --------------------------------------------------------------------------
   await audit('Account Management Modal & User Persona Switcher', async () => {
-    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle0' });
+    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle2' });
 
     await page.click('#userAvatarBtn');
     await page.waitForSelector('#accountModalBackdrop:not(.hidden)', { timeout: 2000 });
@@ -134,11 +157,16 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     const isReceiptsVisible = await page.$eval('#accPanelReceipts', (el) => !el.classList.contains('hidden'));
     if (!isReceiptsVisible) throw new Error('Receipts tab failed to open');
 
-    // Click another user persona button in footer switcher
+    // Click another user persona button in footer switcher, then switch back to Admin
     const switchBtns = await page.$$('#accSwitchPills button');
     if (switchBtns.length >= 2) {
       await switchBtns[1].click();
-      await sleep(300);
+      await sleep(250);
+      const reQueryBtns = await page.$$('#accSwitchPills button');
+      if (reQueryBtns.length >= 1) {
+        await reQueryBtns[0].click();
+        await sleep(250);
+      }
     }
 
     // Close account modal
@@ -152,7 +180,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // FLOW 4: $99 Launch New Paid Directory Paywall Modal UI
   // --------------------------------------------------------------------------
   await audit('$99 Launch New Directory Paywall Modal Form & Live Creation', async () => {
-    await page.goto(BASE_URL, { waitUntil: 'networkidle0' });
+    await page.goto(BASE_URL, { waitUntil: 'networkidle2' });
 
     await page.click('#categoryDropdownBtn');
     await page.waitForSelector('#categoryDropdownMenu:not(.hidden)', { timeout: 2000 });
@@ -183,7 +211,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // FLOW 5: Sponsor / Placement Bid Modal Tabs & Interactive Tier Toggle
   // --------------------------------------------------------------------------
   await audit('Sponsor Placement Bid Modal: New Platform vs Boost Existing vs Retainer Tabs', async () => {
-    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle0' });
+    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle2' });
 
     await page.click('#heroBigAddPlatformBtn');
     await page.waitForSelector('#bidModalBackdrop:not(.hidden)', { timeout: 2000 });
@@ -217,7 +245,9 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // FLOW 6: Admin Command Center Tabs & CSV Export
   // --------------------------------------------------------------------------
   await audit('Admin Command Center: All 5 Tabs Navigation & CSV Lead Export', async () => {
-    await page.goto(`${BASE_URL}/admin`, { waitUntil: 'networkidle0' });
+    await page.click('#navAdminBtn');
+    await page.waitForFunction(() => window.location.pathname === '/admin');
+    await sleep(200);
 
     // Tab 1: Products
     await page.click('[data-admin-tab="products"]');

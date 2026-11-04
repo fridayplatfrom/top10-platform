@@ -71,10 +71,35 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   // --------------------------------------------------------------------------
+  // AUTHENTICATE ADMIN SESSION
+  // --------------------------------------------------------------------------
+  try {
+    const loginRes = await fetch(`${BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'admin@top10.io', password: 'Top10Admin2026!' })
+    });
+    const loginData = await loginRes.json();
+    if (loginData.token) {
+      await page.setCookie({
+        name: 'top10_session',
+        value: loginData.token,
+        domain: 'localhost',
+        path: '/'
+      });
+      await page.evaluateOnNewDocument((token) => {
+        localStorage.setItem('top10_token', token);
+      }, loginData.token);
+    }
+  } catch (err) {
+    console.warn('Admin session pre-auth notice:', err.message);
+  }
+
+  // --------------------------------------------------------------------------
   // SCENARIO 1: Community Review Submission & Admin Approval Lifecycle
   // --------------------------------------------------------------------------
   await scenario('Full Reader Review Submission & Admin Moderation Approval', async () => {
-    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle0' });
+    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle2' });
 
     // Open Write Review modal
     const openReviewBtn = await page.$('#openWriteReviewModalBtn');
@@ -139,7 +164,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
       }
     } catch {}
 
-    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle0' });
+    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle2' });
 
     // Find an unclaimed product's Claim button
     const claimBtn = await page.$('#top10TimelineList .btn-claim-link');
@@ -172,7 +197,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // SCENARIO 3: B2B Custom Quotes / Enterprise RFP Inquiry Submission
   // --------------------------------------------------------------------------
   await scenario('B2B Custom Quotes RFP Submission & Admin Lead Tracking', async () => {
-    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle0' });
+    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle2' });
 
     await page.click('#openCategoryRfpBtn');
     await page.waitForSelector('#requestRfpModalBackdrop:not(.hidden)', { timeout: 2000 });
@@ -203,7 +228,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // SCENARIO 4: Direct URL Hydration for Head-to-Head Comparison (/compare/...)
   // --------------------------------------------------------------------------
   await scenario('Direct URL Hydration for Head-to-Head Comparison View', async () => {
-    await page.goto(`${BASE_URL}/compare/billing-software/stripe_billing-vs-paddle`, { waitUntil: 'networkidle0' });
+    await page.goto(`${BASE_URL}/compare/billing-software/stripe_billing-vs-paddle`, { waitUntil: 'networkidle2' });
 
     const isCompareVisible = await page.$eval('#compareHeadToHeadView', (el) => !el.classList.contains('hidden'));
     if (!isCompareVisible) throw new Error('Comparison view is not visible on direct URL load');
@@ -226,7 +251,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // SCENARIO 5: Direct URL Hydration for Blog Article (/blog/:slug)
   // --------------------------------------------------------------------------
   await scenario('Direct URL Hydration for Editorial Guide & Breadcrumb Navigation', async () => {
-    await page.goto(`${BASE_URL}/blog/stripe-vs-paddle-vs-orb`, { waitUntil: 'networkidle0' });
+    await page.goto(`${BASE_URL}/blog/stripe-vs-paddle-vs-orb`, { waitUntil: 'networkidle2' });
 
     const isArticleVisible = await page.$eval('#blogArticleSection', (el) => !el.classList.contains('hidden'));
     if (!isArticleVisible) throw new Error('Blog article view is not visible on direct URL load');
@@ -251,7 +276,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // SCENARIO 6: Category Guide Switcher in Top Navigation Bar
   // --------------------------------------------------------------------------
   await scenario('Category Guide Switcher Dropdown & Live Switching', async () => {
-    await page.goto(BASE_URL, { waitUntil: 'networkidle0' });
+    await page.goto(BASE_URL, { waitUntil: 'networkidle2' });
 
     // Open category switcher dropdown
     await page.click('#categoryDropdownBtn');
@@ -275,7 +300,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // SCENARIO 7: Keyboard Accessibility & Escape Key Modal Dismissal
   // --------------------------------------------------------------------------
   await scenario('Keyboard Accessibility: "/" Search Focus & "Escape" Key Dismissal', async () => {
-    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle0' });
+    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle2' });
 
     // Test "/" hotkey to focus search
     await page.keyboard.press('Slash');
@@ -308,7 +333,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // SCENARIO 8: Shortlist Bookmarks & Saved Quick Filter
   // --------------------------------------------------------------------------
   await scenario('Shortlist Bookmarking & "Saved" Filter Chip Toggle', async () => {
-    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle0' });
+    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle2' });
 
     // Bookmark 2 platforms sequentially with DOM re-query
     const firstBookmark = await page.$('#top10TimelineList .btn-save-bookmark');
@@ -341,7 +366,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // SCENARIO 9: Founder Portal Retainer Subscription Pricing Tier Selection
   // --------------------------------------------------------------------------
   await scenario('Founder Self-Serve Portal Retainer Pricing Tier Selection', async () => {
-    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle0' });
+    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle2' });
 
     await page.click('#navFounderPortalBtn');
     await page.waitForSelector('#founderPortalModalBackdrop:not(.hidden)', { timeout: 2000 });
@@ -364,7 +389,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // --------------------------------------------------------------------------
   await scenario('Tablet Viewport (768x1024) Layout Integrity & Zero Overflow', async () => {
     await page.setViewport({ width: 768, height: 1024, isMobile: false, hasTouch: true });
-    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle0' });
+    await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle2' });
 
     const cardWidth = await page.$eval('#top10TimelineList .card-product-node', (el) => el.getBoundingClientRect().width);
     if (cardWidth > 768) throw new Error(`Card width ${cardWidth}px overflows 768px tablet screen`);
