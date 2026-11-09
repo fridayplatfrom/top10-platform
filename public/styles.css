@@ -3888,6 +3888,82 @@ body {
   opacity: 0.9;
 }
 
+/* Live Rank Simulation Banner in Bid Modal */
+.rank-simulation-banner {
+  margin-top: 10px;
+  padding: 11px 13px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-card);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  transition: all 0.2s ease;
+}
+
+.sim-banner-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  gap: 8px;
+}
+
+.sim-rank-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sim-rank-tag.gold {
+  background: rgba(245, 158, 11, 0.15);
+  color: #B45309;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.sim-rank-tag.blue {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1D4ED8;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+}
+
+.sim-rank-tag.gray {
+  background: var(--bg-card);
+  color: var(--text-muted);
+  border: 1px solid var(--border-card);
+}
+
+.sim-metric {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.sim-subtext {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+html[data-theme="dark"] .rank-simulation-banner {
+  background: #18191D;
+  border-color: #2D3139;
+}
+
+html[data-theme="dark"] .sim-rank-tag.gold {
+  background: rgba(245, 158, 11, 0.2);
+  color: #FBBF24;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+html[data-theme="dark"] .sim-rank-tag.blue {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60A5FA;
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
 .minimal-filter-chips {
   display: flex;
   flex-wrap: wrap;

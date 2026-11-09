@@ -2709,17 +2709,79 @@
 
   function updateSimulatedRankBanner(cat, amount) {
     const num = Number(amount || 0);
+    const allProds = [...(cat.top10 || []), ...(cat.pushedOut || [])];
+    const rawViewsStr = String(cat.metrics?.monthlyViews || '120k');
+    let viewsNum = parseFloat(rawViewsStr) || 120;
+    if (rawViewsStr.toLowerCase().includes('m')) {
+      viewsNum = viewsNum * 1000;
+    }
+    const estMonthlyClicks = Math.round(viewsNum * 0.42);
+    const estViewsFormatted = estMonthlyClicks >= 1000 ? `${(estMonthlyClicks / 1000).toFixed(1)}M` : `${estMonthlyClicks}k`;
+
     if (currentBidMode === 'existing' && bidExistingProductSelect) {
-      const allProds = [...(cat.top10 || []), ...(cat.pushedOut || [])];
       const targetProd = allProds.find((p) => p.id === bidExistingProductSelect.value) || allProds[0];
-      const newTotal = Number((targetProd && targetProd.amountPaid) || 0) + num;
-      const rankNum = targetProd ? (targetProd.rank || 'Listed') : 'Listed';
-      rankSimulationBanner.innerHTML = `Boosting <strong>${escapeHtml(
-        targetProd ? targetProd.name : 'Platform'
-      )}</strong> (#${rankNum}) by <strong>+$${num.toLocaleString()}</strong> → <strong>$${newTotal.toLocaleString()} total deposit</strong> (Projected #1)`;
+      const currentPaid = Number((targetProd && targetProd.amountPaid) || 0);
+      const newTotal = currentPaid + num;
+      
+      const others = allProds.filter((p) => p.id !== (targetProd ? targetProd.id : ''));
+      const higherCount = others.filter((p) => Number(p.amountPaid || 0) >= newTotal).length;
+      const simRank = higherCount + 1;
+
+      const top1 = others.length > 0 ? others.reduce((max, p) => Number(p.amountPaid || 0) > Number(max.amountPaid || 0) ? p : max, others[0]) : null;
+      const top1Paid = top1 ? Number(top1.amountPaid || 0) : 0;
+      const minInc = Number((appState && appState.platformStats && appState.platformStats.minOutbidIncrement) || 25);
+      const diffToTop1 = Math.max(0, top1Paid + minInc - newTotal);
+
+      if (simRank === 1) {
+        rankSimulationBanner.innerHTML = `
+          <div class="sim-banner-row">
+            <span class="sim-rank-tag gold">🏆 Projected Rank #1 Leader</span>
+            <span class="sim-metric">$${newTotal.toLocaleString()} deposit · Est. ~${estViewsFormatted} views/mo</span>
+          </div>
+          <div class="sim-subtext">Boosting <strong>${escapeHtml(targetProd.name)}</strong> by <strong>+$${num.toLocaleString()}</strong> to capture the #1 spotlight crown.</div>
+        `;
+      } else {
+        rankSimulationBanner.innerHTML = `
+          <div class="sim-banner-row">
+            <span class="sim-rank-tag blue">Projected Rank #${simRank}</span>
+            <span class="sim-metric">$${newTotal.toLocaleString()} deposit</span>
+          </div>
+          <div class="sim-subtext">Boosting <strong>${escapeHtml(targetProd.name)}</strong> by <strong>+$${num.toLocaleString()}</strong>. Add <strong>+$${diffToTop1.toLocaleString()}</strong> more to overtake ${escapeHtml(top1.name)} ($${top1Paid}) for #1!</div>
+        `;
+      }
       submitBidBtn.textContent = `Boost ${targetProd ? targetProd.name : 'Platform'} (+$${num.toLocaleString()})`;
     } else {
-      rankSimulationBanner.innerHTML = `Placement deposit: <strong>$${num.toLocaleString()}</strong> · Instant listing in <strong>${escapeHtml(cat.title)}</strong>`;
+      const higherCount = allProds.filter((p) => Number(p.amountPaid || 0) >= num).length;
+      const simRank = higherCount + 1;
+      const minInc = Number((appState && appState.platformStats && appState.platformStats.minOutbidIncrement) || 25);
+      const top1 = allProds.length > 0 ? allProds.reduce((max, p) => Number(p.amountPaid || 0) > Number(max.amountPaid || 0) ? p : max, allProds[0]) : null;
+      const top1Paid = top1 ? Number(top1.amountPaid || 0) : 0;
+      const diffToTop1 = Math.max(0, top1Paid + minInc - num);
+
+      if (simRank === 1) {
+        rankSimulationBanner.innerHTML = `
+          <div class="sim-banner-row">
+            <span class="sim-rank-tag gold">🏆 Projected Rank #1 Leader</span>
+            <span class="sim-metric">Est. ~${estViewsFormatted} views/mo</span>
+          </div>
+          <div class="sim-subtext">Instant Rank #1 listing in <strong>${escapeHtml(cat.title)}</strong> with top benchmark placement.</div>
+        `;
+      } else if (simRank <= 10) {
+        rankSimulationBanner.innerHTML = `
+          <div class="sim-banner-row">
+            <span class="sim-rank-tag blue">Projected Rank #${simRank}</span>
+            <span class="sim-metric">Guaranteed Top 10 Slot</span>
+          </div>
+          <div class="sim-subtext">Placement deposit: <strong>$${num.toLocaleString()}</strong>. Bid <strong>$${(num + diffToTop1).toLocaleString()}</strong> to capture #1 from ${top1 ? escapeHtml(top1.name) : 'leader'}.</div>
+        `;
+      } else {
+        rankSimulationBanner.innerHTML = `
+          <div class="sim-banner-row">
+            <span class="sim-rank-tag gray">Rank #${simRank} (Reserve Pool)</span>
+          </div>
+          <div class="sim-subtext">Deposit: <strong>$${num.toLocaleString()}</strong>. Top 10 cut-off is currently <strong>$${Number(cat.computedStats?.minToEnterTop10 || 49).toLocaleString()}</strong>.</div>
+        `;
+      }
       submitBidBtn.textContent = `Add Platform ($${num.toLocaleString()})`;
     }
   }
