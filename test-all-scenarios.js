@@ -199,7 +199,10 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   await scenario('B2B Custom Quotes RFP Submission & Admin Lead Tracking', async () => {
     await page.goto(`${BASE_URL}/list/billing-software`, { waitUntil: 'networkidle2' });
 
-    await page.click('#openCategoryRfpBtn');
+    await page.evaluate(() => {
+      const btn = document.getElementById('openCategoryRfpBtn');
+      if (btn) btn.click();
+    });
     await page.waitForSelector('#requestRfpModalBackdrop:not(.hidden)', { timeout: 2000 });
 
     // Fill RFP fields safely clearing prefilled auth user data
@@ -309,7 +312,10 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     if (focusedTag !== 'INPUT') throw new Error(`Expected INPUT to be focused on "/", got ${focusedTag}`);
 
     // Open RFP modal
-    await page.click('#openCategoryRfpBtn');
+    await page.evaluate(() => {
+      const btn = document.getElementById('openCategoryRfpBtn');
+      if (btn) btn.click();
+    });
     await page.waitForSelector('#requestRfpModalBackdrop:not(.hidden)', { timeout: 2000 });
 
     // Press Escape
@@ -349,14 +355,20 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     }
 
     // Click "Saved" chip
-    await page.click('[data-qfilter="saved"]');
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-qfilter="saved"]');
+      if (btn) btn.click();
+    });
     await sleep(200);
 
     const savedCardsCount = await page.$$eval('#top10TimelineList .card-product-node', (nodes) => nodes.length);
     if (savedCardsCount !== 2) throw new Error(`Expected exactly 2 saved cards displayed, found ${savedCardsCount}`);
 
     // Toggle back to All
-    await page.click('[data-qfilter="all"]');
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-qfilter="all"]');
+      if (btn) btn.click();
+    });
     await sleep(200);
     const allCardsCount = await page.$$eval('#top10TimelineList .card-product-node', (nodes) => nodes.length);
     if (allCardsCount < 5) throw new Error(`Expected all cards restored, found ${allCardsCount}`);

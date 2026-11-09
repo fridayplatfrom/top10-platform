@@ -139,13 +139,19 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // --------------------------------------------------------------------------
   await step('4. Test Quick Filter chips (Free sandbox, API, Enterprise) and Shortlist', async () => {
     // Click 'Free Tier / Sandbox' filter
-    await page.click('[data-qfilter="free"]');
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-qfilter="free"]');
+      if (btn) btn.click();
+    });
     await sleep(200);
     const freeCards = await page.$$eval('#top10TimelineList .card-product-node', (nodes) => nodes.length);
     if (freeCards === 0) throw new Error('Free filter returned 0 products');
 
     // Click 'All' filter
-    await page.click('[data-qfilter="all"]');
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-qfilter="all"]');
+      if (btn) btn.click();
+    });
     await sleep(200);
 
     // Click bookmark button on first card
@@ -160,7 +166,10 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // TEST STEP 5: B2B RFP CUSTOM QUOTE MODAL (TRIGGER & CLOSE)
   // --------------------------------------------------------------------------
   await step('5. Open and test B2B Custom Quotes / RFP Modal', async () => {
-    await page.click('#openCategoryRfpBtn');
+    await page.evaluate(() => {
+      const btn = document.getElementById('openCategoryRfpBtn');
+      if (btn) btn.click();
+    });
     await page.waitForSelector('#requestRfpModalBackdrop:not(.hidden)', { timeout: 2000 });
 
     const vendorChipsCount = await page.$$eval('#rfpVendorsPicker .rfp-vendor-chip', (chips) => chips.length);

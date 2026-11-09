@@ -1526,19 +1526,21 @@
     const guide = cat.editorialGuide || {};
     const top10 = cat.top10 || [];
     const pushedOut = cat.pushedOut || [];
-    const totalListings = cat.totalListingsCount || top10.length + pushedOut.length;
+    const allCatProds = [...top10, ...pushedOut];
+    const totalListings = cat.totalListingsCount || allCatProds.length;
 
     if (breadcrumbCurrentTitle) breadcrumbCurrentTitle.textContent = cat.title;
-    heroCatIcon.innerHTML = renderCategorySvgIcon(cat, 18);
-    heroCatIcon.style.background = cat.iconBg || '#B8FF01';
-    heroCatIcon.style.color = cat.iconColor || '#111827';
+    if (heroCatIcon) {
+      heroCatIcon.innerHTML = renderCategorySvgIcon(cat, 18);
+      heroCatIcon.style.background = cat.iconBg || '#B8FF01';
+      heroCatIcon.style.color = cat.iconColor || '#111827';
+    }
     if (heroUpdatedAgo) heroUpdatedAgo.textContent = `Updated ${guide.lastUpdatedDate || 'Oct 2026'}`;
     if (heroPaidBadge) heroPaidBadge.textContent = `${totalListings} Listed`;
-    heroCatTitle.textContent = cat.title;
-    heroCatSubtitle.textContent = `Updated ${guide.lastUpdatedDate || 'Oct 2026'}`;
+    if (heroCatTitle) heroCatTitle.textContent = cat.title;
+    if (heroCatSubtitle) heroCatSubtitle.textContent = `Curated & Verified · Updated ${guide.lastUpdatedDate || 'Oct 2026'} · ${allCatProds.length} Platforms Ranked`;
 
     // Count saved platforms in this category
-    const allCatProds = [...top10, ...pushedOut];
     const savedInCatCount = allCatProds.filter((p) => savedProductIds.has(p.id)).length;
     if (activeQuickFilter === 'saved' && savedInCatCount === 0) {
       activeQuickFilter = 'all';
@@ -1554,10 +1556,10 @@
       }
     }
 
-    // Render 1-Line Quick Filter Chip Bar
+    // Render 1-Line Quick Filter Chip Bar (accessible hidden)
     if (listQuickFilterBar) {
       const filters = [
-        { key: 'all', label: `All (${top10.length})` },
+        { key: 'all', label: `All (${allCatProds.length})` },
         { key: 'free', label: 'Free Tier / Sandbox' },
         { key: 'api', label: 'API & Cloud' },
         { key: 'enterprise', label: 'Scale & Enterprise' },
@@ -1601,8 +1603,8 @@
       catSortSelect.value = activeCategorySort;
     }
 
-    // Filter pipeline: Quick Filter -> Inline Search
-    let displayTop10 = top10.filter((p) => matchesQuickFilter(p, activeQuickFilter));
+    // Filter pipeline across all listings in category: Quick Filter -> Inline Search
+    let displayTop10 = allCatProds.filter((p) => matchesQuickFilter(p, activeQuickFilter));
 
     if (activeCategorySearchQuery) {
       const q = activeCategorySearchQuery.toLowerCase();
@@ -1779,18 +1781,10 @@
                   <div class="card-toolbar-actions">
                     <button
                       type="button"
-                      class="btn-rfp-quote-pill"
-                      data-rfp-prod="${escapeHtml(prod.id)}"
-                      title="Request custom quote / RFP for ${escapeHtml(prod.name)}"
-                    >
-                      📋 Quote
-                    </button>
-
-                    <button
-                      type="button"
                       class="btn-compare-vs"
                       data-compare-vs="${escapeHtml(prod.id)}"
                       title="Compare ${escapeHtml(prod.name)} head-to-head"
+                      aria-label="Compare head-to-head"
                     >
                       VS
                     </button>
@@ -1801,8 +1795,9 @@
                         class="btn-manage-listing"
                         data-manage-prod="${escapeHtml(prod.id)}"
                         title="Manage ${escapeHtml(prod.name)} in Founder Portal"
+                        aria-label="Manage listing"
                       >
-                        ⚙️ Manage
+                        ⚙️
                       </button>
                     ` : `
                       <button
@@ -1810,6 +1805,7 @@
                         class="btn-claim-link"
                         data-claim-prod="${escapeHtml(prod.id)}"
                         title="Claim ${escapeHtml(prod.name)} as official founder"
+                        aria-label="Claim listing"
                       >
                         Claim
                       </button>
@@ -1822,7 +1818,7 @@
                       title="Boost ${escapeHtml(prod.name)} to #1"
                       aria-label="Boost platform"
                     >
-                      Boost ↗
+                      ⚡ Boost
                     </button>
 
                     <button
@@ -1839,7 +1835,6 @@
                         <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
                         <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                       </svg>
-                      <span class="action-btn-text">Share</span>
                     </button>
 
                     <button
@@ -1929,145 +1924,13 @@
       .join('');
     }
 
-    // 1b. Render Additional Listed Platforms when Total Listings > 10
-    if (moreListingsSection && moreListingsTimeline) {
-      if (pushedOut.length > 0) {
-        moreListingsSection.classList.remove('hidden');
-        moreListingsTitle.textContent = `Other Listed Platforms (${pushedOut.length} more)`;
-        moreListingsTimeline.innerHTML = pushedOut
-          .map(
-            (prod, idx) => {
-              const isSaved = savedProductIds.has(prod.id);
-              const rankNum = prod.rank || (11 + idx);
-              return `
-            <div class="clean-product-item card-product-node">
-              <div class="product-card-box minimal-unified-card" id="prod-card-${escapeHtml(prod.id)}">
-                <div class="minimal-card-header">
-                  <div class="product-header-left">
-                    <span class="rank-node-badge organic-node">#${rankNum}</span>
-                    ${renderBrandLogo(prod, 22)}
-                    <a href="${escapeHtml(prod.website)}" target="_blank" rel="noopener" class="prod-title-link" data-click-prod="${escapeHtml(prod.id)}">
-                      ${escapeHtml(prod.name)}
-                    </a>
-                    <span class="prod-company-muted">by ${escapeHtml(prod.companyName)}</span>
-                  </div>
-                  <div class="product-header-actions">
-                    <button
-                      type="button"
-                      class="btn-compare-vs"
-                      data-compare-vs="${escapeHtml(prod.id)}"
-                      title="Compare ${escapeHtml(prod.name)} head-to-head"
-                    >
-                      VS
-                    </button>
-                    ${prod.claimed ? `
-                      <span class="verified-claim-badge" title="Official Founder Verified">✓ Claimed</span>
-                      <button
-                        type="button"
-                        class="btn-manage-listing"
-                        data-manage-prod="${escapeHtml(prod.id)}"
-                        title="Manage ${escapeHtml(prod.name)} in Founder Portal"
-                      >
-                        ⚙️ Manage
-                      </button>
-                    ` : `
-                      <button
-                        type="button"
-                        class="btn-claim-link"
-                        data-claim-prod="${escapeHtml(prod.id)}"
-                        title="Claim ${escapeHtml(prod.name)} as official founder"
-                      >
-                        Claim
-                      </button>
-                    `}
-                    <button
-                      type="button"
-                      class="btn-rfp-quote-pill"
-                      data-rfp-prod="${escapeHtml(prod.id)}"
-                      title="Request custom quote / RFP for ${escapeHtml(prod.name)}"
-                    >
-                      📋 Quote
-                    </button>
-                    <button
-                      type="button"
-                      class="btn-share-ranking"
-                      style="height:26px;padding:0 7px;font-size:11px;"
-                      data-share-prod="${escapeHtml(prod.id)}"
-                      title="Share #${rankNum} ${escapeHtml(prod.name)} ranking"
-                      aria-label="Share platform ranking"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="18" cy="5" r="3"></circle>
-                        <circle cx="6" cy="12" r="3"></circle>
-                        <circle cx="18" cy="19" r="3"></circle>
-                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                      </svg>
-                      <span>Share</span>
-                    </button>
-                    <button
-                      type="button"
-                      class="btn-boost-pill"
-                      data-boost-existing="${escapeHtml(prod.id)}"
-                      title="Boost ${escapeHtml(prod.name)} into Top 10"
-                      aria-label="Boost platform"
-                    >
-                      Boost ↗
-                    </button>
-                    <button
-                      type="button"
-                      class="btn-embed-badge"
-                      data-badge-prod="${escapeHtml(prod.id)}"
-                      title="Get 'Featured on Top 10' embed badge"
-                      aria-label="Embed badge"
-                    >
-                      ${SVG_ICON_BADGE}
-                    </button>
-                    <button
-                      type="button"
-                      class="btn-save-bookmark ${isSaved ? 'saved' : ''}"
-                      data-save-prod="${escapeHtml(prod.id)}"
-                      data-save-name="${escapeHtml(prod.name)}"
-                      title="${isSaved ? 'Remove from Saved shortlist' : 'Save to shortlist'}"
-                      aria-label="Save platform"
-                    >
-                      ${SVG_ICON_BOOKMARK}
-                    </button>
-                    <a href="${escapeHtml(prod.website)}" target="_blank" rel="noopener" class="btn-reader-visit" data-click-prod="${escapeHtml(prod.id)}">
-                      Visit ↗
-                    </a>
-                  </div>
-                </div>
-                ${prod.media && prod.media.heroImage ? `
-                  <div class="card-media-stage" data-lightbox-src="${escapeHtml(prod.media.heroImage)}" data-lightbox-title="${escapeHtml(prod.name)}" data-lightbox-tag="${escapeHtml(prod.media.overlayTag || '')}" data-lightbox-company="${escapeHtml(prod.companyName)}" data-lightbox-link="${escapeHtml(prod.website)}">
-                    <img
-                      src="${escapeHtml(prod.media.heroImage)}"
-                      alt="${escapeHtml(prod.name)}"
-                      class="card-media-img"
-                      loading="lazy"
-                      decoding="async"
-                      onerror="this.closest('.card-media-stage').style.display='none'"
-                    />
-                    ${prod.media.overlayTag ? `<span class="media-spec-chip">${escapeHtml(prod.media.overlayTag)}</span>` : ''}
-                    <button type="button" class="media-zoom-btn" title="View high-res photo" aria-label="Zoom photo">
-                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="7" cy="7" r="4.5"/>
-                        <path d="M10.5 10.5L14 14M7 5v4M5 7h4"/>
-                      </svg>
-                    </button>
-                  </div>
-                ` : ''}
-                <p class="minimal-card-desc" style="margin-bottom:0;">${escapeHtml(prod.tagline)}</p>
-              </div>
-            </div>
-          `;
-            }
-          )
-          .join('');
-      } else {
-        moreListingsSection.classList.add('hidden');
-        moreListingsTimeline.innerHTML = '';
-      }
+    // 1b. All listings are now rendered continuously in the main list
+    if (moreListingsSection) {
+      moreListingsSection.classList.add('hidden');
+      moreListingsSection.style.display = 'none';
+    }
+    if (moreListingsTimeline) {
+      moreListingsTimeline.innerHTML = '';
     }
 
     // Boost Existing Platform Handler (Opens + Add Your Platform Modal in "Boost Existing" Mode)

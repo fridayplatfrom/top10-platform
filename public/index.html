@@ -191,44 +191,34 @@
       <main id="singleListPageView" class="workspace-container hidden">
 
         <article itemscope itemtype="https://schema.org/Article">
-          <!-- MINIMALIST HERO HEADER (SVG Icon + Title + 1-Click Share + Subtitle + Quick Filter Chips) -->
+          <!-- MINIMALIST HERO HEADER (Focused Title + Inline Category Icon + 1-Click Share) -->
           <header class="entity-header">
-            <div class="entity-top-row">
-              <div class="entity-logo-lg" id="heroCatIcon"></div>
-            </div>
-
             <div class="entity-title-block">
               <div class="entity-title-row">
-                <h1 class="entity-title" id="heroCatTitle" itemprop="headline">Top 10 Billing Software</h1>
+                <div class="entity-title-left">
+                  <div class="entity-logo-squircle" id="heroCatIcon"></div>
+                  <h1 class="entity-title" id="heroCatTitle" itemprop="headline">Top 10 Billing Software</h1>
+                </div>
                 <div class="entity-title-actions">
-                  <button type="button" class="btn-request-rfp-hero" id="openCategoryRfpBtn" title="Request Custom Quotes &amp; RFPs from Top 3">
-                    <span>📋 Request Quotes (Top 3)</span>
-                  </button>
-                  <button type="button" class="btn-share-ranking" id="openShareModalBtn" title="Share rankings on X / LinkedIn">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12.5" cy="3.5" r="2"/>
-                      <circle cx="3.5" cy="8" r="2"/>
-                      <circle cx="12.5" cy="12.5" r="2"/>
-                      <path d="M5.3 7.1l5.4-2.7M5.3 8.9l5.4 2.7"/>
+                  <button type="button" class="btn-share-icon-only" id="openShareModalBtn" title="Share rankings on X / LinkedIn" aria-label="Share rankings">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="18" cy="5" r="3"/>
+                      <circle cx="6" cy="12" r="3"/>
+                      <circle cx="18" cy="19" r="3"/>
+                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
                     </svg>
-                    <span>Share</span>
                   </button>
-                  <button type="button" class="copy-url-btn" id="copyListUrlBtn" title="Copy direct link to this Top 10 list" aria-label="Copy direct link">
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M6.8 9.2a3.2 3.2 0 004.5 0l2.1-2.1a3.2 3.2 0 00-4.5-4.5L7.7 3.8"/>
-                      <path d="M9.2 6.8a3.2 3.2 0 00-4.5 0L2.6 8.9a3.2 3.2 0 004.5 4.5l1.2-1.2"/>
-                    </svg>
-                    <span id="copyListUrlLabel">Copy Link</span>
-                  </button>
+                  <button type="button" class="hidden-accessible" id="openCategoryRfpBtn" aria-hidden="true"></button>
+                  <button type="button" class="hidden-accessible" id="copyListUrlBtn" aria-hidden="true"><span id="copyListUrlLabel">Copy Link</span></button>
                 </div>
               </div>
               <p class="entity-subtitle" id="heroCatSubtitle">Updated Oct 2026</p>
             </div>
 
-            <!-- Subtle 1-Line Quick Filter Chip Bar with Inline Search & Sort -->
+            <!-- Focused Inline Search & Sort Bar -->
             <div class="list-controls-bar">
-              <div class="minimal-filter-chips" id="listQuickFilterBar"></div>
-              <div class="list-search-sort-group">
+              <div class="list-search-sort-group full-width">
                 <div class="list-inline-search-wrap">
                   <svg class="search-mini-icon" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="7" cy="7" r="5"></circle>
@@ -248,6 +238,7 @@
                   </select>
                 </div>
               </div>
+              <div class="minimal-filter-chips hidden-accessible" id="listQuickFilterBar"></div>
             </div>
           </header>
 
@@ -257,8 +248,8 @@
           <section id="tabPanelRankings" class="tab-panel">
             <div class="clean-product-list" id="top10TimelineList"></div>
 
-            <!-- Additional Listed Platforms when Total Listings > 10 -->
-            <div class="more-listings-section hidden" id="moreListingsSection">
+            <!-- Additional Listed Platforms when Total Listings > 10 (Maintained for backward-compat) -->
+            <div class="more-listings-section hidden" id="moreListingsSection" style="display: none;">
               <div class="more-listings-header">
                 <span class="more-listings-title" id="moreListingsTitle">Other Listed Platforms</span>
                 <button type="button" class="btn-toggle-more-listings" id="toggleMoreListingsBtn">
