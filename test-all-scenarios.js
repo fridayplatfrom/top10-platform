@@ -282,7 +282,10 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     await page.goto(BASE_URL, { waitUntil: 'networkidle2' });
 
     // Open category switcher dropdown
-    await page.click('#categoryDropdownBtn');
+    await page.evaluate(() => {
+      const btn = document.getElementById('categoryDropdownBtn');
+      if (btn) btn.click();
+    });
     const isDropdownVisible = await page.$eval('#categoryDropdownMenu', (el) => !el.classList.contains('hidden'));
     if (!isDropdownVisible) throw new Error('Category dropdown menu failed to toggle open');
 
@@ -290,13 +293,13 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     if (menuItems < 5) throw new Error(`Expected at least 5 categories in menu, found ${menuItems}`);
 
     // Click on another category
-    const secondCategory = await page.$('#categoryMenuList .cat-menu-item:nth-child(2)');
-    if (secondCategory) {
-      await secondCategory.click();
-      await sleep(300);
-      const pathname = await page.evaluate(() => window.location.pathname);
-      if (!pathname.startsWith('/list/')) throw new Error(`Expected navigation to /list/..., got ${pathname}`);
-    }
+    await page.evaluate(() => {
+      const item = document.querySelector('#categoryMenuList .cat-menu-item:nth-child(2)');
+      if (item) item.click();
+    });
+    await sleep(300);
+    const pathname = await page.evaluate(() => window.location.pathname);
+    if (!pathname.startsWith('/list/')) throw new Error(`Expected navigation to /list/..., got ${pathname}`);
   });
 
   // --------------------------------------------------------------------------

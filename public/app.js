@@ -1538,7 +1538,7 @@
     if (heroUpdatedAgo) heroUpdatedAgo.textContent = `Updated ${guide.lastUpdatedDate || 'Oct 2026'}`;
     if (heroPaidBadge) heroPaidBadge.textContent = `${totalListings} Listed`;
     if (heroCatTitle) heroCatTitle.textContent = cat.title;
-    if (heroCatSubtitle) heroCatSubtitle.textContent = `Curated & Verified · Updated ${guide.lastUpdatedDate || 'Oct 2026'} · ${allCatProds.length} Platforms Ranked`;
+    if (heroCatSubtitle) heroCatSubtitle.textContent = `Updated ${guide.lastUpdatedDate || 'Oct 2026'} · ${allCatProds.length} Platforms Ranked`;
 
     // Count saved platforms in this category
     const savedInCatCount = allCatProds.filter((p) => savedProductIds.has(p.id)).length;

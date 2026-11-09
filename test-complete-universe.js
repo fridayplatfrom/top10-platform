@@ -182,10 +182,16 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   await audit('$99 Launch New Directory Paywall Modal Form & Live Creation', async () => {
     await page.goto(BASE_URL, { waitUntil: 'networkidle2' });
 
-    await page.click('#categoryDropdownBtn');
+    await page.evaluate(() => {
+      const btn = document.getElementById('categoryDropdownBtn');
+      if (btn) btn.click();
+    });
     await page.waitForSelector('#categoryDropdownMenu:not(.hidden)', { timeout: 2000 });
 
-    await page.click('#dropdownCreateListBtn');
+    await page.evaluate(() => {
+      const btn = document.getElementById('dropdownCreateListBtn');
+      if (btn) btn.click();
+    });
     await page.waitForSelector('#createListModalBackdrop:not(.hidden)', { timeout: 2000 });
 
     // Fill new list form

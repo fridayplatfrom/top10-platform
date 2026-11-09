@@ -98,9 +98,9 @@ body {
   background: var(--bg-subtle);
 }
 
-/* Category Switcher Pill */
+/* Category Switcher Pill (Removed from topbar) */
 .category-switcher-wrap {
-  position: relative;
+  display: none !important;
 }
 
 .category-pill-btn {
