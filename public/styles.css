@@ -8653,4 +8653,15 @@ html[data-theme="dark"] .empty-guide-filter button {
   .minimal-pros-cons {
     grid-template-columns: 1fr;
   }
+  .list-search-sort-group {
+    width: 100%;
+    margin-left: 0;
+    gap: 8px;
+  }
+  .list-inline-search-wrap {
+    flex: 1;
+  }
+  .cat-inline-search {
+    width: 100% !important;
+  }
 }
