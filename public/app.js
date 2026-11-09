@@ -410,6 +410,11 @@
   const compareCatNameCrumb = document.getElementById('compareCatNameCrumb');
   const compareVersusTitle = document.getElementById('compareVersusTitle');
   const compareShareBtn = document.getElementById('compareShareBtn');
+  const compareCopyLinkBtn = document.getElementById('compareCopyLinkBtn');
+  const compareCopyLinkText = document.getElementById('compareCopyLinkText');
+  const compareSelectA = document.getElementById('compareSelectA');
+  const compareSelectB = document.getElementById('compareSelectB');
+  const compareSwapBtn = document.getElementById('compareSwapBtn');
   const compareRankA = document.getElementById('compareRankA');
   const compareLogoA = document.getElementById('compareLogoA');
   const compareNameA = document.getElementById('compareNameA');
@@ -3708,6 +3713,75 @@
     if (compareShareBtn) {
       compareShareBtn.onclick = () => {
         openShareRankingModal(cat, prodA);
+      };
+    }
+
+    if (compareCopyLinkBtn) {
+      compareCopyLinkBtn.onclick = async () => {
+        const showdownUrl = `${window.location.origin}/compare/${cat.slug}/${prodA.id}-vs-${prodB.id}`;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(showdownUrl);
+          } else {
+            const ta = document.createElement('textarea');
+            ta.value = showdownUrl;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          }
+          if (compareCopyLinkText) compareCopyLinkText.textContent = 'Copied!';
+          showToast('Direct comparison link copied to clipboard!');
+          setTimeout(() => {
+            if (compareCopyLinkText) compareCopyLinkText.textContent = 'Copy Link';
+          }, 2200);
+        } catch (err) {
+          showToast('Failed to copy link');
+        }
+      };
+    }
+
+    // Interactive Competitor Switcher Dropdowns
+    if (compareSelectA && compareSelectB) {
+      const renderOptions = (selectedId) => {
+        return allP
+          .map((p) => {
+            const rankLabel = p.rank ? `#${p.rank}` : 'Contender';
+            const isSelected = p.id === selectedId;
+            return `<option value="${escapeHtml(p.id)}"${isSelected ? ' selected' : ''}>${rankLabel} — ${escapeHtml(p.name)}</option>`;
+          })
+          .join('');
+      };
+
+      compareSelectA.innerHTML = renderOptions(prodA.id);
+      compareSelectB.innerHTML = renderOptions(prodB.id);
+
+      compareSelectA.onchange = (e) => {
+        const nextIdA = e.target.value;
+        if (!nextIdA) return;
+        let nextIdB = prodB.id;
+        if (nextIdA === nextIdB) {
+          const alternate = allP.find((p) => p.id !== nextIdA);
+          nextIdB = alternate ? alternate.id : prodA.id;
+        }
+        navigateToCompare(cat.slug, nextIdA, nextIdB);
+      };
+
+      compareSelectB.onchange = (e) => {
+        const nextIdB = e.target.value;
+        if (!nextIdB) return;
+        let nextIdA = prodA.id;
+        if (nextIdB === nextIdA) {
+          const alternate = allP.find((p) => p.id !== nextIdB);
+          nextIdA = alternate ? alternate.id : prodB.id;
+        }
+        navigateToCompare(cat.slug, nextIdA, nextIdB);
+      };
+    }
+
+    if (compareSwapBtn) {
+      compareSwapBtn.onclick = () => {
+        navigateToCompare(cat.slug, prodB.id, prodA.id);
       };
     }
 

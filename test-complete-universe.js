@@ -298,7 +298,9 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     consoleErrors.forEach((e, idx) => console.error(`  ${idx + 1}. ${e}`));
   }
 
-  await browser.close();
+  try {
+    await Promise.race([browser.close(), new Promise((r) => setTimeout(r, 1000))]);
+  } catch (err) {}
 
   if (passedAudits === totalAudits && consoleErrors.length === 0) {
     console.log('100% COVERAGE VERIFIED: EVERY SINGLE MODAL, TAB, AND BUTTON WORKS PERFECTLY!');

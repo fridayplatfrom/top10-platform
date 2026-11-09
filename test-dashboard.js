@@ -309,7 +309,9 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   console.log(`TOTAL HTTP 4xx/5xx ERRORS: ${httpErrors.length}`);
   console.log('================================================================\n');
 
-  await browser.close();
+  try {
+    await Promise.race([browser.close(), new Promise((r) => setTimeout(r, 1000))]);
+  } catch (err) {}
 
   if (passedTests === totalTests && consoleErrors.length === 0) {
     console.log('100% DASHBOARD SUCCESS: COMPLETE DASHBOARD IS PRODUCTION-READY!');
