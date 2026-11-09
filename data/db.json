@@ -41,6 +41,26 @@
   ],
   "transactions": [
     {
+      "id": "tx_lead_1794214663423",
+      "categorySlug": "billing-software",
+      "categoryTitle": "Top 10 Billing Software",
+      "productName": "Stripe Billing (Lead Unlock + Bid)",
+      "companyEmail": "sales@stripebilling.com",
+      "amount": 49,
+      "rankAchieved": 5,
+      "createdAt": "2026-11-09T08:57:43.423Z"
+    },
+    {
+      "id": "tx_list_1794214660170",
+      "categorySlug": "ai-video-generators-1794214660160",
+      "categoryTitle": "Top 10 AI Video Generators",
+      "productName": "Runway Gen-3 (Created List)",
+      "companyEmail": "alex@runwayml.com",
+      "amount": 99,
+      "rankAchieved": 1,
+      "createdAt": "2026-11-09T08:57:40.170Z"
+    },
+    {
       "id": "tx_lead_1794213893724",
       "categorySlug": "billing-software",
       "categoryTitle": "Top 10 Billing Software",
@@ -1017,6 +1037,42 @@
       "paymentGateway": "PayPal",
       "subscriptionId": "SUB-PP-MW90MK22",
       "timestamp": "2026-11-09T08:44:53.083Z"
+    },
+    {
+      "id": "tx_1794214660583",
+      "categorySlug": "billing-software",
+      "productName": "Paddle Billing",
+      "amount": 250,
+      "buyerEmail": "founder@paddle.com",
+      "buyerName": "Paddle Founder",
+      "type": "rank_bid",
+      "paymentGateway": "PayPal",
+      "paypalOrderId": "ORDER-PP-MW9130EC-8JW5",
+      "timestamp": "2026-11-09T08:57:40.583Z"
+    },
+    {
+      "id": "tx_1794214660921",
+      "categorySlug": "billing-software",
+      "productName": "Stripe Billing",
+      "amount": 299,
+      "buyerEmail": "finance@stripe.com",
+      "buyerName": "Stripe Billing",
+      "type": "sponsorship_retainer_paypal",
+      "paymentGateway": "PayPal",
+      "subscriptionId": "SUB-PP-MW9130OP",
+      "timestamp": "2026-11-09T08:57:40.921Z"
+    },
+    {
+      "id": "tx_renewal_1794214662190",
+      "categorySlug": "billing-software",
+      "productName": "Stripe Billing",
+      "amount": 299,
+      "buyerEmail": "founder@paddle.com",
+      "buyerName": "Verified Retainer Partner",
+      "type": "sponsorship_retainer_renewal",
+      "paymentGateway": "PayPal",
+      "subscriptionId": "SUB-PP-MW9130OP",
+      "timestamp": "2026-11-09T08:57:42.190Z"
     }
   ],
   "categories": [
@@ -1262,16 +1318,16 @@
           "logoText": "P",
           "logoBg": "#FACC15",
           "logoColor": "#111827",
-          "amountPaid": 4630,
+          "amountPaid": 4880,
           "isOrganic": false,
           "ownerEmail": "growth@paddle.com",
           "clicks": 3910,
           "upvotes": 264,
-          "updatedAt": "2026-11-09T08:44:52.823Z",
+          "updatedAt": "2026-11-09T08:57:40.582Z",
           "isClaimed": true,
           "claimed": true,
           "claimedBy": "founder@paddle.com",
-          "claimedAt": "2026-11-09T08:45:16.648Z"
+          "claimedAt": "2026-11-09T08:58:08.715Z"
         },
         {
           "id": "prod_stripe",
@@ -1284,21 +1340,21 @@
           "logoText": "S",
           "logoBg": "#635BFF",
           "logoColor": "#FFFFFF",
-          "amountPaid": 4680,
+          "amountPaid": 4930,
           "isOrganic": false,
           "ownerEmail": "founder@stripe.com",
-          "clicks": 4836,
+          "clicks": 4837,
           "upvotes": 313,
-          "updatedAt": "2026-11-09T08:44:53.341Z",
+          "updatedAt": "2026-11-09T08:57:42.837Z",
           "retainerSubscription": {
-            "id": "SUB-PP-MW90MK22",
+            "id": "SUB-PP-MW9130OP",
             "tier": "lock_rank_1",
             "tierName": "Lock #1 for 30 Days",
             "monthlyAmount": 299,
             "status": "cancelled",
             "ownerEmail": "finance@stripe.com",
-            "startedAt": "2026-11-09T08:44:52.874Z",
-            "nextBillingDate": "2026-12-09T08:44:52.874Z",
+            "startedAt": "2026-11-09T08:57:40.921Z",
+            "nextBillingDate": "2026-12-09T08:57:40.921Z",
             "paymentGateway": "PayPal"
           },
           "specs": {},
@@ -1313,7 +1369,7 @@
           "isClaimed": true,
           "claimed": true,
           "claimedBy": "ceo@stripe.com",
-          "claimedAt": "2026-11-09T08:44:53.186Z",
+          "claimedAt": "2026-11-09T08:57:42.578Z",
           "media": {
             "heroImage": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=900&auto=format&fit=crop&q=80",
             "overlayTag": "Developer Sandbox"
@@ -1497,6 +1553,53 @@
         }
       ],
       "comments": [
+        {
+          "id": "rev_1794214685338",
+          "categorySlug": "billing-software",
+          "productId": "prod_paddle",
+          "productName": "Paddle Billing",
+          "stars": 5,
+          "authorName": "Elena Rostova",
+          "authorEmail": "elena@acme-billing.com",
+          "authorRole": "Lead Systems Architect",
+          "avatarText": "E",
+          "avatarBg": "#111827",
+          "headline": "",
+          "text": "We integrated @Stripe last quarter. Seamless API and stellar uptime.",
+          "pros": [
+            "Easy Onboarding"
+          ],
+          "cons": [],
+          "likes": 0,
+          "timeAgo": "Just now",
+          "createdAt": "2026-11-09T08:58:05.338Z",
+          "status": "approved",
+          "type": "comment"
+        },
+        {
+          "id": "rev_1794214662886",
+          "categorySlug": "billing-software",
+          "productId": "prod_paddle",
+          "productName": "Paddle Billing",
+          "stars": 5,
+          "authorName": "Alex Rivers",
+          "authorEmail": "alex@cloudops.net",
+          "authorRole": "Head of Billing",
+          "avatarText": "A",
+          "avatarBg": "#111827",
+          "headline": "",
+          "text": "Paddle made our international expansion completely pain-free by handling all European VAT liability automatically.",
+          "pros": [
+            "Automated MoR tax compliance",
+            "Clean hosted checkout"
+          ],
+          "cons": [],
+          "likes": 0,
+          "timeAgo": "Just now",
+          "createdAt": "2026-11-09T08:57:42.886Z",
+          "status": "approved",
+          "type": "comment"
+        },
         {
           "id": "rev_1794213910234",
           "categorySlug": "billing-software",
@@ -6464,9 +6567,72 @@
       "paymentGateway": "PayPal",
       "lastPaymentDate": "2026-11-09T08:44:53.083Z",
       "cancelledAt": "2026-11-09T08:44:53.125Z"
+    },
+    {
+      "id": "SUB-PP-MW9130OP",
+      "tier": "lock_rank_1",
+      "categorySlug": "billing-software",
+      "categoryTitle": "Top 10 Billing Software",
+      "productId": "prod_stripe",
+      "productName": "Stripe Billing",
+      "monthlyAmount": 299,
+      "status": "cancelled",
+      "ownerEmail": "finance@stripe.com",
+      "startedAt": "2026-11-09T08:57:40.921Z",
+      "nextBillingDate": "2026-12-09T08:57:42.190Z",
+      "paymentGateway": "PayPal",
+      "lastPaymentDate": "2026-11-09T08:57:42.190Z",
+      "cancelledAt": "2026-11-09T08:57:42.359Z"
     }
   ],
   "reviews": [
+    {
+      "id": "rev_1794214685338",
+      "categorySlug": "billing-software",
+      "productId": "prod_paddle",
+      "productName": "Paddle Billing",
+      "stars": 5,
+      "authorName": "Elena Rostova",
+      "authorEmail": "elena@acme-billing.com",
+      "authorRole": "Lead Systems Architect",
+      "avatarText": "E",
+      "avatarBg": "#111827",
+      "headline": "",
+      "text": "We integrated @Stripe last quarter. Seamless API and stellar uptime.",
+      "pros": [
+        "Easy Onboarding"
+      ],
+      "cons": [],
+      "likes": 0,
+      "timeAgo": "Just now",
+      "createdAt": "2026-11-09T08:58:05.338Z",
+      "status": "approved",
+      "type": "comment"
+    },
+    {
+      "id": "rev_1794214662886",
+      "categorySlug": "billing-software",
+      "productId": "prod_paddle",
+      "productName": "Paddle Billing",
+      "stars": 5,
+      "authorName": "Alex Rivers",
+      "authorEmail": "alex@cloudops.net",
+      "authorRole": "Head of Billing",
+      "avatarText": "A",
+      "avatarBg": "#111827",
+      "headline": "",
+      "text": "Paddle made our international expansion completely pain-free by handling all European VAT liability automatically.",
+      "pros": [
+        "Automated MoR tax compliance",
+        "Clean hosted checkout"
+      ],
+      "cons": [],
+      "likes": 0,
+      "timeAgo": "Just now",
+      "createdAt": "2026-11-09T08:57:42.886Z",
+      "status": "approved",
+      "type": "comment"
+    },
     {
       "id": "rev_1794213910234",
       "categorySlug": "billing-software",
@@ -7729,9 +7895,69 @@
       "code": "379561",
       "expiresAt": 1794214815384,
       "isVerified": true
+    },
+    {
+      "id": "claim_1794214662555",
+      "categorySlug": "billing-software",
+      "productId": "prod_stripe",
+      "productName": "Stripe Billing",
+      "founderEmail": "ceo@stripe.com",
+      "code": "376909",
+      "expiresAt": 1794215562555,
+      "isVerified": true
+    },
+    {
+      "id": "claim_1794214688258",
+      "categorySlug": "billing-software",
+      "productId": "prod_paddle",
+      "productName": "Paddle Billing",
+      "founderEmail": "founder@paddle.com",
+      "code": "827232",
+      "expiresAt": 1794215588258,
+      "isVerified": true
     }
   ],
   "buyerLeads": [
+    {
+      "id": "rfp_1794214690151",
+      "categorySlug": "billing-software",
+      "categoryTitle": "Top 10 Billing Software",
+      "buyerName": "Marcus Vance",
+      "buyerEmail": "marcus@globalfintech.com",
+      "companyName": "Global FinTech Ltd",
+      "teamSize": "11–50 employees",
+      "estimatedBudget": "$500–$2,000/mo",
+      "timeline": "Within 1 month",
+      "projectRequirements": "Require multi-currency automated billing and MoR tax compliance.",
+      "selectedPlatforms": [
+        "Stripe Billing",
+        "Paddle Billing",
+        "Chargebee"
+      ],
+      "status": "new",
+      "isUnlocked": false,
+      "createdAt": "2026-11-09T08:58:10.151Z"
+    },
+    {
+      "id": "rfp_1794214663174",
+      "categorySlug": "billing-software",
+      "categoryTitle": "Top 10 Billing Software",
+      "buyerName": "Marcus Vance",
+      "buyerEmail": "marcus@nexustech.io",
+      "companyName": "Nexus Tech Global",
+      "teamSize": "51-250 employees",
+      "estimatedBudget": "$2,000-$10,000/mo",
+      "timeline": "Within 1 month",
+      "projectRequirements": "Migrating legacy recurring billing to automated Merchant of Record with SOC2 Type II compliance.",
+      "selectedPlatforms": [
+        "Stripe Billing",
+        "Paddle Billing"
+      ],
+      "status": "contacted",
+      "isUnlocked": true,
+      "createdAt": "2026-11-09T08:57:43.174Z",
+      "updatedAt": "2026-11-09T08:57:43.350Z"
+    },
     {
       "id": "rfp_1794213919888",
       "categorySlug": "billing-software",

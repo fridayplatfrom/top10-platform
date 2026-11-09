@@ -843,7 +843,7 @@
     const faviconUrl = `/api/favicon?domain=${encodeURIComponent(domain)}&text=${encodeURIComponent(fallbackLetter)}&bg=${encodeURIComponent(prod.logoBg || '#111827')}&color=${encodeURIComponent(prod.logoColor || '#FFFFFF')}`;
     return `
       <span class="prod-favicon-wrap" style="width:${size}px;height:${size}px;background:${bg};color:${color};">
-        <img src="${faviconUrl}" alt="" class="prod-favicon-img" loading="lazy" />
+        <img src="${faviconUrl}" alt="" class="prod-favicon-img" loading="eager" decoding="async" />
         <span class="prod-favicon-fallback" style="display:none;">${fallbackLetter}</span>
       </span>
     `;
@@ -1080,7 +1080,7 @@
             (p) => `
             <div class="hlc-preview-item">
               <span style="display:flex;align-items:center;gap:7px;min-width:0;">
-                ${renderBrandLogo(p, 18)}
+                ${renderBrandLogo(p, 20)}
                 <strong style="color:var(--text-main);white-space:nowrap;">${escapeHtml(p.name)}</strong>
               </span>
               <span style="color:var(--text-muted);font-size:11.5px;flex-shrink:0;">${escapeHtml(p.pricingTag)}</span>
