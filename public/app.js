@@ -38,6 +38,8 @@
   let pendingAttachments = [];
   let selectedModalRank = 1;
   let activeQuickFilter = 'all'; // 'all' | 'free' | 'api' | 'enterprise' | 'saved'
+  let activeCategorySearchQuery = '';
+  let activeCategorySort = 'rank'; // 'rank' | 'score' | 'rating' | 'reviews' | 'alpha'
   let activeAnalyticsRange = '30d'; // '7d' | '30d' | '1y'
   let currentBidMode = 'new'; // 'new' | 'existing'
 
@@ -216,6 +218,9 @@
   const openCategoryRfpBtn = document.getElementById('openCategoryRfpBtn');
   const heroCatSubtitle = document.getElementById('heroCatSubtitle');
   const listQuickFilterBar = document.getElementById('listQuickFilterBar');
+  const catInlineSearchInput = document.getElementById('catInlineSearchInput');
+  const catInlineSearchClear = document.getElementById('catInlineSearchClear');
+  const catSortSelect = document.getElementById('catSortSelect');
   const analyticsRangeTabs = document.getElementById('analyticsRangeTabs');
   const trendViewsPill = document.getElementById('trendViewsPill');
   const trendReviewsPill = document.getElementById('trendReviewsPill');
@@ -544,6 +549,12 @@
     currentCategorySlug = slug;
     currentView = 'list';
     currentTab = 'rankings';
+    activeQuickFilter = 'all';
+    activeCategorySearchQuery = '';
+    activeCategorySort = 'rank';
+    if (catInlineSearchInput) catInlineSearchInput.value = '';
+    if (catInlineSearchClear) catInlineSearchClear.classList.add('hidden');
+    if (catSortSelect) catSortSelect.value = 'rank';
     bumpCategoryViewCount(slug);
     const targetPath = `/list/${slug}`;
     if (pushHistory && window.location.pathname !== targetPath) {
@@ -1574,12 +1585,75 @@
     renderAnalyticsRange(cat);
     if (commentCountBadge) commentCountBadge.textContent = (cat.comments || []).length;
 
-    const filteredTop10 = top10.filter((p) => matchesQuickFilter(p, activeQuickFilter));
-    const displayTop10 = filteredTop10.length > 0 ? filteredTop10 : top10;
+    // Sync Category Filter & Sort Control Elements
+    if (catInlineSearchInput && catInlineSearchInput.value !== activeCategorySearchQuery) {
+      catInlineSearchInput.value = activeCategorySearchQuery;
+    }
+    if (catInlineSearchClear) {
+      catInlineSearchClear.classList.toggle('hidden', !activeCategorySearchQuery);
+    }
+    if (catSortSelect && catSortSelect.value !== activeCategorySort) {
+      catSortSelect.value = activeCategorySort;
+    }
+
+    // Filter pipeline: Quick Filter -> Inline Search
+    let displayTop10 = top10.filter((p) => matchesQuickFilter(p, activeQuickFilter));
+
+    if (activeCategorySearchQuery) {
+      const q = activeCategorySearchQuery.toLowerCase();
+      displayTop10 = displayTop10.filter((p) => {
+        const hay = `${p.name} ${p.companyName || ''} ${p.tagline || ''} ${p.pricingTag || ''} ${p.highlightTag || ''} ${p.bestFor || ''} ${(p.pros || []).join(' ')} ${(p.cons || []).join(' ')}`.toLowerCase();
+        return hay.includes(q);
+      });
+    }
+
+    // Sort pipeline
+    if (activeCategorySort === 'score') {
+      displayTop10.sort((a, b) => {
+        const scoreA = Number(a.editorialScore || (10 - ((a.rank || 1) - 1) * 0.14));
+        const scoreB = Number(b.editorialScore || (10 - ((b.rank || 1) - 1) * 0.14));
+        return scoreB - scoreA;
+      });
+    } else if (activeCategorySort === 'rating') {
+      displayTop10.sort((a, b) => {
+        const rA = Number(a.rating || (4.95 - ((a.rank || 1) - 1) * 0.05));
+        const rB = Number(b.rating || (4.95 - ((b.rank || 1) - 1) * 0.05));
+        return rB - rA;
+      });
+    } else if (activeCategorySort === 'reviews') {
+      displayTop10.sort((a, b) => {
+        const revA = Number(a.reviewsCount || (a.upvotes || 80) * 4 + (11 - (a.rank || 1)) * 40);
+        const revB = Number(b.reviewsCount || (b.upvotes || 80) * 4 + (11 - (b.rank || 1)) * 40);
+        return revB - revA;
+      });
+    } else if (activeCategorySort === 'alpha') {
+      displayTop10.sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      // default: natural rank
+      displayTop10.sort((a, b) => (a.rank || 0) - (b.rank || 0));
+    }
 
     // 1. Render Unified High-End Product Cards with Real Favicons, Rank Pedigree, Badges & Micro-Toolbar
-    top10TimelineList.innerHTML = displayTop10
-      .map((prod, idx) => {
+    if (displayTop10.length === 0) {
+      top10TimelineList.innerHTML = `
+        <div class="empty-guide-filter">
+          <p>No platforms match <strong>"${escapeHtml(activeCategorySearchQuery || activeQuickFilter)}"</strong> in this category.</p>
+          <button type="button" id="resetCatFiltersBtn">Reset Filters</button>
+        </div>
+      `;
+      const rBtn = document.getElementById('resetCatFiltersBtn');
+      if (rBtn) {
+        rBtn.addEventListener('click', () => {
+          activeQuickFilter = 'all';
+          activeCategorySearchQuery = '';
+          if (catInlineSearchInput) catInlineSearchInput.value = '';
+          if (catInlineSearchClear) catInlineSearchClear.classList.add('hidden');
+          renderSingleListPage(cat);
+        });
+      }
+    } else {
+      top10TimelineList.innerHTML = displayTop10
+        .map((prod, idx) => {
         const rankNum = prod.rank || (idx + 1);
         const rankClass = rankNum === 1 ? 'rank-1' : rankNum === 2 ? 'rank-2' : rankNum === 3 ? 'rank-3' : '';
         const editorialScore = Number(prod.editorialScore || (10 - (rankNum - 1) * 0.14)).toFixed(1);
@@ -1848,6 +1922,7 @@
         `;
       })
       .join('');
+    }
 
     // 1b. Render Additional Listed Platforms when Total Listings > 10
     if (moreListingsSection && moreListingsTimeline) {
@@ -3175,6 +3250,39 @@
     });
   }
 
+  // In-Category Live Search and Sorting Handlers
+  if (catInlineSearchInput) {
+    catInlineSearchInput.addEventListener('input', () => {
+      activeCategorySearchQuery = catInlineSearchInput.value.trim();
+      if (catInlineSearchClear) {
+        catInlineSearchClear.classList.toggle('hidden', !activeCategorySearchQuery);
+      }
+      const cat = getActiveCategory();
+      if (cat) renderSingleListPage(cat);
+    });
+  }
+
+  if (catInlineSearchClear) {
+    catInlineSearchClear.addEventListener('click', () => {
+      activeCategorySearchQuery = '';
+      if (catInlineSearchInput) {
+        catInlineSearchInput.value = '';
+        catInlineSearchInput.focus();
+      }
+      catInlineSearchClear.classList.add('hidden');
+      const cat = getActiveCategory();
+      if (cat) renderSingleListPage(cat);
+    });
+  }
+
+  if (catSortSelect) {
+    catSortSelect.addEventListener('change', () => {
+      activeCategorySort = catSortSelect.value;
+      const cat = getActiveCategory();
+      if (cat) renderSingleListPage(cat);
+    });
+  }
+
   // =========================================================================
   // MODAL 7: COMMUNITY "+ WRITE A REVIEW" WORKFLOW
   // =========================================================================
@@ -4488,6 +4596,22 @@
   // =========================================================================
   // EDITORIAL BLOG ENGINE (/blog & /blog/:slug)
   // =========================================================================
+  function getAuthorInfo(authorRaw) {
+    if (!authorRaw) {
+      return { name: 'Editorial Staff', role: 'Display & Technology Analyst', avatarBg: '#2563EB', avatarText: 'ES' };
+    }
+    if (typeof authorRaw === 'object') {
+      const name = authorRaw.name || 'Editorial Staff';
+      const role = authorRaw.role || authorRaw.bio || 'Staff Writer & Technology Analyst';
+      const avatarBg = authorRaw.avatarBg || '#2563EB';
+      const avatarText = authorRaw.avatarText || name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() || 'ES';
+      return { name, role, avatarBg, avatarText };
+    }
+    const name = String(authorRaw);
+    const avatarText = name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() || name[0] || 'A';
+    return { name, role: 'Technology Analyst', avatarBg: '#2563EB', avatarText };
+  }
+
   function renderBlogIndex() {
     if (!blogIndexSection || !appState) return;
     const articles = appState.articles || [];
@@ -4499,22 +4623,24 @@
 
     const lead = articles[0];
     if (blogFeaturedLead && lead) {
+      const leadAuthor = getAuthorInfo(lead.author);
+      const catName = lead.categoryName || lead.category || '';
       blogFeaturedLead.innerHTML = `
         <img src="${escapeHtml(lead.coverImage)}" alt="${escapeHtml(lead.title)}" class="lead-cover-img" loading="eager" />
         <div class="lead-content">
           <div class="lead-meta-row">
-            <span class="lead-category-tag">${escapeHtml(lead.categoryName)}</span>
+            <span class="lead-category-tag">${escapeHtml(catName)}</span>
             <span>•</span>
             <span>${escapeHtml(lead.readTime)}</span>
             <span>•</span>
             <span>${escapeHtml(lead.publishedDate)}</span>
           </div>
           <h2 class="lead-title">${escapeHtml(lead.title)}</h2>
-          <p class="lead-excerpt">${escapeHtml(lead.subtitle)}</p>
+          <p class="lead-excerpt">${escapeHtml(lead.subtitle || lead.excerpt || '')}</p>
           <div class="lead-author-row">
             <div class="author-chip">
-              <span class="author-chip-avatar">${escapeHtml((lead.author || 'A')[0])}</span>
-              <span>By <strong>${escapeHtml(lead.author)}</strong></span>
+              <span class="author-chip-avatar" style="background:${escapeHtml(leadAuthor.avatarBg)}">${escapeHtml(leadAuthor.avatarText)}</span>
+              <span>By <strong>${escapeHtml(leadAuthor.name)}</strong></span>
             </div>
             <span class="lead-read-link">Read Buying Guide →</span>
           </div>
@@ -4527,24 +4653,31 @@
       const rest = articles.slice(1);
       blogCardsGrid.innerHTML = rest
         .map(
-          (a) => `
+          (a) => {
+            const aAuthor = getAuthorInfo(a.author);
+            const catName = a.categoryName || a.category || '';
+            return `
         <article class="blog-card" data-blog-slug="${escapeHtml(a.slug)}">
           <img src="${escapeHtml(a.coverImage)}" alt="${escapeHtml(a.title)}" class="blog-card-thumb" loading="lazy" />
           <div class="blog-card-body">
             <div class="blog-card-meta">
-              <span class="lead-category-tag">${escapeHtml(a.categoryName)}</span>
+              <span class="lead-category-tag">${escapeHtml(catName)}</span>
               <span>•</span>
               <span>${escapeHtml(a.readTime)}</span>
             </div>
             <h3 class="blog-card-title">${escapeHtml(a.title)}</h3>
-            <p class="blog-card-excerpt">${escapeHtml(a.subtitle)}</p>
+            <p class="blog-card-excerpt">${escapeHtml(a.subtitle || a.excerpt || '')}</p>
             <div class="blog-card-footer">
-              <span>By ${escapeHtml(a.author)}</span>
+              <span style="display:inline-flex;align-items:center;gap:6px;">
+                <span class="author-chip-avatar" style="width:20px;height:20px;font-size:10px;background:${escapeHtml(aAuthor.avatarBg)}">${escapeHtml(aAuthor.avatarText)}</span>
+                <span>By ${escapeHtml(aAuthor.name)}</span>
+              </span>
               <span class="lead-read-link">Read →</span>
             </div>
           </div>
         </article>
-      `
+      `;
+          }
         )
         .join('');
 
@@ -4563,15 +4696,23 @@
     const article = articles.find((a) => a.slug === slug) || articles[0];
     if (!article) return;
 
-    if (articleBreadcrumbCat) articleBreadcrumbCat.textContent = article.categoryName;
-    if (articleMetaCategory) articleMetaCategory.textContent = article.categoryName;
+    const artAuthor = getAuthorInfo(article.author);
+    const catName = article.categoryName || article.category || '';
+
+    if (articleBreadcrumbCat) articleBreadcrumbCat.textContent = catName;
+    if (articleMetaCategory) articleMetaCategory.textContent = catName;
     if (articleMetaReadTime) articleMetaReadTime.textContent = article.readTime;
     if (articleMetaDate) articleMetaDate.textContent = article.publishedDate;
     if (articleMainTitle) articleMainTitle.textContent = article.title;
-    if (articleMainSubtitle) articleMainSubtitle.textContent = article.subtitle;
-    if (articleAuthorName) articleAuthorName.textContent = article.author;
-    if (articleAuthorBio) articleAuthorBio.textContent = article.authorBio;
-    if (articleAuthorAvatar) articleAuthorAvatar.textContent = (article.author[0] || 'A').toUpperCase();
+    if (articleMainSubtitle) articleMainSubtitle.textContent = article.subtitle || article.excerpt || '';
+    if (articleAuthorName) articleAuthorName.textContent = artAuthor.name;
+    if (articleAuthorBio) articleAuthorBio.textContent = article.authorBio || artAuthor.role;
+    if (articleAuthorAvatar) {
+      articleAuthorAvatar.textContent = artAuthor.avatarText;
+      if (artAuthor.avatarBg) {
+        articleAuthorAvatar.style.background = artAuthor.avatarBg;
+      }
+    }
 
     // Takeaways list
     if (articleTakeawaysList) {
