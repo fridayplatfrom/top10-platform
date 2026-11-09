@@ -6697,19 +6697,32 @@ html[data-theme="dark"] .takeaways-header {
   align-items: center;
   justify-content: center;
   height: 38px;
-  border-radius: 7px;
+  border-radius: 8px;
   font-family: inherit;
   font-size: 13px;
   font-weight: 650;
   text-decoration: none;
-  background: var(--text-main);
-  color: var(--bg-main);
-  transition: all 0.12s ease;
+  background: #111827;
+  color: #FFFFFF !important;
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12);
+  transition: all 0.15s ease;
 }
 
 .h2h-visit-btn:hover {
-  opacity: 0.92;
+  background: #000000;
+  color: #FFFFFF !important;
   transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(17, 24, 39, 0.2);
+}
+
+html[data-theme="dark"] .h2h-visit-btn {
+  background: #FFFFFF;
+  color: #111827 !important;
+}
+
+html[data-theme="dark"] .h2h-visit-btn:hover {
+  background: #F3F4F6;
+  color: #000000 !important;
 }
 
 .h2h-vs-center {

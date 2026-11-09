@@ -3508,15 +3508,15 @@
     const allP = [...(cat.top10 || []), ...(cat.pushedOut || [])];
     const findProd = (idOrSlug) => {
       if (!idOrSlug) return null;
-      const clean = idOrSlug.toLowerCase().replace(/[-_]/g, '');
-      const raw = idOrSlug.toLowerCase().replace(/^prod_/, '').replace(/[^a-z0-9]/g, '');
-      return allP.find(
-        (p) =>
-          p.id.toLowerCase().replace(/[-_]/g, '') === clean ||
-          p.id.toLowerCase().replace(/^prod_/, '').replace(/[^a-z0-9]/g, '') === raw ||
-          p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === clean ||
-          p.name.toLowerCase().replace(/[^a-z0-9]/g, '').includes(raw) ||
-          (raw && p.name.toLowerCase().replace(/[^a-z0-9]/g, '').includes(raw.split(/[a-z0-9]{3}/)[0]))
+      const target = String(idOrSlug).trim().toLowerCase();
+      const targetId = target.replace(/^prod_/, '');
+      return (
+        allP.find((p) => p.id.toLowerCase() === target) ||
+        allP.find((p) => p.id.toLowerCase().replace(/^prod_/, '') === targetId) ||
+        allP.find((p) => (p.name || '').toLowerCase() === target) ||
+        allP.find((p) => (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').includes(targetId.replace(/[-_]+/g, ' '))) ||
+        allP.find((p) => targetId.length >= 3 && (p.name || '').toLowerCase().includes(targetId.slice(0, 5))) ||
+        null
       );
     };
 
