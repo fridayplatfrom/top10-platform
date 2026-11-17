@@ -5831,51 +5831,58 @@ html[data-theme="dark"] .takeaways-header {
 }
 
 /* =========================================================================
-   SHAKUDO-STYLE EDITORIAL FIGURES, HEADINGS & COMPARISON MATRIX
+   SHAKUDO-STYLE EDITORIAL FIGURES, HEADINGS & COMPARISON MATRIX (MINIMALIST)
    ========================================================================= */
 
-/* Hero Cover & Product Figures */
+.article-lead {
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+/* Hero Cover & Product Figures - Clean Minimalist */
 .article-cover-figure,
 .blog-item-figure {
-  margin: 28px 0 24px;
+  margin: 18px 0 16px;
   background: var(--bg-card);
   border: 1px solid var(--border-card);
-  border-radius: 14px;
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 .article-cover-figure img,
 .blog-item-figure img {
   width: 100%;
   height: auto;
-  max-height: 440px;
+  max-height: 340px;
   object-fit: cover;
   display: block;
 }
 
 .article-cover-figure figcaption,
 .blog-item-figure figcaption {
-  font-size: 12.5px;
+  font-size: 11.5px;
   color: var(--text-muted);
-  padding: 10px 16px;
+  padding: 8px 14px;
   background: var(--bg-subtle);
   border-top: 1px solid var(--border-light);
-  line-height: 1.5;
-  font-style: italic;
+  line-height: 1.45;
+  font-style: normal;
 }
 
-/* Shakudo Numbered Headings (e.g. 1. Paddle Billing, 2. Stripe) */
+/* Minimalist Numbered Headings */
 .article-body h2 {
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  margin: 52px 0 16px;
+  font-size: 21px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  margin: 38px 0 10px;
   color: var(--text-main);
-  line-height: 1.25;
-  padding-bottom: 10px;
+  line-height: 1.3;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border-light);
-  scroll-margin-top: 88px;
+  scroll-margin-top: 84px;
 }
 
 .article-body h2 a {
@@ -5887,6 +5894,89 @@ html[data-theme="dark"] .takeaways-header {
 .article-body h2 a:hover {
   color: var(--accent-blue);
   text-decoration: underline;
+}
+
+.article-body p {
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+/* Clean Scannable Feature Bullets */
+.minimal-feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.minimal-feature-list li {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  position: relative;
+  padding-left: 18px;
+  margin: 0;
+}
+
+.minimal-feature-list li::before {
+  content: "•";
+  position: absolute;
+  left: 4px;
+  color: var(--accent-emerald, #10B981);
+  font-weight: bold;
+}
+
+.minimal-feature-list strong {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+/* Action Links for Each Ranked Platform */
+.blog-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 24px;
+}
+
+.btn-blog-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-blog-action.primary {
+  background: var(--text-main);
+  color: var(--bg-window);
+  border: 1px solid var(--text-main);
+}
+
+.btn-blog-action.primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn-blog-action.secondary {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-card);
+}
+
+.btn-blog-action.secondary:hover {
+  background: var(--bg-subtle);
+  color: var(--text-main);
+  border-color: var(--border-hover);
 }
 
 /* Spec Pills Row in Blog */
@@ -6015,50 +6105,6 @@ html[data-theme="dark"] .bipc-col.cons .bipc-title {
 
 .blog-recommendation-box strong {
   color: var(--accent-blue, #2563EB);
-}
-
-/* Action Links for Each Ranked Platform */
-.blog-item-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 16px 0 32px;
-}
-
-.btn-blog-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  border-radius: 8px;
-  font-size: 12.5px;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.btn-blog-action.primary {
-  background: var(--text-main);
-  color: var(--bg-window);
-  border: 1px solid var(--text-main);
-}
-
-.btn-blog-action.primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-.btn-blog-action.secondary {
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-card);
-}
-
-.btn-blog-action.secondary:hover {
-  background: var(--bg-subtle);
-  color: var(--text-main);
-  border-color: var(--border-hover);
 }
 
 /* Top 10 Comparison Summary Table (Shakudo Style) */
