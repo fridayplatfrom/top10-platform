@@ -141,6 +141,7 @@
   const blogTotalCountBadge = document.getElementById('blogTotalCountBadge');
   const blogArticleSection = document.getElementById('blogArticleSection');
   const articleBackToBlogBtn = document.getElementById('articleBackToBlogBtn');
+  const articleBreadcrumbBlog = document.getElementById('articleBreadcrumbBlog');
   const articleBreadcrumbCat = document.getElementById('articleBreadcrumbCat');
   const articleMetaCategory = document.getElementById('articleMetaCategory');
   const articleMetaReadTime = document.getElementById('articleMetaReadTime');
@@ -150,8 +151,14 @@
   const articleAuthorAvatar = document.getElementById('articleAuthorAvatar');
   const articleAuthorName = document.getElementById('articleAuthorName');
   const articleAuthorBio = document.getElementById('articleAuthorBio');
+  const articleCoverFigure = document.getElementById('articleCoverFigure');
+  const articleCoverImg = document.getElementById('articleCoverImg');
+  const articleCoverCaption = document.getElementById('articleCoverCaption');
   const articleTakeawaysList = document.getElementById('articleTakeawaysList');
   const articleBodyContent = document.getElementById('articleBodyContent');
+  const articleTocSidebar = document.getElementById('articleTocSidebar');
+  const articleTocList = document.getElementById('articleTocList');
+  const tocViewDirectoryBtn = document.getElementById('tocViewDirectoryBtn');
   const articleFeaturedStrip = document.getElementById('articleFeaturedStrip');
   const articleFeaturedProductsGrid = document.getElementById('articleFeaturedProductsGrid');
   const articleViewFullListBtn = document.getElementById('articleViewFullListBtn');
@@ -4407,6 +4414,7 @@
   if (navAdminBtn) navAdminBtn.addEventListener('click', () => navigateToAdmin());
   if (adminExitBtn) adminExitBtn.addEventListener('click', () => navigateToHome());
   if (articleBackToBlogBtn) articleBackToBlogBtn.addEventListener('click', () => navigateToBlog());
+  if (articleBreadcrumbBlog) articleBreadcrumbBlog.addEventListener('click', () => navigateToBlog());
 
   document.addEventListener('click', (e) => {
     categoryDropdownMenu.classList.add('hidden');
@@ -4713,6 +4721,20 @@
       }
     }
 
+    // Cover image figure (Shakudo style)
+    if (articleCoverFigure && articleCoverImg) {
+      if (article.coverImage) {
+        articleCoverImg.src = article.coverImage;
+        articleCoverImg.alt = article.title;
+        if (articleCoverCaption) {
+          articleCoverCaption.textContent = article.coverCaption || `${article.title} — Top 10 Buying Guide & Architectural Teardown`;
+        }
+        articleCoverFigure.style.display = 'block';
+      } else {
+        articleCoverFigure.style.display = 'none';
+      }
+    }
+
     // Takeaways list
     if (articleTakeawaysList) {
       articleTakeawaysList.innerHTML = (article.keyTakeaways || article.takeaways || [])
@@ -4735,6 +4757,100 @@
             .replace(/\n\n+/g, '</p><p>')
             .replace(/^(?!<[hbu]|<block)(.+)$/gim, '<p>$1</p>');
       articleBodyContent.innerHTML = html;
+    }
+
+    // Dynamic Sticky Table of Contents (Shakudo Style)
+    if (articleTocList && articleBodyContent) {
+      articleTocList.innerHTML = '';
+      const headings = articleBodyContent.querySelectorAll('h2');
+      if (headings.length > 0) {
+        if (articleTocSidebar) articleTocSidebar.style.display = 'block';
+
+        headings.forEach((h2, idx) => {
+          let headingId = h2.id;
+          if (!headingId) {
+            headingId = 'sec-' + idx + '-' + h2.textContent.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+            h2.id = headingId;
+          }
+
+          const link = document.createElement('a');
+          link.href = `#${headingId}`;
+          link.className = 'toc-link';
+          link.textContent = h2.textContent.trim();
+          link.title = h2.textContent.trim();
+
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.getElementById(headingId);
+            if (target) {
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              articleTocList.querySelectorAll('.toc-link').forEach((l) => l.classList.remove('active'));
+              link.classList.add('active');
+            }
+          });
+
+          articleTocList.appendChild(link);
+        });
+
+        // Set first link active by default
+        const firstLink = articleTocList.querySelector('.toc-link');
+        if (firstLink) firstLink.classList.add('active');
+
+        // Scroll spy observer for sticky TOC
+        if ('IntersectionObserver' in window) {
+          if (window._blogTocObserver) window._blogTocObserver.disconnect();
+          window._blogTocObserver = new IntersectionObserver(
+            (entries) => {
+              entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                  const activeId = entry.target.id;
+                  articleTocList.querySelectorAll('.toc-link').forEach((l) => {
+                    if (l.getAttribute('href') === `#${activeId}`) {
+                      l.classList.add('active');
+                    } else {
+                      l.classList.remove('active');
+                    }
+                  });
+                }
+              });
+            },
+            { rootMargin: '-10% 0px -75% 0px' }
+          );
+
+          headings.forEach((h2) => window._blogTocObserver.observe(h2));
+        }
+      } else if (articleTocSidebar) {
+        articleTocSidebar.style.display = 'none';
+      }
+    }
+
+    // Target Category Links & CTA buttons
+    const targetCat = (appState.categories || []).find((c) => c.slug === article.categorySlug);
+    if (tocViewDirectoryBtn) {
+      if (targetCat) {
+        tocViewDirectoryBtn.onclick = () => navigateToCategory(targetCat.slug);
+        tocViewDirectoryBtn.style.display = 'inline-flex';
+      } else {
+        tocViewDirectoryBtn.style.display = 'none';
+      }
+    }
+
+    // Wire any in-article category directory buttons
+    if (articleBodyContent) {
+      articleBodyContent.querySelectorAll('[data-view-dir]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const catSlug = btn.getAttribute('data-view-dir') || (targetCat && targetCat.slug);
+          if (catSlug) navigateToCategory(catSlug);
+        });
+      });
+      articleBodyContent.querySelectorAll('[data-compare-h2h]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const parts = btn.getAttribute('data-compare-h2h').split(':');
+          if (parts.length === 3) {
+            navigateToCompare(parts[0], parts[1], parts[2]);
+          }
+        });
+      });
     }
 
     // Featured Top 10 Products Strip

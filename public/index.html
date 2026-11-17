@@ -407,53 +407,88 @@
            VIEW 4: EDITORIAL ARTICLE READER (/blog/:slug)
            ===================================================================== -->
       <section id="blogArticleSection" class="blog-article-view hidden">
-        <div class="blog-container article-container">
-          <nav class="article-breadcrumbs" aria-label="Breadcrumbs">
-            <button type="button" class="breadcrumb-link" id="articleBackToBlogBtn">← All Buying Guides</button>
-            <span class="breadcrumb-sep">/</span>
-            <span class="breadcrumb-current" id="articleBreadcrumbCat">Buying Guide</span>
-          </nav>
-
-          <header class="article-header">
-            <div class="article-meta-row">
-              <span class="article-badge" id="articleMetaCategory">SaaS</span>
-              <span class="article-meta-dot">•</span>
-              <span id="articleMetaReadTime">8 min read</span>
-              <span class="article-meta-dot">•</span>
-              <span id="articleMetaDate">Updated Oct 2026</span>
-            </div>
-            <h1 class="article-title" id="articleMainTitle">Article Title</h1>
-            <p class="article-subtitle" id="articleMainSubtitle">Article Subtitle</p>
-
-            <div class="article-author-card">
-              <div class="author-avatar" id="articleAuthorAvatar">AK</div>
-              <div class="author-info">
-                <div class="author-name" id="articleAuthorName">Ankush</div>
-                <div class="author-bio" id="articleAuthorBio">Lead Hardware &amp; Software Reviewer</div>
+        <div class="article-layout-wrapper">
+          <!-- Shakudo-Style Sticky Table of Contents Sidebar -->
+          <aside class="article-toc-sidebar" id="articleTocSidebar">
+            <div class="toc-sticky-box">
+              <div class="toc-header">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+                <span>Table of Contents</span>
+              </div>
+              <nav class="toc-nav-list" id="articleTocList" aria-label="Table of Contents">
+                <!-- Dynamically populated links -->
+              </nav>
+              <div class="toc-footer-cta">
+                <button type="button" class="btn-toc-view-dir" id="tocViewDirectoryBtn">
+                  <span>⚡ View Live Directory</span>
+                </button>
               </div>
             </div>
-          </header>
+          </aside>
 
-          <!-- Key Takeaways Callout Box -->
-          <div class="article-takeaways-card">
-            <div class="takeaways-header">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2L12.5 7.5L18 8.5L14 12.5L15 18L10 15L5 18L6 12.5L2 8.5L7.5 7.5L10 2Z" fill="#10B981"/></svg>
-              <span>Key Takeaways &amp; TL;DR</span>
+          <!-- Main Article Column -->
+          <main class="article-main-content">
+            <nav class="article-breadcrumbs" aria-label="Breadcrumbs">
+              <button type="button" class="breadcrumb-link" id="articleBreadcrumbBlog">← All Buying Guides</button>
+              <button type="button" class="breadcrumb-link hidden" id="articleBackToBlogBtn">← All Buying Guides</button>
+              <span class="breadcrumb-sep">/</span>
+              <span class="breadcrumb-current" id="articleBreadcrumbCat">Buying Guide</span>
+            </nav>
+
+            <header class="article-header">
+              <div class="article-meta-row">
+                <span class="article-badge" id="articleMetaCategory">SaaS</span>
+                <span class="article-meta-dot">•</span>
+                <span id="articleMetaReadTime">8 min read</span>
+                <span class="article-meta-dot">•</span>
+                <span id="articleMetaDate">Updated Oct 2026</span>
+              </div>
+              <h1 class="article-title" id="articleMainTitle">Article Title</h1>
+              <p class="article-subtitle" id="articleMainSubtitle">Article Subtitle</p>
+
+              <div class="article-author-card">
+                <div class="author-avatar" id="articleAuthorAvatar">AK</div>
+                <div class="author-info">
+                  <div class="author-name" id="articleAuthorName">Ankush</div>
+                  <div class="author-bio" id="articleAuthorBio">Lead Hardware &amp; Software Reviewer</div>
+                </div>
+              </div>
+            </header>
+
+            <!-- Featured Cover Image Figure -->
+            <figure class="article-cover-figure" id="articleCoverFigure" style="display: none;">
+              <img id="articleCoverImg" src="" alt="" loading="eager" />
+              <figcaption id="articleCoverCaption"></figcaption>
+            </figure>
+
+            <!-- Key Takeaways Callout Box -->
+            <div class="article-takeaways-card">
+              <div class="takeaways-header">
+                <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2L12.5 7.5L18 8.5L14 12.5L15 18L10 15L5 18L6 12.5L2 8.5L7.5 7.5L10 2Z" fill="#10B981"/></svg>
+                <span>Key Takeaways &amp; Executive Summary</span>
+              </div>
+              <ul class="takeaways-list" id="articleTakeawaysList"></ul>
             </div>
-            <ul class="takeaways-list" id="articleTakeawaysList"></ul>
-          </div>
 
-          <!-- Formatted Markdown/HTML Body -->
-          <div class="article-body" id="articleBodyContent"></div>
+            <!-- Formatted Markdown/HTML Body -->
+            <div class="article-body" id="articleBodyContent"></div>
 
-          <!-- Featured Top 10 Products Strip in this Article -->
-          <div class="article-featured-strip" id="articleFeaturedStrip">
-            <div class="afs-header">
-              <h3 class="afs-title">Featured Products in this Guide</h3>
-              <button type="button" class="afs-view-list-btn" id="articleViewFullListBtn">View Full Top 10 List →</button>
+            <!-- Featured Top 10 Products Strip in this Article -->
+            <div class="article-featured-strip" id="articleFeaturedStrip">
+              <div class="afs-header">
+                <h3 class="afs-title">Featured Products in this Guide</h3>
+                <button type="button" class="afs-view-list-btn" id="articleViewFullListBtn">View Full Top 10 List →</button>
+              </div>
+              <div class="afs-products-grid" id="articleFeaturedProductsGrid"></div>
             </div>
-            <div class="afs-products-grid" id="articleFeaturedProductsGrid"></div>
-          </div>
+          </main>
         </div>
       </section>
 
