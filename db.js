@@ -1,69 +1,180 @@
 const fs = require('fs');
 const path = require('path');
-const { MongoClient } = require('mongodb');
+const mysql = require('mysql2/promise');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'db.json');
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/top10';
-const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME || 'top10';
 
-let mongoClient = null;
-let mongoDb = null;
+// Hostinger MariaDB / MySQL Configuration (Always use 127.0.0.1 on Hostinger to avoid IPv6 ::1 grant errors)
+const DB_HOST = process.env.DB_HOST || process.env.MYSQL_HOST || '127.0.0.1';
+const DB_PORT = Number(process.env.DB_PORT || process.env.MYSQL_PORT || 3306);
+const DB_USER = process.env.DB_USER || process.env.MYSQL_USER || '';
+const DB_PASSWORD = process.env.DB_PASSWORD || process.env.MYSQL_PASSWORD || '';
+const DB_NAME = process.env.DB_NAME || process.env.MYSQL_DATABASE || '';
+
+let pool = null;
 let isConnected = false;
 
-// Initialize MongoDB connection asynchronously
-async function initMongo() {
-  try {
-    mongoClient = new MongoClient(MONGODB_URI, {
-      serverSelectionTimeoutMS: 1500,
-      connectTimeoutMS: 2000
-    });
-    await mongoClient.connect();
-    mongoDb = mongoClient.db(MONGODB_DB_NAME);
-    isConnected = true;
-    console.log(`[Database] Successfully connected to MongoDB at ${MONGODB_URI}`);
+async function initMariaDb() {
+  if (!DB_USER || !DB_NAME) {
+    isConnected = false;
+    console.log('[Database] MariaDB credentials (DB_USER / DB_NAME) not set. Using persistent local data/db.json.');
+    return;
+  }
 
-    // If MongoDB collection is empty, seed initial data from db.json
-    const catCol = mongoDb.collection('categories');
-    const count = await catCol.countDocuments();
-    if (count === 0 && fs.existsSync(DB_PATH)) {
-      console.log('[Database] MongoDB is empty. Seeding initial data from data/db.json...');
+  try {
+    pool = mysql.createPool({
+      host: DB_HOST,
+      port: DB_PORT,
+      user: DB_USER,
+      password: DB_PASSWORD,
+      database: DB_NAME,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+      connectTimeout: 4000
+    });
+
+    const conn = await pool.getConnection();
+    await conn.ping();
+
+    // Create MariaDB tables for durable state persistence + relational entity indexing
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS top10_state_store (
+        state_key VARCHAR(64) PRIMARY KEY,
+        payload LONGTEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS top10_categories (
+        slug VARCHAR(160) PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        products_count INT DEFAULT 0,
+        payload LONGTEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS top10_transactions (
+        id VARCHAR(120) PRIMARY KEY,
+        category_slug VARCHAR(160),
+        amount DECIMAL(12,2) DEFAULT 0,
+        payload LONGTEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS top10_reviews (
+        id VARCHAR(120) PRIMARY KEY,
+        category_slug VARCHAR(160),
+        product_id VARCHAR(160),
+        status VARCHAR(40) DEFAULT 'pending',
+        payload LONGTEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS top10_buyer_leads (
+        id VARCHAR(120) PRIMARY KEY,
+        category_slug VARCHAR(160),
+        company_name VARCHAR(255),
+        status VARCHAR(40) DEFAULT 'new',
+        payload LONGTEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    // Hydrate from MariaDB if state already exists across deployments; otherwise seed MariaDB from data/db.json
+    const [rows] = await conn.query('SELECT payload FROM top10_state_store WHERE state_key = ?', ['full_state']);
+    if (rows && rows.length > 0 && rows[0].payload) {
+      try {
+        const remoteState = JSON.parse(rows[0].payload);
+        if (remoteState && Array.isArray(remoteState.categories) && remoteState.categories.length > 0) {
+          writeLocalDb(remoteState);
+          console.log(`[Database] Hydrated ${remoteState.categories.length} categories from Hostinger MariaDB (${DB_NAME}).`);
+        }
+      } catch (parseErr) {
+        console.warn('[Database] Could not parse stored MariaDB state, seeding from local db.json:', parseErr.message);
+      }
+    } else {
       const localData = readLocalDb();
-      if (localData.categories && localData.categories.length > 0) {
-        await catCol.insertMany(localData.categories);
-      }
-      if (localData.users && localData.users.length > 0) {
-        await mongoDb.collection('users').insertMany(localData.users);
-      }
-      if (localData.transactions && localData.transactions.length > 0) {
-        await mongoDb.collection('transactions').insertMany(localData.transactions);
-      }
-      if (localData.subscriptions && localData.subscriptions.length > 0) {
-        await mongoDb.collection('subscriptions').insertMany(localData.subscriptions);
-      }
-      if (localData.reviews && localData.reviews.length > 0) {
-        await mongoDb.collection('reviews').insertMany(localData.reviews);
-      }
-      if (localData.claims && localData.claims.length > 0) {
-        await mongoDb.collection('claims').insertMany(localData.claims);
-      }
-      if (localData.buyerLeads && localData.buyerLeads.length > 0) {
-        await mongoDb.collection('buyerLeads').insertMany(localData.buyerLeads);
-      }
-      if (localData.platformStats) {
-        await mongoDb.collection('settings').updateOne(
-          { _id: 'platformStats' },
-          { $set: localData.platformStats },
-          { upsert: true }
-        );
-      }
-      console.log('[Database] MongoDB seeded successfully.');
+      await conn.query(
+        'INSERT INTO top10_state_store (state_key, payload) VALUES (?, ?) ON DUPLICATE KEY UPDATE payload = VALUES(payload)',
+        ['full_state', JSON.stringify(localData)]
+      );
+      console.log(`[Database] Seeded Hostinger MariaDB (${DB_NAME}) with initial state from data/db.json.`);
     }
+
+    conn.release();
+    isConnected = true;
+    console.log(`[Database] Connected to Hostinger MariaDB at ${DB_HOST}:${DB_PORT}/${DB_NAME}`);
+
+    // Sync initial relational rows in background
+    syncTablesToMariaDb(readLocalDb());
   } catch (err) {
     isConnected = false;
-    mongoClient = null;
-    mongoDb = null;
-    console.log(`[Database] MongoDB offline or not reachable (${MONGODB_URI}). Seamlessly using persistent local data/db.json.`);
+    pool = null;
+    console.log(`[Database] MariaDB offline or unreachable (${err.message}). Seamlessly using persistent local data/db.json.`);
   }
+}
+
+function syncTablesToMariaDb(data) {
+  if (!isConnected || !pool || !data) return;
+  (async () => {
+    try {
+      await pool.query(
+        'INSERT INTO top10_state_store (state_key, payload) VALUES (?, ?) ON DUPLICATE KEY UPDATE payload = VALUES(payload)',
+        ['full_state', JSON.stringify(data)]
+      );
+
+      if (Array.isArray(data.categories)) {
+        for (const cat of data.categories) {
+          if (!cat || !cat.slug) continue;
+          const prodsCount = Array.isArray(cat.products) ? cat.products.length : 0;
+          await pool.query(
+            'INSERT INTO top10_categories (slug, title, products_count, payload) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE title = VALUES(title), products_count = VALUES(products_count), payload = VALUES(payload)',
+            [cat.slug, cat.title || cat.slug, prodsCount, JSON.stringify(cat)]
+          );
+        }
+      }
+
+      if (Array.isArray(data.transactions)) {
+        for (const tx of data.transactions.slice(0, 100)) {
+          if (!tx || !tx.id) continue;
+          await pool.query(
+            'INSERT INTO top10_transactions (id, category_slug, amount, payload) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE payload = VALUES(payload)',
+            [tx.id, tx.categorySlug || '', Number(tx.amount || 0), JSON.stringify(tx)]
+          );
+        }
+      }
+
+      if (Array.isArray(data.reviews)) {
+        for (const rev of data.reviews.slice(0, 100)) {
+          if (!rev || !rev.id) continue;
+          await pool.query(
+            'INSERT INTO top10_reviews (id, category_slug, product_id, status, payload) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE status = VALUES(status), payload = VALUES(payload)',
+            [rev.id, rev.categorySlug || '', rev.productId || '', rev.status || 'approved', JSON.stringify(rev)]
+          );
+        }
+      }
+
+      if (Array.isArray(data.buyerLeads)) {
+        for (const lead of data.buyerLeads.slice(0, 100)) {
+          if (!lead || !lead.id) continue;
+          await pool.query(
+            'INSERT INTO top10_buyer_leads (id, category_slug, company_name, status, payload) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE status = VALUES(status), payload = VALUES(payload)',
+            [lead.id, lead.categorySlug || '', lead.companyName || '', lead.status || 'new', JSON.stringify(lead)]
+          );
+        }
+      }
+    } catch (err) {
+      console.error('[Database] MariaDB background sync error:', err.message);
+    }
+  })();
 }
 
 function readLocalDb() {
@@ -74,6 +185,7 @@ function readLocalDb() {
         users: [],
         transactions: [],
         categories: [],
+        articles: [],
         outbidAlerts: [],
         subscriptions: [],
         reviews: [],
@@ -91,29 +203,17 @@ function readLocalDb() {
     if (!parsed.claims) parsed.claims = [];
     if (!parsed.buyerLeads) parsed.buyerLeads = [];
     if (!parsed.outbidAlerts) parsed.outbidAlerts = [];
-    if (!parsed.articles || !Array.isArray(parsed.articles) || parsed.articles.length === 0) {
-      try {
-        const { BLOG_ARTICLES } = require('./blog-data');
-        parsed.articles = JSON.parse(JSON.stringify(BLOG_ARTICLES || []));
-      } catch (e) {
-        parsed.articles = [];
-      }
-    }
+    parsed.articles = [];
     if (!parsed.platformStats) parsed.platformStats = { totalVolume: 0, activeSponsors: 0, pendingReviews: 0, minEntryBid: 49 };
     return parsed;
   } catch (err) {
     console.error('[Database] Error reading local db:', err.message);
-    let fallbackArticles = [];
-    try {
-      const { BLOG_ARTICLES } = require('./blog-data');
-      fallbackArticles = JSON.parse(JSON.stringify(BLOG_ARTICLES || []));
-    } catch (e) {}
     return {
       platformStats: { totalVolume: 0, activeSponsors: 0, pendingReviews: 0, minEntryBid: 49 },
       users: [],
       transactions: [],
       categories: [],
-      articles: fallbackArticles,
+      articles: [],
       outbidAlerts: [],
       subscriptions: [],
       reviews: [],
@@ -135,77 +235,14 @@ function writeLocalDb(data) {
   }
 }
 
-// Unified Get DB State
 function getDbState() {
   return readLocalDb();
 }
 
-// Unified Save DB State (saves to local JSON and syncs asynchronously to MongoDB if online)
 function saveDbState(data) {
   writeLocalDb(data);
-  if (isConnected && mongoDb) {
-    // Asynchronously update MongoDB without blocking request
-    (async () => {
-      try {
-        if (data.categories) {
-          const catCol = mongoDb.collection('categories');
-          for (const cat of data.categories) {
-            await catCol.updateOne({ slug: cat.slug }, { $set: cat }, { upsert: true });
-          }
-        }
-        if (data.articles) {
-          const artCol = mongoDb.collection('articles');
-          for (const art of data.articles) {
-            await artCol.updateOne({ slug: art.slug }, { $set: art }, { upsert: true });
-          }
-        }
-        if (data.transactions) {
-          const txCol = mongoDb.collection('transactions');
-          for (const tx of data.transactions) {
-            await txCol.updateOne({ id: tx.id }, { $set: tx }, { upsert: true });
-          }
-        }
-        if (data.subscriptions) {
-          const subCol = mongoDb.collection('subscriptions');
-          for (const sub of data.subscriptions) {
-            await subCol.updateOne({ id: sub.id }, { $set: sub }, { upsert: true });
-          }
-        }
-        if (data.reviews) {
-          const revCol = mongoDb.collection('reviews');
-          for (const rev of data.reviews) {
-            await revCol.updateOne({ id: rev.id }, { $set: rev }, { upsert: true });
-          }
-        }
-        if (data.claims) {
-          const claimCol = mongoDb.collection('claims');
-          for (const claim of data.claims) {
-            await claimCol.updateOne({ id: claim.id }, { $set: claim }, { upsert: true });
-          }
-        }
-        if (data.buyerLeads) {
-          const leadCol = mongoDb.collection('buyerLeads');
-          for (const lead of data.buyerLeads) {
-            await leadCol.updateOne({ id: lead.id }, { $set: lead }, { upsert: true });
-          }
-        }
-        if (data.users) {
-          const userCol = mongoDb.collection('users');
-          for (const user of data.users) {
-            await userCol.updateOne({ id: user.id }, { $set: user }, { upsert: true });
-          }
-        }
-        if (data.platformStats) {
-          await mongoDb.collection('settings').updateOne(
-            { _id: 'platformStats' },
-            { $set: data.platformStats },
-            { upsert: true }
-          );
-        }
-      } catch (e) {
-        console.error('[Database] MongoDB background sync error:', e.message);
-      }
-    })();
+  if (isConnected && pool) {
+    syncTablesToMariaDb(data);
   }
 }
 
@@ -214,27 +251,31 @@ function isMongoConnected() {
 }
 
 function getDbStatus() {
+  const local = readLocalDb();
   return {
-    storageMode: isConnected ? 'mongodb' : 'local_json',
+    storageMode: isConnected ? 'mariadb' : 'local_json',
+    engine: 'MariaDB / MySQL (mysql2)',
     isConnected,
-    uri: MONGODB_URI,
-    dbName: MONGODB_DB_NAME,
+    host: DB_HOST,
+    port: DB_PORT,
+    dbName: DB_NAME || 'local_json',
     localDbPath: DB_PATH,
     collections: {
-      categories: readLocalDb().categories.length,
-      articles: (readLocalDb().articles || []).length,
-      users: readLocalDb().users.length,
-      transactions: readLocalDb().transactions.length,
-      subscriptions: readLocalDb().subscriptions.length,
-      reviews: readLocalDb().reviews.length,
-      claims: readLocalDb().claims.length,
-      buyerLeads: readLocalDb().buyerLeads.length
+      categories: local.categories.length,
+      articles: 0,
+      users: local.users.length,
+      transactions: local.transactions.length,
+      subscriptions: local.subscriptions.length,
+      reviews: local.reviews.length,
+      claims: local.claims.length,
+      buyerLeads: local.buyerLeads.length
     }
   };
 }
 
 module.exports = {
-  initMongo,
+  initMongo: initMariaDb,
+  initMariaDb,
   getDbState,
   saveDbState,
   isMongoConnected,
