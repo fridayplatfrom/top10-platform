@@ -191,29 +191,46 @@
       <main id="singleListPageView" class="workspace-container hidden">
 
         <article itemscope itemtype="https://schema.org/Article">
-          <!-- MINIMALIST HERO HEADER (Focused Title + Inline Category Icon + 1-Click Share) -->
-          <header class="entity-header">
-            <div class="entity-title-block">
-              <div class="entity-title-row">
-                <div class="entity-title-left">
-                  <div class="entity-logo-squircle" id="heroCatIcon"></div>
-                  <h1 class="entity-title" id="heroCatTitle" itemprop="headline">Top 10 Billing Software</h1>
+          <!-- EDITORIAL FEATURE HERO CARD (Title, Description, Author & Rounded Feature Image) -->
+          <header class="entity-header editorial-hero-card">
+            <div class="ehc-left">
+              <div class="ehc-top-row">
+                <div class="ehc-guide-pill">
+                  <span class="ehc-guide-icon" id="heroCatIcon"></span>
+                  <span class="ehc-guide-label" id="heroCatPillLabel">Top 10 Guide</span>
                 </div>
-                <div class="entity-title-actions">
-                  <button type="button" class="btn-share-icon-only" id="openShareModalBtn" title="Share rankings on X / LinkedIn" aria-label="Share rankings">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="18" cy="5" r="3"/>
-                      <circle cx="6" cy="12" r="3"/>
-                      <circle cx="18" cy="19" r="3"/>
-                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                    </svg>
-                  </button>
-                  <button type="button" class="hidden-accessible" id="openCategoryRfpBtn" aria-hidden="true"></button>
-                  <button type="button" class="hidden-accessible" id="copyListUrlBtn" aria-hidden="true"><span id="copyListUrlLabel">Copy Link</span></button>
+                <button type="button" class="btn-share-icon-only ehc-circle-btn" id="openShareModalBtn" title="Share rankings on X / LinkedIn" aria-label="Share rankings">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="18" cy="5" r="3"/>
+                    <circle cx="6" cy="12" r="3"/>
+                    <circle cx="18" cy="19" r="3"/>
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                  </svg>
+                </button>
+                <button type="button" class="hidden-accessible" id="openCategoryRfpBtn" aria-hidden="true"></button>
+                <button type="button" class="hidden-accessible" id="copyListUrlBtn" aria-hidden="true"><span id="copyListUrlLabel">Copy Link</span></button>
+              </div>
+
+              <div class="ehc-body">
+                <p class="entity-subtitle ehc-date" id="heroCatSubtitle">18 Oct 2026</p>
+                <h1 class="entity-title ehc-title" id="heroCatTitle" itemprop="headline">Top 10 Billing Software</h1>
+                <p class="ehc-desc" id="heroCatDesc">Compare the leading platforms with our step-by-step guide, key advantages, and independent benchmark testing to find your ideal match.</p>
+              </div>
+
+              <div class="ehc-author-row">
+                <img id="heroCatAuthorAvatar" class="ehc-author-avatar" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80" alt="Bill Roberts" />
+                <div class="ehc-author-meta">
+                  <span class="ehc-author-name" id="heroCatAuthorName">Bill Roberts</span>
+                  <span class="ehc-author-role" id="heroCatAuthorRole">Founder</span>
                 </div>
               </div>
-              <p class="entity-subtitle" id="heroCatSubtitle">Updated Oct 2026</p>
+            </div>
+
+            <div class="ehc-right">
+              <div class="ehc-feature-media">
+                <img id="heroCatFeatureImg" class="ehc-feature-img" src="https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1200&q=80" alt="Featured Guide Cover" loading="eager" />
+              </div>
             </div>
 
             <!-- Focused Inline Search & Sort Bar (Hidden for minimalist view) -->
@@ -488,6 +505,14 @@
               </div>
               <div class="afs-products-grid" id="articleFeaturedProductsGrid"></div>
             </div>
+
+            <!-- Related Buying Guides (3-Column Feature Cards) -->
+            <section class="related-directories-section" id="articleRelatedSection" style="margin-top: 36px;">
+              <div class="related-dirs-header">
+                <h2 class="section-heading">Related Buying Guides</h2>
+              </div>
+              <div class="related-dirs-grid" id="articleRelatedGrid"></div>
+            </section>
           </main>
         </div>
       </section>

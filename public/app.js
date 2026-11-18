@@ -1489,7 +1489,172 @@
     }
   }
 
-  // Helper: Render 3 Related Top 10 Directories at Page Bottom
+  // Curated Editorial Feature Images, Dates, Headlines & Author Attribution per Category
+  const DEFAULT_FOUNDER_AVATAR = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80';
+  const CATEGORY_FEATURE_META = {
+    'audiobook-apps': {
+      coverImage: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1200&q=80',
+      dateText: '18 Oct 2026',
+      editorialTitle: 'Our Guide to the Top 10 Audiobook Apps for Every Listener',
+      description: 'Learn how to choose the best audiobook app with our step-by-step guide, catalog comparisons, monthly credit value, and offline listening tips.',
+      authorName: 'Bill Roberts',
+      authorRole: 'Founder',
+      authorAvatar: DEFAULT_FOUNDER_AVATAR
+    },
+    'devops-observability-engines': {
+      coverImage: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
+      dateText: '15 Oct 2026',
+      editorialTitle: 'We Breakdown the Top 10 DevOps Observability & APM Engines',
+      description: 'Compare distributed tracing, OpenTelemetry ingestion, and real-time incident alerting with expert advice to scale your production reliability.',
+      authorName: 'Bill Roberts',
+      authorRole: 'Founder',
+      authorAvatar: DEFAULT_FOUNDER_AVATAR
+    },
+    'billing-software': {
+      coverImage: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1200&q=80',
+      dateText: '12 Oct 2026',
+      editorialTitle: 'How to Choose the Best SaaS Billing & Subscription Platform',
+      description: 'Learn how to automate global VAT compliance, usage-based metering, and recurring revenue orchestration with our complete 2026 breakdown.',
+      authorName: 'Bill Roberts',
+      authorRole: 'Founder',
+      authorAvatar: DEFAULT_FOUNDER_AVATAR
+    },
+    'studio-speakers': {
+      coverImage: 'https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=1200&q=80',
+      dateText: '10 Oct 2026',
+      editorialTitle: 'Top 10 Studio Reference Monitors: A Step-by-Step Buying Guide',
+      description: 'Discover the most accurate nearfield studio monitors, DSP room calibration systems, and acoustic strategies for mixing and mastering.',
+      authorName: 'Bill Roberts',
+      authorRole: 'Founder',
+      authorAvatar: DEFAULT_FOUNDER_AVATAR
+    },
+    'ai-coding-tools': {
+      coverImage: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
+      dateText: '08 Oct 2026',
+      editorialTitle: 'What Are the Best AI Coding Assistants? Everything You Need to Know',
+      description: 'Explore how multi-file codebase indexing, autonomous refactoring agents, and inline autocomplete accelerate engineering teams.',
+      authorName: 'Bill Roberts',
+      authorRole: 'Founder',
+      authorAvatar: DEFAULT_FOUNDER_AVATAR
+    },
+    'crm-platforms': {
+      coverImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+      dateText: '05 Oct 2026',
+      editorialTitle: 'Our Complete Guide to the Top 10 CRM & Revenue Platforms',
+      description: 'Compare pipeline automation, AI contact enrichment, and multi-channel outbound sequences to help your revenue team close faster.',
+      authorName: 'Bill Roberts',
+      authorRole: 'Founder',
+      authorAvatar: DEFAULT_FOUNDER_AVATAR
+    },
+    'cloud-hosting': {
+      coverImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
+      dateText: '02 Oct 2026',
+      editorialTitle: 'How to Pick the Right Cloud Hosting & Edge Compute Provider',
+      description: 'We evaluate global deployment speed, managed Kubernetes clusters, and predictable bandwidth pricing for modern web applications.',
+      authorName: 'Bill Roberts',
+      authorRole: 'Founder',
+      authorAvatar: DEFAULT_FOUNDER_AVATAR
+    },
+    'project-management': {
+      coverImage: 'https://images.unsplash.com/photo-1507925921958-8a62f3d1a50d?auto=format&fit=crop&w=1200&q=80',
+      dateText: '28 Sep 2026',
+      editorialTitle: 'Top 10 Project Management Tools for High-Velocity Product Teams',
+      description: 'Streamline sprint planning, issue tracking, and cross-functional roadmaps with our hands-on review of the best workspace platforms.',
+      authorName: 'Bill Roberts',
+      authorRole: 'Founder',
+      authorAvatar: DEFAULT_FOUNDER_AVATAR
+    },
+    'email-marketing': {
+      coverImage: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1200&q=80',
+      dateText: '24 Sep 2026',
+      editorialTitle: 'How to Scale Lifecycle Email Marketing: Top 10 Platforms Compared',
+      description: 'Boost inbox deliverability and subscriber conversion rates with behavioral segmentation, transactional APIs, and visual automation.',
+      authorName: 'Bill Roberts',
+      authorRole: 'Founder',
+      authorAvatar: DEFAULT_FOUNDER_AVATAR
+    },
+    'ai-video-generators': {
+      coverImage: 'https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&w=1200&q=80',
+      dateText: '20 Sep 2026',
+      editorialTitle: 'We Breakdown the Top 10 AI Video Generators & Motion Models',
+      description: 'Compare cinematic realism, temporal consistency, camera motion control, and commercial licensing across leading generative video tools.',
+      authorName: 'Bill Roberts',
+      authorRole: 'Founder',
+      authorAvatar: DEFAULT_FOUNDER_AVATAR
+    },
+    'ovens': {
+      coverImage: 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=1200&q=80',
+      dateText: '16 Sep 2026',
+      editorialTitle: 'Our Guide to the Top 10 Smart Ovens & Convection Ranges',
+      description: 'From countertop precision ovens to commercial-style induction ranges, discover our tested picks for even baking and smart temperature probes.',
+      authorName: 'Bill Roberts',
+      authorRole: 'Founder',
+      authorAvatar: DEFAULT_FOUNDER_AVATAR
+    },
+    'smart-tvs': {
+      coverImage: 'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&w=1200&q=80',
+      dateText: '13 Sep 2026',
+      editorialTitle: 'Top 10 Smart TVs: OLED, QD-OLED & Mini-LED Display Breakdown',
+      description: 'We tested peak HDR brightness, black-level uniformity, 144Hz gaming input lag, and anti-reflective coatings across flagship displays.',
+      authorName: 'Bill Roberts',
+      authorRole: 'Founder',
+      authorAvatar: DEFAULT_FOUNDER_AVATAR
+    },
+    'phone-covers': {
+      coverImage: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?auto=format&fit=crop&w=1200&q=80',
+      dateText: '10 Sep 2026',
+      editorialTitle: 'How to Protect Your Phone: Top 10 Drop-Tested Cases & Covers',
+      description: 'Compare aramid fiber, full-grain leather, and military-grade shockproof MagSafe cases designed to protect without adding bulk.',
+      authorName: 'Bill Roberts',
+      authorRole: 'Founder',
+      authorAvatar: DEFAULT_FOUNDER_AVATAR
+    },
+    'gambling-platforms': {
+      coverImage: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=1200&q=80',
+      dateText: '06 Sep 2026',
+      editorialTitle: 'Top 10 Regulated Sportsbooks & Gaming Apps: Complete Breakdown',
+      description: 'Compare licensed sportsbooks across live in-play odds, instant withdrawal speeds, parlay builders, and mobile app reliability.',
+      authorName: 'Bill Roberts',
+      authorRole: 'Founder',
+      authorAvatar: DEFAULT_FOUNDER_AVATAR
+    },
+    'mobile-games': {
+      coverImage: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80',
+      dateText: '02 Sep 2026',
+      editorialTitle: 'Top 10 Mobile Games: Here Is Everything You Need to Play in 2026',
+      description: 'Explore the best iOS and Android games featuring 120fps console-grade graphics, controller support, and fair competitive progression.',
+      authorName: 'Bill Roberts',
+      authorRole: 'Founder',
+      authorAvatar: DEFAULT_FOUNDER_AVATAR
+    }
+  };
+
+  function getCategoryFeatureMeta(c) {
+    if (!c) {
+      return {
+        coverImage: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1200&q=80',
+        dateText: '15 Oct 2026',
+        editorialTitle: 'Top 10 Buying Guide',
+        description: 'Compare the highest-rated platforms with our step-by-step guide, key pros and cons, and independent reviews.',
+        authorName: 'Bill Roberts',
+        authorRole: 'Founder',
+        authorAvatar: DEFAULT_FOUNDER_AVATAR
+      };
+    }
+    const preset = CATEGORY_FEATURE_META[c.slug];
+    const firstProdImg = c.top10 && c.top10[0] && c.top10[0].media && c.top10[0].media.heroImage;
+    return {
+      coverImage: (preset && preset.coverImage) || c.coverImage || firstProdImg || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+      dateText: (preset && preset.dateText) || (c.editorialGuide && c.editorialGuide.lastUpdatedDate) || '15 Oct 2026',
+      editorialTitle: (preset && preset.editorialTitle) || c.title,
+      description: (preset && preset.description) || (c.editorialGuide && c.editorialGuide.intro) || c.description || `Learn how to pick the best option in ${c.title} with our step-by-step comparison, pros & cons, and expert advice.`,
+      authorName: (preset && preset.authorName) || 'Bill Roberts',
+      authorRole: (preset && preset.authorRole) || 'Founder',
+      authorAvatar: (preset && preset.authorAvatar) || DEFAULT_FOUNDER_AVATAR
+    };
+  }
+
+  // Helper: Render 3 Related Top 10 Directories at Page Bottom (Editorial Feature Card Style)
   function renderRelatedDirectories(cat) {
     if (!relatedDirectoriesGrid || !appState || !appState.categories) return;
     const allCats = appState.categories || [];
@@ -1500,18 +1665,26 @@
 
     relatedDirectoriesGrid.innerHTML = others
       .map((c) => {
-        const top2 = (c.top10 || []).slice(0, 2);
-        const top2Names = top2.map((p) => escapeHtml(p.name)).join(' · ');
+        const meta = getCategoryFeatureMeta(c);
         return `
-          <article class="related-dir-card" data-open-rel-cat="${escapeHtml(c.slug)}">
-            <div class="rdc-top">
-              <span class="entity-logo-lg" style="width:28px;height:28px;border-radius:7px;background:${escapeHtml(c.iconBg)};color:${escapeHtml(c.iconColor)};">
-                ${renderCategorySvgIcon(c, 14)}
-              </span>
-              <span class="rdc-views">${escapeHtml(formatBumpedViews(c.metrics?.monthlyViews, c.slug))} views</span>
+          <article class="related-dir-card editorial-feature-card" data-open-rel-cat="${escapeHtml(c.slug)}">
+            <div class="rdc-top-content">
+              <div class="rdc-media-wrap">
+                <img src="${escapeHtml(meta.coverImage)}" alt="${escapeHtml(c.title)}" class="rdc-feature-img" loading="eager" />
+              </div>
+              <div class="rdc-body">
+                <div class="rdc-date">${escapeHtml(meta.dateText)}</div>
+                <h3 class="rdc-title">${escapeHtml(meta.editorialTitle)}</h3>
+                <p class="rdc-desc">${escapeHtml(meta.description)}</p>
+              </div>
             </div>
-            <h3 class="rdc-title">${escapeHtml(c.title)}</h3>
-            <div class="rdc-sub">${top2Names}</div>
+            <div class="rdc-author-row">
+              <img src="${escapeHtml(meta.authorAvatar)}" alt="${escapeHtml(meta.authorName)}" class="rdc-author-avatar" loading="lazy" />
+              <div class="rdc-author-meta">
+                <span class="rdc-author-name">${escapeHtml(meta.authorName)}</span>
+                <span class="rdc-author-role">${escapeHtml(meta.authorRole)}</span>
+              </div>
+            </div>
           </article>
         `;
       })
@@ -1535,17 +1708,41 @@
     const pushedOut = cat.pushedOut || [];
     const allCatProds = [...top10, ...pushedOut];
     const totalListings = cat.totalListingsCount || allCatProds.length;
+    const heroMeta = getCategoryFeatureMeta(cat);
 
     if (breadcrumbCurrentTitle) breadcrumbCurrentTitle.textContent = cat.title;
     if (heroCatIcon) {
-      heroCatIcon.innerHTML = renderCategorySvgIcon(cat, 18);
-      heroCatIcon.style.background = cat.iconBg || '#B8FF01';
-      heroCatIcon.style.color = cat.iconColor || '#111827';
+      heroCatIcon.innerHTML = renderCategorySvgIcon(cat, 13);
+      heroCatIcon.style.background = 'transparent';
+      heroCatIcon.style.color = 'currentColor';
+    }
+    const heroCatPillLabel = document.getElementById('heroCatPillLabel');
+    if (heroCatPillLabel) {
+      heroCatPillLabel.textContent = cat.shortName || 'Top 10 Guide';
     }
     if (heroUpdatedAgo) heroUpdatedAgo.textContent = `Updated ${guide.lastUpdatedDate || 'Oct 2026'}`;
     if (heroPaidBadge) heroPaidBadge.textContent = `${totalListings} Listed`;
     if (heroCatTitle) heroCatTitle.textContent = cat.title;
-    if (heroCatSubtitle) heroCatSubtitle.textContent = `Updated ${guide.lastUpdatedDate || 'Oct 2026'} · ${allCatProds.length} Platforms Ranked`;
+    if (heroCatSubtitle) heroCatSubtitle.textContent = `${heroMeta.dateText} · ${allCatProds.length} Platforms Ranked`;
+
+    const heroCatDesc = document.getElementById('heroCatDesc');
+    if (heroCatDesc) heroCatDesc.textContent = heroMeta.description;
+
+    const heroCatFeatureImg = document.getElementById('heroCatFeatureImg');
+    if (heroCatFeatureImg) {
+      heroCatFeatureImg.src = heroMeta.coverImage;
+      heroCatFeatureImg.alt = cat.title;
+    }
+
+    const heroCatAuthorAvatar = document.getElementById('heroCatAuthorAvatar');
+    if (heroCatAuthorAvatar) {
+      heroCatAuthorAvatar.src = heroMeta.authorAvatar;
+      heroCatAuthorAvatar.alt = heroMeta.authorName;
+    }
+    const heroCatAuthorName = document.getElementById('heroCatAuthorName');
+    if (heroCatAuthorName) heroCatAuthorName.textContent = heroMeta.authorName;
+    const heroCatAuthorRole = document.getElementById('heroCatAuthorRole');
+    if (heroCatAuthorRole) heroCatAuthorRole.textContent = heroMeta.authorRole;
 
     // Count saved platforms in this category
     const savedInCatCount = allCatProds.filter((p) => savedProductIds.has(p.id)).length;
@@ -4595,25 +4792,34 @@
     const lead = articles[0];
     if (blogFeaturedLead && lead) {
       const leadAuthor = getAuthorInfo(lead.author);
-      const catName = lead.categoryName || lead.category || '';
+      const catName = lead.categoryName || lead.category || 'Blog';
+      blogFeaturedLead.className = 'blog-lead-card editorial-hero-card';
       blogFeaturedLead.innerHTML = `
-        <img src="${escapeHtml(lead.coverImage)}" alt="${escapeHtml(lead.title)}" class="lead-cover-img" loading="eager" />
-        <div class="lead-content">
-          <div class="lead-meta-row">
-            <span class="lead-category-tag">${escapeHtml(catName)}</span>
-            <span>•</span>
-            <span>${escapeHtml(lead.readTime)}</span>
-            <span>•</span>
-            <span>${escapeHtml(lead.publishedDate)}</span>
-          </div>
-          <h2 class="lead-title">${escapeHtml(lead.title)}</h2>
-          <p class="lead-excerpt">${escapeHtml(lead.subtitle || lead.excerpt || '')}</p>
-          <div class="lead-author-row">
-            <div class="author-chip">
-              <span class="author-chip-avatar" style="background:${escapeHtml(leadAuthor.avatarBg)}">${escapeHtml(leadAuthor.avatarText)}</span>
-              <span>By <strong>${escapeHtml(leadAuthor.name)}</strong></span>
+        <div class="ehc-left">
+          <div class="ehc-top-row">
+            <div class="ehc-guide-pill">
+              <span class="ehc-guide-label">○ ${escapeHtml(catName)}</span>
             </div>
-            <span class="lead-read-link">Read Buying Guide →</span>
+            <span class="ehc-circle-btn" aria-hidden="true">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </span>
+          </div>
+          <div class="ehc-body">
+            <p class="ehc-date">${escapeHtml(lead.publishedDate || '13 Sept 2026')}</p>
+            <h2 class="ehc-title">${escapeHtml(lead.title)}</h2>
+            <p class="ehc-desc">${escapeHtml(lead.subtitle || lead.excerpt || '')}</p>
+          </div>
+          <div class="ehc-author-row">
+            <img src="${escapeHtml(DEFAULT_FOUNDER_AVATAR)}" alt="${escapeHtml(leadAuthor.name)}" class="ehc-author-avatar" loading="lazy" />
+            <div class="ehc-author-meta">
+              <span class="ehc-author-name">${escapeHtml(leadAuthor.name)}</span>
+              <span class="ehc-author-role">Founder</span>
+            </div>
+          </div>
+        </div>
+        <div class="ehc-right">
+          <div class="ehc-feature-media">
+            <img src="${escapeHtml(lead.coverImage)}" alt="${escapeHtml(lead.title)}" class="ehc-feature-img" loading="eager" />
           </div>
         </div>
       `;
@@ -4626,24 +4832,23 @@
         .map(
           (a) => {
             const aAuthor = getAuthorInfo(a.author);
-            const catName = a.categoryName || a.category || '';
             return `
-        <article class="blog-card" data-blog-slug="${escapeHtml(a.slug)}">
-          <img src="${escapeHtml(a.coverImage)}" alt="${escapeHtml(a.title)}" class="blog-card-thumb" loading="lazy" />
-          <div class="blog-card-body">
-            <div class="blog-card-meta">
-              <span class="lead-category-tag">${escapeHtml(catName)}</span>
-              <span>•</span>
-              <span>${escapeHtml(a.readTime)}</span>
+        <article class="blog-card related-dir-card editorial-feature-card" data-blog-slug="${escapeHtml(a.slug)}">
+          <div class="rdc-top-content">
+            <div class="rdc-media-wrap">
+              <img src="${escapeHtml(a.coverImage)}" alt="${escapeHtml(a.title)}" class="rdc-feature-img" loading="eager" />
             </div>
-            <h3 class="blog-card-title">${escapeHtml(a.title)}</h3>
-            <p class="blog-card-excerpt">${escapeHtml(a.subtitle || a.excerpt || '')}</p>
-            <div class="blog-card-footer">
-              <span style="display:inline-flex;align-items:center;gap:6px;">
-                <span class="author-chip-avatar" style="width:20px;height:20px;font-size:10px;background:${escapeHtml(aAuthor.avatarBg)}">${escapeHtml(aAuthor.avatarText)}</span>
-                <span>By ${escapeHtml(aAuthor.name)}</span>
-              </span>
-              <span class="lead-read-link">Read →</span>
+            <div class="rdc-body">
+              <div class="rdc-date">${escapeHtml(a.publishedDate || '15 Sept 2026')}</div>
+              <h3 class="rdc-title">${escapeHtml(a.title)}</h3>
+              <p class="rdc-desc">${escapeHtml(a.subtitle || a.excerpt || '')}</p>
+            </div>
+          </div>
+          <div class="rdc-author-row">
+            <img src="${escapeHtml(DEFAULT_FOUNDER_AVATAR)}" alt="${escapeHtml(aAuthor.name)}" class="rdc-author-avatar" loading="lazy" />
+            <div class="rdc-author-meta">
+              <span class="rdc-author-name">${escapeHtml(aAuthor.name)}</span>
+              <span class="rdc-author-role">Founder</span>
             </div>
           </div>
         </article>
@@ -4847,6 +5052,46 @@
       } else {
         articleFeaturedStrip.classList.add('hidden');
       }
+    }
+
+    // Populate Related Buying Guides at bottom of Blog Article
+    const articleRelatedGrid = document.getElementById('articleRelatedGrid');
+    if (articleRelatedGrid) {
+      const relatedArticles = articles.filter((a) => a.slug !== article.slug).slice(0, 3);
+      articleRelatedGrid.innerHTML = relatedArticles
+        .map((a) => {
+          const aAuthor = getAuthorInfo(a.author);
+          return `
+            <article class="related-dir-card editorial-feature-card" data-rel-article-slug="${escapeHtml(a.slug)}">
+              <div class="rdc-top-content">
+                <div class="rdc-media-wrap">
+                  <img src="${escapeHtml(a.coverImage)}" alt="${escapeHtml(a.title)}" class="rdc-feature-img" loading="eager" />
+                </div>
+                <div class="rdc-body">
+                  <div class="rdc-date">${escapeHtml(a.publishedDate || '15 Sept 2026')}</div>
+                  <h3 class="rdc-title">${escapeHtml(a.title)}</h3>
+                  <p class="rdc-desc">${escapeHtml(a.subtitle || a.excerpt || '')}</p>
+                </div>
+              </div>
+              <div class="rdc-author-row">
+                <img src="${escapeHtml(DEFAULT_FOUNDER_AVATAR)}" alt="${escapeHtml(aAuthor.name)}" class="rdc-author-avatar" loading="lazy" />
+                <div class="rdc-author-meta">
+                  <span class="rdc-author-name">${escapeHtml(aAuthor.name)}</span>
+                  <span class="rdc-author-role">Founder</span>
+                </div>
+              </div>
+            </article>
+          `;
+        })
+        .join('');
+
+      articleRelatedGrid.querySelectorAll('[data-rel-article-slug]').forEach((card) => {
+        card.addEventListener('click', () => {
+          const s = card.getAttribute('data-rel-article-slug');
+          navigateToArticle(s);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      });
     }
   }
 

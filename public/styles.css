@@ -9555,4 +9555,325 @@ html[data-theme="dark"] .minimal-unified-card.card-rank-1 {
   border-radius: 8px !important;
 }
 
+/* ============================================================================
+   EDITORIAL HERO CARD (2-COLUMN WITH FEATURE IMAGE) & 3-COLUMN RELATED CARDS
+   Matches User Reference Screenshot (Rounded White Card, Left Meta/Title/Author,
+   Right Feature Image & 3-Column Bottom Cards with Feature Image + Author Row)
+   ============================================================================ */
+
+.editorial-hero-card {
+  display: grid !important;
+  grid-template-columns: 1.05fr 1fr !important;
+  gap: 28px !important;
+  align-items: stretch !important;
+  background: #FFFFFF !important;
+  border: 1px solid #E5E7EB !important;
+  border-radius: 22px !important;
+  padding: 24px 26px !important;
+  margin-bottom: 22px !important;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03) !important;
+}
+
+.editorial-hero-card .ehc-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.editorial-hero-card .ehc-top-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.editorial-hero-card .ehc-guide-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid #E2E8F0;
+  background: #F8FAFC;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  line-height: 1;
+}
+
+.editorial-hero-card .ehc-guide-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: #475569;
+}
+
+.editorial-hero-card .ehc-circle-btn {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 50% !important;
+  border: 1px solid #E2E8F0 !important;
+  background: #F8FAFC !important;
+  color: #475569 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.editorial-hero-card .ehc-circle-btn:hover {
+  background: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+.editorial-hero-card .ehc-body {
+  margin-bottom: 20px;
+}
+
+.editorial-hero-card .ehc-date {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #64748B !important;
+  margin: 0 0 8px 0 !important;
+}
+
+.editorial-hero-card .ehc-title {
+  font-size: 27px !important;
+  font-weight: 700 !important;
+  line-height: 1.22 !important;
+  letter-spacing: -0.025em !important;
+  color: #0F172A !important;
+  margin: 0 0 12px 0 !important;
+}
+
+.editorial-hero-card .ehc-desc {
+  font-size: 13.5px !important;
+  line-height: 1.58 !important;
+  color: #64748B !important;
+  margin: 0 !important;
+}
+
+.editorial-hero-card .ehc-author-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+.editorial-hero-card .ehc-author-avatar,
+.editorial-feature-card .rdc-author-avatar {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  flex-shrink: 0;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.editorial-hero-card .ehc-author-meta,
+.editorial-feature-card .rdc-author-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.editorial-hero-card .ehc-author-name,
+.editorial-feature-card .rdc-author-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.editorial-hero-card .ehc-author-role,
+.editorial-feature-card .rdc-author-role {
+  font-size: 11px;
+  color: #64748B;
+}
+
+.editorial-hero-card .ehc-right {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.editorial-hero-card .ehc-feature-media {
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+  max-height: 295px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #F1F5F9;
+}
+
+.editorial-hero-card .ehc-feature-img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.editorial-hero-card:hover .ehc-feature-img {
+  transform: scale(1.02);
+}
+
+/* 3-Column Related & Blog Feature Cards */
+.related-dirs-grid,
+.blog-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 18px !important;
+}
+
+.editorial-feature-card {
+  background: #FFFFFF !important;
+  border: 1px solid #E5E7EB !important;
+  border-radius: 20px !important;
+  padding: 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s ease, border-color 0.18s ease !important;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03) !important;
+}
+
+.editorial-feature-card:hover {
+  transform: translateY(-3px) !important;
+  border-color: #CBD5E1 !important;
+  box-shadow: 0 12px 24px -6px rgba(15, 23, 42, 0.08) !important;
+}
+
+.editorial-feature-card .rdc-top-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.editorial-feature-card .rdc-media-wrap {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #F1F5F9;
+  margin-bottom: 14px;
+}
+
+.editorial-feature-card .rdc-feature-img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.editorial-feature-card:hover .rdc-feature-img {
+  transform: scale(1.03);
+}
+
+.editorial-feature-card .rdc-body {
+  padding: 0 4px;
+}
+
+.editorial-feature-card .rdc-date {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #64748B;
+  margin-bottom: 6px;
+}
+
+.editorial-feature-card .rdc-title {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  line-height: 1.34 !important;
+  letter-spacing: -0.015em !important;
+  color: #0F172A !important;
+  margin: 0 0 8px 0 !important;
+}
+
+.editorial-feature-card .rdc-desc {
+  font-size: 13px !important;
+  line-height: 1.52 !important;
+  color: #64748B !important;
+  margin: 0 0 16px 0 !important;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.editorial-feature-card .rdc-author-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 4px 2px;
+  margin-top: auto;
+}
+
+/* Dark Theme Support for Editorial Hero & Feature Cards */
+html[data-theme="dark"] .editorial-hero-card,
+html[data-theme="dark"] .editorial-feature-card {
+  background: #111827 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-theme="dark"] .editorial-hero-card .ehc-title,
+html[data-theme="dark"] .editorial-feature-card .rdc-title,
+html[data-theme="dark"] .editorial-hero-card .ehc-author-name,
+html[data-theme="dark"] .editorial-feature-card .rdc-author-name {
+  color: #F9FAFB !important;
+}
+
+html[data-theme="dark"] .editorial-hero-card .ehc-desc,
+html[data-theme="dark"] .editorial-feature-card .rdc-desc,
+html[data-theme="dark"] .editorial-hero-card .ehc-date,
+html[data-theme="dark"] .editorial-feature-card .rdc-date,
+html[data-theme="dark"] .editorial-hero-card .ehc-author-role,
+html[data-theme="dark"] .editorial-feature-card .rdc-author-role {
+  color: #9CA3AF !important;
+}
+
+html[data-theme="dark"] .editorial-hero-card .ehc-guide-pill,
+html[data-theme="dark"] .editorial-hero-card .ehc-circle-btn {
+  background: #1F2937 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #E5E7EB !important;
+}
+
+/* Responsive Breakpoints for Editorial Hero & Related Grid */
+@media (max-width: 900px) {
+  .editorial-hero-card {
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+    padding: 18px !important;
+  }
+  .editorial-hero-card .ehc-title {
+    font-size: 22px !important;
+  }
+  .editorial-hero-card .ehc-feature-media {
+    min-height: 190px;
+    max-height: 230px;
+  }
+  .related-dirs-grid,
+  .blog-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .related-dirs-grid,
+  .blog-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+
 
