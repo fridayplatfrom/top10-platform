@@ -9726,9 +9726,18 @@ html[data-theme="dark"] .minimal-unified-card.card-rank-1 {
   transform: scale(1.02);
 }
 
-/* 3-Column Related & Blog Feature Cards */
+/* 3-Column Related, Blog & Homepage Feature Cards */
+.home-container {
+  max-width: 1060px !important;
+}
+
+.home-hero {
+  margin-bottom: 24px !important;
+}
+
 .related-dirs-grid,
-.blog-grid {
+.blog-grid,
+.home-lists-grid {
   display: grid !important;
   grid-template-columns: repeat(3, 1fr) !important;
   gap: 18px !important;
@@ -9863,14 +9872,16 @@ html[data-theme="dark"] .editorial-hero-card .ehc-circle-btn {
     max-height: 230px;
   }
   .related-dirs-grid,
-  .blog-grid {
+  .blog-grid,
+  .home-lists-grid {
     grid-template-columns: repeat(2, 1fr) !important;
   }
 }
 
 @media (max-width: 640px) {
   .related-dirs-grid,
-  .blog-grid {
+  .blog-grid,
+  .home-lists-grid {
     grid-template-columns: 1fr !important;
   }
 }

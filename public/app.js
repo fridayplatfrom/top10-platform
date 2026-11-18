@@ -1094,41 +1094,81 @@
 
     const displayList = matchedCats.length > 0 ? matchedCats : allCats;
 
-    homeListsGrid.innerHTML = displayList
-      .map((c) => {
-        const top3 = (c.top10 || []).slice(0, 3);
-
-        const top3Html = top3
-          .map(
-            (p) => `
-            <div class="hlc-preview-item">
-              <span style="display:flex;align-items:center;gap:7px;min-width:0;">
-                ${renderBrandLogo(p, 20)}
-                <strong style="color:var(--text-main);white-space:nowrap;">${escapeHtml(p.name)}</strong>
-              </span>
-              <span style="color:var(--text-muted);font-size:11.5px;flex-shrink:0;">${escapeHtml(p.pricingTag)}</span>
-            </div>
-          `
-          )
-          .join('');
-
-        return `
-          <article class="home-list-card" data-open-list="${escapeHtml(c.slug)}" data-cat-card-slug="${escapeHtml(c.slug)}">
-            <div class="hlc-header">
-              <div class="hlc-title-row">
-                <span class="entity-logo-lg" style="width:32px;height:32px;background:${escapeHtml(c.iconBg)};color:${escapeHtml(c.iconColor)};">
-                  ${renderCategorySvgIcon(c, 16)}
-                </span>
-                <div>
-                  <h3 class="hlc-title">${escapeHtml(c.title)}</h3>
-                  <div class="hlc-meta">${escapeHtml(formatBumpedViews(c.metrics?.monthlyViews, c.slug))} views</div>
+    // Render Top Featured 2-Column Hero Card on Homepage
+    const homeFeaturedHeroCard = document.getElementById('homeFeaturedHeroCard');
+    if (homeFeaturedHeroCard) {
+      if (rawQuery) {
+        homeFeaturedHeroCard.classList.add('hidden');
+        homeFeaturedHeroCard.style.display = 'none';
+      } else {
+        const leadCat = allCats.find((c) => c.slug === 'audiobook-apps') || allCats[0];
+        if (leadCat) {
+          const leadMeta = getCategoryFeatureMeta(leadCat);
+          homeFeaturedHeroCard.classList.remove('hidden');
+          homeFeaturedHeroCard.style.display = '';
+          homeFeaturedHeroCard.innerHTML = `
+            <div class="ehc-left">
+              <div class="ehc-top-row">
+                <div class="ehc-guide-pill">
+                  <span class="ehc-guide-label">○ Top 10</span>
+                </div>
+                <button type="button" class="ehc-circle-btn" id="homeHeroFocusSearchBtn" title="Search guides" aria-label="Search guides">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </button>
+              </div>
+              <div class="ehc-body">
+                <p class="ehc-date">${escapeHtml(leadMeta.dateText)}</p>
+                <h2 class="ehc-title">${escapeHtml(leadMeta.editorialTitle)}</h2>
+                <p class="ehc-desc">${escapeHtml(leadMeta.description)}</p>
+              </div>
+              <div class="ehc-author-row">
+                <img src="${escapeHtml(leadMeta.authorAvatar)}" alt="${escapeHtml(leadMeta.authorName)}" class="ehc-author-avatar" loading="eager" />
+                <div class="ehc-author-meta">
+                  <span class="ehc-author-name">${escapeHtml(leadMeta.authorName)}</span>
+                  <span class="ehc-author-role">${escapeHtml(leadMeta.authorRole)}</span>
                 </div>
               </div>
-              <span class="hlc-open-link">Open →</span>
             </div>
+            <div class="ehc-right">
+              <div class="ehc-feature-media">
+                <img src="${escapeHtml(leadMeta.coverImage)}" alt="${escapeHtml(leadCat.title)}" class="ehc-feature-img" loading="eager" />
+              </div>
+            </div>
+          `;
+          homeFeaturedHeroCard.onclick = (e) => {
+            if (e.target.closest('#homeHeroFocusSearchBtn')) {
+              e.stopPropagation();
+              if (homeBigSearchInput) homeBigSearchInput.focus();
+              return;
+            }
+            activeQuickFilter = 'all';
+            navigateToCategory(leadCat.slug);
+          };
+        }
+      }
+    }
 
-            <div class="hlc-top3-preview">
-              ${top3Html}
+    homeListsGrid.innerHTML = displayList
+      .map((c) => {
+        const meta = getCategoryFeatureMeta(c);
+        return `
+          <article class="home-list-card related-dir-card editorial-feature-card" data-open-list="${escapeHtml(c.slug)}" data-cat-card-slug="${escapeHtml(c.slug)}">
+            <div class="rdc-top-content">
+              <div class="rdc-media-wrap">
+                <img src="${escapeHtml(meta.coverImage)}" alt="${escapeHtml(c.title)}" class="rdc-feature-img" loading="eager" />
+              </div>
+              <div class="rdc-body">
+                <div class="rdc-date">${escapeHtml(meta.dateText)}</div>
+                <h3 class="rdc-title">${escapeHtml(meta.editorialTitle)}</h3>
+                <p class="rdc-desc">${escapeHtml(meta.description)}</p>
+              </div>
+            </div>
+            <div class="rdc-author-row">
+              <img src="${escapeHtml(meta.authorAvatar)}" alt="${escapeHtml(meta.authorName)}" class="rdc-author-avatar" loading="eager" />
+              <div class="rdc-author-meta">
+                <span class="rdc-author-name">${escapeHtml(meta.authorName)}</span>
+                <span class="rdc-author-role">${escapeHtml(meta.authorRole)}</span>
+              </div>
             </div>
           </article>
         `;
@@ -1574,7 +1614,7 @@
       authorAvatar: DEFAULT_FOUNDER_AVATAR
     },
     'ai-video-generators': {
-      coverImage: 'https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&w=1200&q=80',
+      coverImage: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?auto=format&fit=crop&w=1200&q=80',
       dateText: '20 Sep 2026',
       editorialTitle: 'We Breakdown the Top 10 AI Video Generators & Motion Models',
       description: 'Compare cinematic realism, temporal consistency, camera motion control, and commercial licensing across leading generative video tools.',
