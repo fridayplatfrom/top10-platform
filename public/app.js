@@ -2140,28 +2140,10 @@
                 </div>
               ` : ''}
 
-              <!-- Clean Description -->
+              <!-- Clean Description Only -->
               <p class="minimal-card-desc" itemprop="description">
                 ${escapeHtml(prod.editorialSummary || prod.tagline)}
               </p>
-
-              <!-- Clean 2-Column Pros & Cons with Full Bullets -->
-              <div class="minimal-pros-cons">
-                <div class="pc-column pc-pros">
-                  <div class="pc-column-label">
-                    <span class="pc-dot green"></span>
-                    <span>KEY ADVANTAGES</span>
-                  </div>
-                  <ul class="pc-list">${prosHtml}</ul>
-                </div>
-                <div class="pc-column pc-cons">
-                  <div class="pc-column-label">
-                    <span class="pc-dot amber"></span>
-                    <span>TRADE-OFFS &amp; LIMITS</span>
-                  </div>
-                  <ul class="pc-list">${consHtml}</ul>
-                </div>
-              </div>
             </div>
           </section>
         `;
