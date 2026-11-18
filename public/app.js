@@ -1754,17 +1754,10 @@
                           Verified
                         </span>
                       ` : ''}
-
-                      <div class="prod-rating-badge" title="Editorial Score: ${editorialScore}/10 · Based on ${reviewsCount} verified user ratings">
-                        <span class="rating-star">★</span>
-                        <span class="rating-val">${rating}</span>
-                        <span class="rating-count">(${reviewsFormatted})</span>
-                      </div>
                     </div>
 
                     <div class="prod-sub-row">
                       <span class="prod-company-muted">by <span itemprop="brand">${escapeHtml(prod.companyName)}</span></span>
-                      ${bestForText ? `<span class="prod-award-chip" title="${escapeHtml(bestForText)}">${escapeHtml(bestForText)}</span>` : ''}
                     </div>
                   </div>
                 </div>
@@ -1788,7 +1781,7 @@
                   <div class="card-toolbar-actions">
                     <button
                       type="button"
-                      class="btn-compare-vs"
+                      class="btn-compare-vs hidden-accessible"
                       data-compare-vs="${escapeHtml(prod.id)}"
                       title="Compare ${escapeHtml(prod.name)} head-to-head"
                       aria-label="Compare head-to-head"
@@ -1893,19 +1886,6 @@
               <p class="minimal-card-desc" itemprop="description">
                 ${escapeHtml(prod.editorialSummary || prod.tagline)}
               </p>
-
-              <!-- 1-Line Minimalist Meta Pills with Monochrome SVG Icons -->
-              <div class="minimal-meta-row">
-                <span class="minimal-meta-pill price-pill" title="Starting Price">${SVG_ICON_PRICE} <strong>${escapeHtml(specs.startingPrice || prod.pricingTag)}</strong></span>
-                <span class="minimal-meta-pill trial-pill" title="Free Trial & Sandbox">${SVG_ICON_TRIAL} <span>${escapeHtml(specs.freeTrial || 'Free trial available')}</span></span>
-                <span class="minimal-meta-pill audience-pill" title="Ideal Audience">${SVG_ICON_USERS} <span>${escapeHtml(specs.idealFor || 'Modern Teams')}</span></span>
-                ${specs.deployment ? `
-                  <span class="minimal-meta-pill deploy-pill" title="Deployment Model">
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6"/><path d="M8 2a9 9 0 000 12M2 8a9 9 0 0012 0"/></svg>
-                    <span>${escapeHtml(specs.deployment)}</span>
-                  </span>
-                ` : ''}
-              </div>
 
               <!-- Clean 2-Column Pros & Cons with Full Bullets -->
               <div class="minimal-pros-cons">

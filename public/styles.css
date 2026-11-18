@@ -9500,3 +9500,12 @@ html[data-theme="dark"] .empty-guide-filter button {
     width: 100% !important;
   }
 }
+
+/* User-Requested Minimalist Product Card (Remove Rating, Award Chip, Meta Row, and VS button) */
+.prod-rating-badge,
+.prod-award-chip,
+.minimal-meta-row,
+.btn-compare-vs {
+  display: none !important;
+}
+

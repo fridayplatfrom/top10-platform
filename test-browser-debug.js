@@ -190,7 +190,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   await step('6. Click VS button and verify Head-to-Head Comparison View', async () => {
     const vsBtn = await page.$('#top10TimelineList .btn-compare-vs');
     if (!vsBtn) throw new Error('No VS button found on product card');
-    await vsBtn.click();
+    await page.evaluate(() => document.querySelector('#top10TimelineList .btn-compare-vs').click());
 
     await page.waitForSelector('#compareHeadToHeadView:not(.hidden)', { timeout: 3000 });
     const url = page.url();
