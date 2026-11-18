@@ -92,7 +92,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
     const badgeBtn = await page.$('#top10TimelineList .btn-embed-badge');
     if (!badgeBtn) throw new Error('.btn-embed-badge not found on product card');
-    await badgeBtn.click();
+    await page.evaluate(() => document.querySelector('#top10TimelineList .btn-embed-badge').click());
     await page.waitForSelector('#badgeModalBackdrop:not(.hidden)', { timeout: 2000 });
 
     const badgeImgSrc = await page.$eval('#badgePreviewImg', (el) => el.src);

@@ -169,7 +169,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     // Find an unclaimed product's Claim button
     const claimBtn = await page.$('#top10TimelineList .btn-claim-link');
     if (!claimBtn) throw new Error('No unclaimed platform found in list');
-    await claimBtn.click();
+    await page.evaluate(() => document.querySelector('#top10TimelineList .btn-claim-link').click());
 
     await page.waitForSelector('#claimListingModalBackdrop:not(.hidden)', { timeout: 2000 });
 

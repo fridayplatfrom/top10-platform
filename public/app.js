@@ -1710,22 +1710,6 @@
         return `
           <section class="clean-product-item card-product-node" itemscope itemprop="itemListElement" itemtype="https://schema.org/Product">
             <div class="product-card-box minimal-unified-card ${rankClass ? 'card-' + rankClass : ''} ${prod.claimed ? 'is-claimed' : ''}" id="prod-card-${escapeHtml(prod.id)}">
-              
-              ${rankNum === 1 ? `
-                <div class="card-champion-ribbon">
-                  <div class="ccr-left">
-                    <span class="ccr-star">★</span>
-                    <span class="ccr-title">TOP CHOICE 2026</span>
-                    <span class="ccr-sep">·</span>
-                    <span class="ccr-category">Rank #1 in ${escapeHtml(cat.title || 'Category')}</span>
-                  </div>
-                  <div class="ccr-right">
-                    <span class="ccr-score-label">Editorial Score:</span>
-                    <span class="ccr-score-val">${editorialScore} / 10</span>
-                  </div>
-                </div>
-              ` : ''}
-
               <!-- Unified Header Row inside Card Box -->
               <div class="minimal-card-header">
                 <div class="product-header-left">
@@ -1762,22 +1746,8 @@
                   </div>
                 </div>
 
-                <!-- Right Action Block: Primary Visit CTA + Micro-Toolbar -->
+                <!-- Right Action Block: Single-Line Minimalist Toolbar (Share, Bookmark, Visit) -->
                 <div class="product-header-actions">
-                  <a
-                    href="${escapeHtml(prod.website)}"
-                    target="_blank"
-                    rel="noopener"
-                    class="btn-reader-visit"
-                    data-click-prod="${escapeHtml(prod.id)}"
-                    title="Visit official website"
-                  >
-                    <span>Visit</span>
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M4 12L12 4M12 4H6M12 4V10"/>
-                    </svg>
-                  </a>
-
                   <div class="card-toolbar-actions">
                     <button
                       type="button"
@@ -1792,7 +1762,7 @@
                     ${prod.claimed ? `
                       <button
                         type="button"
-                        class="btn-manage-listing"
+                        class="btn-manage-listing hidden-accessible"
                         data-manage-prod="${escapeHtml(prod.id)}"
                         title="Manage ${escapeHtml(prod.name)} in Founder Portal"
                         aria-label="Manage listing"
@@ -1802,7 +1772,7 @@
                     ` : `
                       <button
                         type="button"
-                        class="btn-claim-link"
+                        class="btn-claim-link hidden-accessible"
                         data-claim-prod="${escapeHtml(prod.id)}"
                         title="Claim ${escapeHtml(prod.name)} as official founder"
                         aria-label="Claim listing"
@@ -1813,7 +1783,7 @@
 
                     <button
                       type="button"
-                      class="btn-boost-pill"
+                      class="btn-boost-pill hidden-accessible"
                       data-boost-existing="${escapeHtml(prod.id)}"
                       title="Boost ${escapeHtml(prod.name)} to #1"
                       aria-label="Boost platform"
@@ -1839,7 +1809,7 @@
 
                     <button
                       type="button"
-                      class="btn-embed-badge icon-btn"
+                      class="btn-embed-badge icon-btn hidden-accessible"
                       data-badge-prod="${escapeHtml(prod.id)}"
                       title="Get 'Featured on Top 10' embed badge for ${escapeHtml(prod.name)}"
                       aria-label="Embed badge"
@@ -1858,6 +1828,20 @@
                       ${SVG_ICON_BOOKMARK}
                     </button>
                   </div>
+
+                  <a
+                    href="${escapeHtml(prod.website)}"
+                    target="_blank"
+                    rel="noopener"
+                    class="btn-reader-visit"
+                    data-click-prod="${escapeHtml(prod.id)}"
+                    title="Visit official website"
+                  >
+                    <span>Visit</span>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M4 12L12 4M12 4H6M12 4V10"/>
+                    </svg>
+                  </a>
                 </div>
               </div>
 

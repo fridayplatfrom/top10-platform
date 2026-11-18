@@ -9501,11 +9501,58 @@ html[data-theme="dark"] .empty-guide-filter button {
   }
 }
 
-/* User-Requested Minimalist Product Card (Remove Rating, Award Chip, Meta Row, and VS button) */
+/* User-Requested Minimalist Product Card & Header Cleanup */
 .prod-rating-badge,
 .prod-award-chip,
 .minimal-meta-row,
-.btn-compare-vs {
+.btn-compare-vs,
+.btn-claim-link,
+.btn-manage-listing,
+.btn-boost-pill,
+.btn-embed-badge,
+.card-champion-ribbon,
+.list-controls-bar {
   display: none !important;
 }
+
+.entity-header {
+  margin-bottom: 18px !important;
+}
+
+.entity-title-block {
+  margin-bottom: 0 !important;
+}
+
+.minimal-unified-card.card-rank-1 {
+  border-color: #E5E7EB;
+  background: #FFFFFF;
+}
+
+html[data-theme="dark"] .minimal-unified-card.card-rank-1 {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: #111827;
+}
+
+.product-header-actions {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 6px !important;
+  flex-shrink: 0;
+}
+
+.card-toolbar-actions {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.card-toolbar-actions .icon-btn,
+.card-toolbar-actions .icon-btn.btn-share-ranking {
+  height: 32px !important;
+  width: 32px !important;
+  border-radius: 8px !important;
+}
+
 
