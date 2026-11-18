@@ -1176,7 +1176,8 @@
           homeFeaturedHeroCard.onclick = (e) => {
             if (e.target.closest('#homeHeroFocusSearchBtn')) {
               e.stopPropagation();
-              if (homeBigSearchInput) homeBigSearchInput.focus();
+              const topSearch = document.getElementById('topbarSearchInput');
+              if (topSearch) topSearch.focus();
               return;
             }
             activeQuickFilter = 'all';
@@ -1580,7 +1581,7 @@
       authorAvatar: DEFAULT_FOUNDER_AVATAR
     },
     'devops-observability-engines': {
-      coverImage: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
+      coverImage: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80',
       dateText: '15 Oct 2026',
       editorialTitle: 'We Breakdown the Top 10 DevOps Observability & APM Engines',
       description: 'Compare distributed tracing, OpenTelemetry ingestion, and real-time incident alerting with expert advice to scale your production reliability.',
@@ -1598,7 +1599,7 @@
       authorAvatar: DEFAULT_FOUNDER_AVATAR
     },
     'studio-speakers': {
-      coverImage: 'https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=1200&q=80',
+      coverImage: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1200&q=80',
       dateText: '10 Oct 2026',
       editorialTitle: 'Top 10 Studio Reference Monitors: A Step-by-Step Buying Guide',
       description: 'Discover the most accurate nearfield studio monitors, DSP room calibration systems, and acoustic strategies for mixing and mastering.',
@@ -1661,7 +1662,7 @@
       authorAvatar: DEFAULT_FOUNDER_AVATAR
     },
     'ovens': {
-      coverImage: 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=1200&q=80',
+      coverImage: 'https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=1200&q=80',
       dateText: '16 Sep 2026',
       editorialTitle: 'Our Guide to the Top 10 Smart Ovens & Convection Ranges',
       description: 'From countertop precision ovens to commercial-style induction ranges, discover our tested picks for even baking and smart temperature probes.',
@@ -1670,7 +1671,7 @@
       authorAvatar: DEFAULT_FOUNDER_AVATAR
     },
     'smart-tvs': {
-      coverImage: 'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&w=1200&q=80',
+      coverImage: 'https://images.unsplash.com/photo-1461151304267-38535e780c79?auto=format&fit=crop&w=1200&q=80',
       dateText: '13 Sep 2026',
       editorialTitle: 'Top 10 Smart TVs: OLED, QD-OLED & Mini-LED Display Breakdown',
       description: 'We tested peak HDR brightness, black-level uniformity, 144Hz gaming input lag, and anti-reflective coatings across flagship displays.',
@@ -1679,7 +1680,7 @@
       authorAvatar: DEFAULT_FOUNDER_AVATAR
     },
     'phone-covers': {
-      coverImage: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?auto=format&fit=crop&w=1200&q=80',
+      coverImage: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1200&q=80',
       dateText: '10 Sep 2026',
       editorialTitle: 'How to Protect Your Phone: Top 10 Drop-Tested Cases & Covers',
       description: 'Compare aramid fiber, full-grain leather, and military-grade shockproof MagSafe cases designed to protect without adding bulk.',
@@ -1688,7 +1689,7 @@
       authorAvatar: DEFAULT_FOUNDER_AVATAR
     },
     'gambling-platforms': {
-      coverImage: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=1200&q=80',
+      coverImage: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1200&q=80',
       dateText: '06 Sep 2026',
       editorialTitle: 'Top 10 Regulated Sportsbooks & Gaming Apps: Complete Breakdown',
       description: 'Compare licensed sportsbooks across live in-play odds, instant withdrawal speeds, parlay builders, and mobile app reliability.',
@@ -1697,7 +1698,7 @@
       authorAvatar: DEFAULT_FOUNDER_AVATAR
     },
     'mobile-games': {
-      coverImage: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80',
+      coverImage: 'https://images.unsplash.com/photo-1552820728-8b83bb6b773f?auto=format&fit=crop&w=1200&q=80',
       dateText: '02 Sep 2026',
       editorialTitle: 'Top 10 Mobile Games: Here Is Everything You Need to Play in 2026',
       description: 'Explore the best iOS and Android games featuring 120fps console-grade graphics, controller support, and fair competitive progression.',

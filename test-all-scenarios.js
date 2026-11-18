@@ -104,7 +104,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     // Open Write Review modal
     const openReviewBtn = await page.$('#openWriteReviewModalBtn');
     if (!openReviewBtn) throw new Error('#openWriteReviewModalBtn not found');
-    await openReviewBtn.click();
+    await page.evaluate(() => document.getElementById('openWriteReviewModalBtn').click());
     await page.waitForSelector('#writeReviewModalBackdrop:not(.hidden)', { timeout: 2000 });
 
     // Fill form safely clearing prefilled auth user data

@@ -105,18 +105,18 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   });
 
   // --------------------------------------------------------------------------
-  // TEST STEP 2: HOMEPAGE SEARCH & LIVE DROPDOWN
+  // TEST STEP 2: TOPBAR SEARCH & LIVE DROPDOWN
   // --------------------------------------------------------------------------
-  await step('2. Type in Homepage search bar and verify live results', async () => {
-    await page.type('#homeBigSearchInput', 'billing');
-    await page.waitForSelector('#homeLiveSearchDropdown:not(.hidden)', { timeout: 3000 });
+  await step('2. Type in Topbar search bar and verify live results', async () => {
+    await page.type('#topbarSearchInput', 'billing');
+    await page.waitForSelector('#topbarLiveSearchDropdown:not(.hidden)', { timeout: 3000 });
 
-    const resultsCount = await page.$$eval('#homeLiveSearchDropdown .lsd-item', (items) => items.length);
+    const resultsCount = await page.$$eval('#topbarLiveSearchDropdown .lsd-item', (items) => items.length);
     if (resultsCount === 0) throw new Error('Live search returned 0 items for "billing"');
 
     // Clear search
-    await page.click('#clearBigSearchBtn');
-    const isHidden = await page.$eval('#homeLiveSearchDropdown', (el) => el.classList.contains('hidden'));
+    await page.click('#topbarSearchClearBtn');
+    const isHidden = await page.$eval('#topbarLiveSearchDropdown', (el) => el.classList.contains('hidden'));
     if (!isHidden) throw new Error('Live search dropdown should close after clearing search');
   });
 

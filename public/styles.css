@@ -9979,9 +9979,12 @@ html[data-theme="dark"] .home-topic-pill.active {
   color: #0F172A;
 }
 
-/* 4. Remove Pros & Cons Section (Keep Clean Paragraph Only) & Hide Photo Overlay Pill */
+/* 4. Remove Pros & Cons Section (Keep Clean Paragraph Only), Hide Photo Overlay Pill, Hide Homepage Top Hero & Hide FAQ/Reviews */
 .media-spec-chip,
-.minimal-pros-cons {
+.minimal-pros-cons,
+.home-hero,
+.faq-seo-section,
+#tabPanelContext {
   display: none !important;
 }
 
