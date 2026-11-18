@@ -472,22 +472,19 @@ async function req(path, options = {}) {
   });
 
   // --------------------------------------------------------------------------
-  // FLOW 11: EDITORIAL BLOG & BUYING GUIDES
+  // FLOW 11: UNIFIED EDITORIAL DIRECTORIES (Blogs removed & redirected to /)
   // --------------------------------------------------------------------------
-  await test('Flow 11a: Blog index endpoint returns article list', async () => {
+  await test('Flow 11a: Blog index endpoint returns empty list after blog removal', async () => {
     const res = await req('/api/blog');
     assert.strictEqual(res.status, 200);
-    assert(Array.isArray(res.data) && res.data.length > 0);
+    assert(Array.isArray(res.data) && res.data.length === 0);
   });
 
-  await test('Flow 11b: Blog single article endpoint returns markdown content and metadata', async () => {
-    const listRes = await req('/api/blog');
-    const firstSlug = listRes.data[0].slug;
-    const res = await req(`/api/blog/${firstSlug}`);
+  await test('Flow 11b: Category list page includes server-rendered editorial SEO metadata', async () => {
+    const res = await req('/list/audiobook-apps');
     assert.strictEqual(res.status, 200);
-    assert.strictEqual(res.data.slug, firstSlug);
-    assert(res.data.content && res.data.content.length > 100);
-    assert(Array.isArray(res.data.keyTakeaways));
+    assert(res.data.includes('Top 10 Audiobook Apps'));
+    assert(res.data.includes('application/ld+json'));
   });
 
   // --------------------------------------------------------------------------

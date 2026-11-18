@@ -152,9 +152,7 @@ function readDb() {
   if (!parsed.subscriptions) parsed.subscriptions = [];
   if (!parsed.reviews) parsed.reviews = [];
   if (!parsed.claims) parsed.claims = [];
-  if (!parsed.articles || !Array.isArray(parsed.articles) || parsed.articles.length === 0) {
-    parsed.articles = JSON.parse(JSON.stringify(BLOG_ARTICLES || []));
-  }
+  parsed.articles = [];
   return parsed;
 }
 
@@ -1749,7 +1747,7 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>\n  <url><loc>${base}/blog</loc><changefreq>daily</changefreq><priority>0.9</priority></url>\n  <url><loc>${base}/llms.txt</loc><changefreq>daily</changefreq><priority>0.8</priority></url>\n${catUrls}\n${blogUrls}\n${compareUrls.join('\n')}\n</urlset>`;
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>\n  <url><loc>${base}/llms.txt</loc><changefreq>daily</changefreq><priority>0.8</priority></url>\n${catUrls}\n${compareUrls.join('\n')}\n</urlset>`;
       res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8' });
       return res.end(xml);
     }
@@ -3043,15 +3041,9 @@ ${items}
       pageTitle = `${activeCat.title} (2026) — Comparison Table, Pros & Cons, Reviews`;
       pageDesc = `${activeCat.editorialGuide?.intro || activeCat.subtitle || activeCat.tagline || ''} Compare #1 ${activeCat.top10[0]?.name || ''} vs top alternatives.`;
       canonicalUrl = `${base}/list/${activeCat.slug}`;
-    } else if (blogArticleMatch) {
-      const artSlug = blogArticleMatch[1];
-      activeArticle = articles.find((a) => a.slug === artSlug);
-      if (!activeArticle) {
-        return render404(res, req, base, `The editorial buying guide "${escapeXml(artSlug)}" could not be found.`);
-      }
-      pageTitle = `${activeArticle.title} — Top 10 Editorial Guide`;
-      pageDesc = activeArticle.subtitle || pageDesc;
-      canonicalUrl = `${base}/blog/${activeArticle.slug}`;
+    } else if (blogArticleMatch || isBlogIndex) {
+      res.writeHead(302, { Location: '/' });
+      return res.end();
     } else if (compareMatch) {
       const [, cSlug, idA, idB] = compareMatch;
       activeCat = categories.find((c) => c.slug === cSlug);

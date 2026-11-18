@@ -251,28 +251,19 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   });
 
   // --------------------------------------------------------------------------
-  // SCENARIO 5: Direct URL Hydration for Blog Article (/blog/:slug)
+  // SCENARIO 5: Direct URL Hydration for Editorial List Guide & Feature Image Hero
   // --------------------------------------------------------------------------
-  await scenario('Direct URL Hydration for Editorial Guide & Breadcrumb Navigation', async () => {
-    await page.goto(`${BASE_URL}/blog/stripe-vs-paddle-vs-orb`, { waitUntil: 'networkidle2' });
+  await scenario('Direct URL Hydration for Editorial List Guide & Feature Hero Card', async () => {
+    await page.goto(`${BASE_URL}/list/audiobook-apps`, { waitUntil: 'networkidle2' });
 
-    const isArticleVisible = await page.$eval('#blogArticleSection', (el) => !el.classList.contains('hidden'));
-    if (!isArticleVisible) throw new Error('Blog article view is not visible on direct URL load');
+    const isListVisible = await page.$eval('#singleListPageView', (el) => !el.classList.contains('hidden'));
+    if (!isListVisible) throw new Error('Single list view is not visible on direct URL load');
 
-    const title = await page.$eval('#articleMainTitle', (el) => el.textContent.trim());
-    if (!title || !title.toLowerCase().includes('stripe')) throw new Error(`Unexpected article title: "${title}"`);
+    const title = await page.$eval('#heroCatTitle', (el) => el.textContent.trim());
+    if (!title || !title.toLowerCase().includes('audiobook')) throw new Error(`Unexpected list title: "${title}"`);
 
-    const takeawaysCount = await page.$$eval('#articleTakeawaysList li', (lis) => lis.length);
-    if (takeawaysCount === 0) throw new Error('Article key takeaways list is empty');
-
-    // Click breadcrumb back to Editorial Guides
-    const breadcrumbLink = await page.$('#articleBreadcrumbBlog');
-    if (breadcrumbLink) {
-      await breadcrumbLink.click();
-      await sleep(200);
-      const isBlogIndex = await page.$eval('#blogIndexSection', (el) => !el.classList.contains('hidden'));
-      if (!isBlogIndex) throw new Error('Breadcrumb failed to return to /blog index');
-    }
+    const featureImgSrc = await page.$eval('#heroCatFeatureImg', (el) => el.src);
+    if (!featureImgSrc) throw new Error('Hero feature image src is empty');
   });
 
   // --------------------------------------------------------------------------

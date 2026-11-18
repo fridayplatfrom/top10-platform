@@ -136,55 +136,20 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   });
 
   // --------------------------------------------------------------------------
-  // FLOW 3: Blog & Editorial Manager Tab & Live Publication Lifecycle
+  // FLOW 3: Review Moderation & Buyer RFP Leads Management Tabs
   // --------------------------------------------------------------------------
-  await test('Blog & Editorial Manager: Table, Write Modal, Live Markdown Preview & Publish', async () => {
-    await page.click('[data-admin-tab="blogs"]');
-    await page.waitForSelector('#adminTabBlogs:not(.hidden)', { timeout: 2000 });
+  await test('Review Moderation & Buyer RFP Leads Management Tabs', async () => {
+    await page.click('[data-admin-tab="reviews"]');
+    await page.waitForSelector('#adminTabReviews:not(.hidden)', { timeout: 2000 });
 
-    const articleRows = await page.$$eval('#adminBlogsTableBody tr', (trs) => trs.length);
-    if (articleRows === 0) throw new Error('Blogs table failed to render published articles');
+    const hasReviewsTable = await page.$('#adminReviewsTableBody');
+    if (!hasReviewsTable) throw new Error('Reviews moderation table not found');
 
-    // Click + Write New Article
-    await page.click('#adminNewBlogBtn');
-    await page.waitForSelector('#blogEditorModalBackdrop:not(.hidden)', { timeout: 2000 });
+    await page.click('[data-admin-tab="leads"]');
+    await page.waitForSelector('#adminTabLeads:not(.hidden)', { timeout: 2000 });
 
-    // Fill blog editor form
-    await page.type('#blogEditTitle', 'Vector Search Engine Benchmarks 2026');
-    await page.type('#blogEditSubtitle', 'Comprehensive speed and recall benchmarks across modern HNSW vector indexes.');
-    await page.type('#blogEditAuthorName', 'Alex Rivera');
-    await page.type('#blogEditTakeaways', 'HNSW graph indexing delivers sub-5ms recall\nQuantization drops RAM footprint by 65%');
-    await page.type('#blogEditContent', '## Vector Search in 2026\n\nVector databases are now standard infrastructure for AI search applications.');
-
-    // Test live preview tab
-    await page.click('#blogTabPreviewBtn');
-    await sleep(200);
-    const previewContent = await page.$eval('#blogPreviewPane', (el) => el.innerHTML);
-    if (!previewContent.includes('<h2>Vector Search in 2026</h2>')) {
-      throw new Error(`Markdown preview failed: ${previewContent}`);
-    }
-
-    // Switch back to Write mode and submit
-    await page.click('#blogTabWriteBtn');
-    await page.click('#saveBlogEditorBtn');
-    await sleep(600);
-
-    const isBlogModalClosed = await page.$eval('#blogEditorModalBackdrop', (el) => el.classList.contains('hidden'));
-    if (!isBlogModalClosed) throw new Error('Blog editor modal failed to close');
-
-    // Verify new article row in blogs table
-    const updatedTableText = await page.$eval('#adminBlogsTableBody', (el) => el.textContent);
-    if (!updatedTableText.includes('Vector Search Engine Benchmarks 2026')) {
-      throw new Error('Newly created blog article not found in blogs table');
-    }
-
-    // Clean up test article
-    const delBtn = await page.$('[data-del-blog="vector-search-engine-benchmarks-2026"]');
-    if (delBtn) {
-      page.once('dialog', async (dialog) => await dialog.accept());
-      await delBtn.click();
-      await sleep(500);
-    }
+    const hasLeadsTable = await page.$('#adminLeadsTableBody');
+    if (!hasLeadsTable) throw new Error('Buyer RFP leads table not found');
   });
 
   // --------------------------------------------------------------------------
@@ -286,14 +251,6 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     await sleep(200);
     let isHidden = await page.$eval('#categoryEditorModalBackdrop', (el) => el.classList.contains('hidden'));
     if (!isHidden) throw new Error('Escape key failed to close category editor modal');
-
-    // Test + Write Article header button
-    await page.click('#adminHeaderNewBlogBtn');
-    await page.waitForSelector('#blogEditorModalBackdrop:not(.hidden)', { timeout: 2000 });
-    await page.keyboard.press('Escape');
-    await sleep(200);
-    isHidden = await page.$eval('#blogEditorModalBackdrop', (el) => el.classList.contains('hidden'));
-    if (!isHidden) throw new Error('Escape key failed to close blog editor modal');
 
     // Test Exit to Site button
     await page.click('#adminExitBtn');

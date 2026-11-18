@@ -248,22 +248,20 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   });
 
   // --------------------------------------------------------------------------
-  // TEST STEP 9: EDITORIAL BLOG NAVIGATION & ARTICLE VIEW
+  // TEST STEP 9: RELATED TOP 10 DIRECTORIES FEATURE CARDS NAVIGATION
   // --------------------------------------------------------------------------
-  await step('9. Navigate to Editorial Blog (/blog) and view teardown article', async () => {
-    await page.click('#navBlogBtn');
-    await page.waitForFunction(() => window.location.pathname === '/blog');
+  await step('9. Verify 3-Column Related Top 10 Directories Feature Cards & Navigation', async () => {
+    const relatedCards = await page.$$eval('#relatedDirectoriesGrid .related-dir-card', (cards) => cards.length);
+    if (relatedCards === 0) throw new Error('No related directory cards rendered');
 
-    const blogCards = await page.$$eval('#blogCardsGrid .blog-card', (cards) => cards.length);
-    if (blogCards === 0) throw new Error('No blog cards rendered on /blog');
+    const firstRelated = await page.$('#relatedDirectoriesGrid .related-dir-card');
+    if (firstRelated) {
+      await page.evaluate(() => document.querySelector('#relatedDirectoriesGrid .related-dir-card').click());
+      await sleep(300);
+    }
 
-    // Click first article
-    const firstArticle = await page.$('#blogCardsGrid .blog-card');
-    if (firstArticle) await firstArticle.click();
-
-    await page.waitForSelector('#blogArticleSection:not(.hidden)', { timeout: 3000 });
-    const articleTitle = await page.$eval('#articleMainTitle', (el) => el.textContent.trim());
-    if (!articleTitle) throw new Error('Article title is empty');
+    const heroTitle = await page.$eval('#heroCatTitle', (el) => el.textContent.trim());
+    if (!heroTitle) throw new Error('Category hero title is empty after clicking related directory card');
   });
 
   // --------------------------------------------------------------------------
