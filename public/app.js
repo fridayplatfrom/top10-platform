@@ -1092,7 +1092,45 @@
         : `Top 10 Directories (${allCats.length})`;
     }
 
-    const displayList = matchedCats.length > 0 ? matchedCats : allCats;
+    let displayList = matchedCats.length > 0 ? matchedCats : allCats;
+
+    // Filter by Homepage Topic Pill (All, Software & AI, Hardware & Home, Lifestyle & Gaming)
+    if (!window._activeHomeTopic) window._activeHomeTopic = 'all';
+    const homeTopicPillsBar = document.getElementById('homeTopicPillsBar');
+    if (homeTopicPillsBar && !homeTopicPillsBar._bound) {
+      homeTopicPillsBar._bound = true;
+      homeTopicPillsBar.querySelectorAll('[data-home-topic]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          window._activeHomeTopic = btn.getAttribute('data-home-topic') || 'all';
+          homeTopicPillsBar.querySelectorAll('[data-home-topic]').forEach((b) => {
+            b.classList.toggle('active', b.getAttribute('data-home-topic') === window._activeHomeTopic);
+          });
+          renderHomepage();
+        });
+      });
+    }
+    if (!rawQuery && window._activeHomeTopic && window._activeHomeTopic !== 'all') {
+      const topicKey = window._activeHomeTopic;
+      displayList = displayList.filter((c) => {
+        const s = c.slug || '';
+        if (topicKey === 'hardware') {
+          return THEMATIC_CLUSTERS.hardware.includes(s) || /tv|oven|speaker|phone|audio|hardware/i.test(s);
+        }
+        if (topicKey === 'lifestyle') {
+          return THEMATIC_CLUSTERS.lifestyle.includes(s) || /game|audiobook|book|gambling|sport/i.test(s);
+        }
+        if (topicKey === 'software') {
+          return (
+            !THEMATIC_CLUSTERS.hardware.includes(s) &&
+            !THEMATIC_CLUSTERS.lifestyle.includes(s)
+          );
+        }
+        return true;
+      });
+      if (homeGridHeading) {
+        homeGridHeading.textContent = `Top 10 Directories (${displayList.length})`;
+      }
+    }
 
     // Render Top Featured 2-Column Hero Card on Homepage
     const homeFeaturedHeroCard = document.getElementById('homeFeaturedHeroCard');

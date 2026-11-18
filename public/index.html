@@ -177,10 +177,16 @@
         <!-- FEATURED DIRECTORY HERO CARD (2-Column Editorial Hero with Feature Image) -->
         <div id="homeFeaturedHeroCard" class="editorial-hero-card home-featured-hero" style="cursor: pointer;"></div>
 
-        <!-- ALL TOP 10 LISTS GRID (3-Column Editorial Feature Image Cards) -->
+        <!-- ALL TOP 10 LISTS GRID (3-Column Editorial Feature Image Cards + Topic Filter Pills) -->
         <section class="home-lists-section" aria-labelledby="homeGridHeading">
           <div class="home-section-header">
             <h2 class="home-section-title" id="homeGridHeading">Top 10 Directories</h2>
+            <div class="home-topic-pills" id="homeTopicPillsBar" role="tablist" aria-label="Filter directories by topic">
+              <button type="button" class="home-topic-pill active" data-home-topic="all">All Guides</button>
+              <button type="button" class="home-topic-pill" data-home-topic="software">Software &amp; AI</button>
+              <button type="button" class="home-topic-pill" data-home-topic="hardware">Hardware &amp; Home</button>
+              <button type="button" class="home-topic-pill" data-home-topic="lifestyle">Lifestyle &amp; Gaming</button>
+            </div>
           </div>
 
           <div class="home-lists-grid related-dirs-grid" id="homeListsGrid"></div>
@@ -280,11 +286,10 @@
           </section>
 
           <!-- =================================================================
-               2. UNDER THE 10 LISTS: BIG ANALYTICS (VIEWS · REVIEWS · TOTAL LISTINGS + GRAPHS)
-                  + INTERACTIVE 7D / 30D / 1Y TOGGLE + FULL-WIDTH "+ ADD YOUR PLATFORM" BUTTON
+               2. UNDER THE 10 LISTS: CLEAN "+ ADD YOUR PLATFORM" CTA
                ================================================================= -->
-          <section class="below-list-stats-cta-card">
-            <div class="analytics-card-topbar">
+          <section class="below-list-stats-cta-card minimal-below-cta-only">
+            <div class="analytics-card-topbar hidden-accessible">
               <span class="analytics-card-eyebrow">Directory Analytics</span>
               <div class="analytics-range-tabs" id="analyticsRangeTabs" role="tablist" aria-label="Analytics time range">
                 <button type="button" class="analytics-range-tab" data-range="7d">7D</button>
@@ -293,7 +298,7 @@
               </div>
             </div>
 
-            <div class="analytics-big-grid">
+            <div class="analytics-big-grid hidden-accessible">
               <!-- Views + Green Sparkline Graph -->
               <div class="analytics-stat-card" title="Reader traffic trend">
                 <div class="asc-left">
