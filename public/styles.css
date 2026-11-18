@@ -9979,6 +9979,42 @@ html[data-theme="dark"] .home-topic-pill.active {
   color: #0F172A;
 }
 
+/* 4. Clean Borderless Pros & Cons (No Green/Yellow Colored Box Fills) & Hide Photo Overlay Pill */
+.media-spec-chip {
+  display: none !important;
+}
+
+.minimal-pros-cons {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding-top: 16px !important;
+  margin-top: 4px !important;
+  border-top: 1px solid #F1F5F9 !important;
+}
+
+html[data-theme="dark"] .minimal-pros-cons {
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.pc-column,
+.pc-column.pc-pros,
+.pc-column.pc-cons {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 2px 0 !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 640px) {
+  .minimal-pros-cons {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+
 
 
 

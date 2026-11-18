@@ -2131,7 +2131,6 @@
                     decoding="async"
                     onerror="this.closest('.card-media-stage').style.display='none'"
                   />
-                  ${prod.media.overlayTag ? `<span class="media-spec-chip">${escapeHtml(prod.media.overlayTag)}</span>` : ''}
                   <button type="button" class="media-zoom-btn" title="View high-res photo" aria-label="Zoom photo">
                     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
                       <circle cx="7" cy="7" r="4.5"/>

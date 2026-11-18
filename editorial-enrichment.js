@@ -1728,6 +1728,176 @@ const SHORT_RANK_BADGES = [
   'Rising Star'
 ];
 
+// Comprehensive Product-Specific Editorial Profiles (Pros, Cons & Natural Descriptions)
+const EXTENDED_PRODUCT_PROFILES = {
+  // Studio & Home Speakers
+  spk_bose: {
+    editorialSummary: 'Bose Smart Soundbar & Speaker Ultra combines dipole PhaseGuide acoustic arrays with AI Dialogue Mode to project wide, room-filling spatial sound and crystal-clear vocal separation from a single compact cabinet.',
+    pros: [
+      'PhaseGuide multi-directional transducers bounce sound off walls for a wide soundstage',
+      'AI Dialogue Mode automatically balances voice clarity against loud background effects',
+      'Built-in Wi-Fi, AirPlay 2, Chromecast, Spotify Connect, and Bluetooth 5.0'
+    ],
+    cons: [
+      'Sub-bass extension below 45Hz requires pairing the optional Bose Bass Module',
+      'Bose Music app EQ only offers basic bass and treble sliders rather than parametric bands'
+    ]
+  },
+  spk_jbl: {
+    editorialSummary: 'Inspired by the legendary 1970s JBL L100 Century, the JBL Authentics 500 packs 270 watts of 3.1-channel amplification, a down-firing 6.5-inch subwoofer, and Dolby Atmos Music into a retro Quadrex grille enclosure.',
+    pros: [
+      'Massive 270W output with a 6.5-inch down-firing woofer that shakes the room without a separate sub',
+      'Automatic self-tuning calibrates frequency response to your placement on every power-up',
+      'Simultaneous Google Assistant and Amazon Alexa voice control with physical bass/treble dials'
+    ],
+    cons: [
+      'Large 17-pound footprint requires a sturdy credenza or dedicated speaker stand',
+      'No built-in battery—strictly an AC-powered home Wi-Fi and Bluetooth speaker'
+    ]
+  },
+  spk_audioengine: {
+    editorialSummary: 'The Audioengine A5+ Wireless delivers true left/right stereo separation with custom Aramid glass-fiber woofers, silk-dome tweeters, and discrete Class AB analog monolithic amplifiers in hand-finished wood cabinets.',
+    pros: [
+      'True Class AB analog amplification produces warm, fatigue-free midrange and wide stereo imaging',
+      '24-bit aptX HD Bluetooth plus RCA analog inputs and a dedicated variable subwoofer output',
+      'Includes solid aluminum remote control and gold-plated 5-way speaker binding posts'
+    ],
+    cons: [
+      'Lacks Wi-Fi streaming, AirPlay 2, or HDMI eARC connectivity',
+      'Passive left speaker connects to the powered right speaker via traditional speaker wire'
+    ]
+  },
+  spk_devialet: {
+    editorialSummary: 'Engineered in Paris with 1,100 watts RMS and ADH (Analog Digital Hybrid) amplification, the Devialet Phantom I (108 dB) achieves 14Hz infrasonic bass and zero distortion from a hermetically sealed sphere.',
+    pros: [
+      'Hermetically sealed HBI lateral woofers reach down to 14Hz—deeper than most standalone subwoofers',
+      'Grade-1 pure titanium tweeter and ADH amplification deliver 108 dB SPL with zero background hiss',
+      'Supports AirPlay 2, Roon Ready, UPnP, Spotify Connect, and optical TOSLINK input'
+    ],
+    cons: [
+      'Ultra-premium price tag ($3,200 per single unit; $6,400 for a stereo pair)',
+      'Heavy 25-pound chassis and exposed side-firing woofers require careful handling'
+    ]
+  },
+  spk_klipsch: {
+    editorialSummary: 'Klipsch The Fives Powered Monitors combine 90° x 90° Tractrix horn-loaded titanium tweeters with an integrated phono preamp and HDMI ARC, making them a plug-and-play powerhouse for both turntables and TVs.',
+    pros: [
+      'HDMI ARC port lets you replace a soundbar and control volume directly with your TV remote',
+      'Built-in moving-magnet phono preamp connects directly to any turntable without external boxes',
+      'Dynamic Bass EQ automatically boosts low-frequency fullness even at low late-night volumes'
+    ],
+    cons: [
+      'No built-in Wi-Fi or AirPlay—wireless streaming relies on Bluetooth 5.0',
+      'Forward, lively horn presentation can sound bright on poorly mastered tracks'
+    ]
+  },
+  spk_edifier: {
+    editorialSummary: 'Edifier S3000Pro pairs planar magnetic ribbon tweeters with 6.5-inch aluminum-cone woofers and KleerNet uncompressed wireless inter-speaker transmission, eliminating the cable between left and right monitors.',
+    pros: [
+      'Planar diaphragm tweeters deliver airy, ultra-fast transient detail up to 40kHz',
+      'Left and right monitors link wirelessly over dedicated 5.8GHz KleerNet with zero latency',
+      'Full suite of balanced XLR, RCA, optical, coaxial, USB DAC, and aptX HD Bluetooth inputs'
+    ],
+    cons: [
+      'Each speaker requires its own AC power outlet since both cabinets house internal amplifiers',
+      'Large cabinet depth (11.5 inches) takes up significant desktop space'
+    ]
+  },
+  spk_bo: {
+    editorialSummary: 'Designed in collaboration with GamFratesi Studio, the Bang & Olufsen Beosound A5 blends woven paper-fiber Scandinavian craftsmanship with four custom drivers, RoomSense acoustic mapping, and a 12-hour battery.',
+    pros: [
+      '360-degree 280W acoustic array with a 5.25-inch long-stroke woofer delivers rich, natural bass',
+      'Modular Mozart platform with replaceable battery and serviceability built for 10+ years of use',
+      'Top oak panel includes an integrated Qi wireless charging pad for your smartphone'
+    ],
+    cons: [
+      'Luxury price point ($1,199) for a portable Wi-Fi and Bluetooth speaker',
+      'Weighs 8.3 lbs, making it better suited for moving room-to-patio than backpack travel'
+    ]
+  },
+  spk_yamaha: {
+    editorialSummary: 'A descendant of the legendary NS-10M, the Yamaha HS8 features an 8-inch white polypropylene cone and a 120W bi-amplified enclosure tuned for brutally honest, uncolored midrange translation.',
+    pros: [
+      'Unflinchingly flat midrange exposes mix flaws so tracks translate cleanly across any playback system',
+      '8-inch woofer extends down to 38Hz without needing a studio subwoofer in mid-sized rooms',
+      'Rear Room Control and High Trim switches tame boundary bass build-up near walls'
+    ],
+    cons: [
+      'Rear-firing bass reflex port requires at least 12–18 inches of clearance from the wall',
+      'Strictly professional XLR and TRS balanced inputs (no Bluetooth or RCA consumer jacks)'
+    ]
+  },
+  spk_focal: {
+    editorialSummary: 'Handcrafted in France, the Focal Shape 65 uses a sandwich flax-fiber woofer cone and dual side-firing passive radiators so you can place the monitors flush against studio walls without port turbulence.',
+    pros: [
+      'Dual passive radiators eliminate port chuffing and allow placement right against a wall',
+      'Flax-sandwich cone and M-shaped aluminum-magnesium tweeter offer pinpoint phantom-center imaging',
+      'Wide sweet spot and low listening fatigue during 10-hour mixing or mastering sessions'
+    ],
+    cons: [
+      'Auto-standby circuit can take 2–3 seconds to wake when audio starts at very quiet levels',
+      'Exposed side passive radiators require grabbing the top and bottom plates when moving'
+    ]
+  },
+  spk_adam: {
+    editorialSummary: 'The ADAM Audio A7V pairs a rotatable handmade Berlin X-ART folded-ribbon tweeter with a 7-inch Multi-Layer Mineral woofer and built-in DSP that loads Sonarworks SoundID room calibration profiles directly onto the speaker.',
+    pros: [
+      'Handmade X-ART folded-ribbon tweeter reveals micro-details and reverb tails up to 45kHz',
+      'Onboard DSP runs Sonarworks room correction filters directly in hardware with zero CPU load',
+      ' Ethernet RJ45 remote control via A Control software lets you tweak EQ from your mixing chair'
+    ],
+    cons: [
+      'Sonarworks measurement microphone and SoundID license are sold separately',
+      'Deep cabinet footprint requires sturdy isolation stands or a deep studio desk'
+    ]
+  }
+};
+
+function buildNaturalCategoryEditorial(prod, categoryTitle, shortName, cleanHighlight) {
+  const knownExt = EXTENDED_PRODUCT_PROFILES[prod.id];
+  if (knownExt) return knownExt;
+
+  const baseDesc = (prod.tagline || '').trim().replace(/\.$/, '');
+  const catLower = `${categoryTitle} ${shortName}`.toLowerCase();
+  const isHardwareOrConsumer = /speaker|tv|oven|phone|cover|case|game|audiobook|book|gambling|sport|audio/i.test(catLower);
+
+  const editorialSummary =
+    prod.editorialSummary ||
+    (baseDesc
+      ? `${baseDesc}. Built by ${prod.companyName}, ${prod.name} stands out for its ${cleanHighlight.toLowerCase()} and ${prod.pricingTag || 'competitive pricing'}.`
+      : `${prod.name} by ${prod.companyName} delivers ${cleanHighlight.toLowerCase()} with ${prod.pricingTag || 'transparent pricing'}.`);
+
+  const pros =
+    Array.isArray(prod.pros) && prod.pros.length > 0
+      ? prod.pros
+      : isHardwareOrConsumer
+      ? [
+          `Standout ${cleanHighlight.toLowerCase()} with refined everyday usability and build quality`,
+          `Strong value at ${prod.pricingTag || 'its price tier'} compared to competing ${shortName.toLowerCase()}`,
+          `Consistently praised by buyers for reliability and out-of-the-box performance`
+        ]
+      : [
+          `Purpose-built for ${cleanHighlight.toLowerCase()} with a fast, intuitive workflow`,
+          `Clear pricing at ${prod.pricingTag || 'flexible tiers'} without hidden implementation fees`,
+          `Strong developer and operator adoption with responsive documentation and support`
+        ];
+
+  const cons =
+    Array.isArray(prod.cons) && prod.cons.length > 0
+      ? prod.cons
+      : isHardwareOrConsumer
+      ? [
+          `Premium accessories and extended protection plans add to the total cost`,
+          `Fewer manual customization toggles than enthusiast-only alternatives`
+        ]
+      : [
+          `Advanced custom workflows and high-volume seats require moving to higher tiers`,
+          `Smaller third-party plugin marketplace than legacy category incumbents`
+        ];
+
+  return { editorialSummary, pros, cons };
+}
+
 function enrichProductEditorial(prod, rank, categoryTitle, shortName) {
   const known = PRODUCT_EDITORIAL_DB[prod.id];
   const cleanHighlight = String(prod.highlightTag || 'Core Platform').replace(/^@/, '');
@@ -1754,38 +1924,18 @@ function enrichProductEditorial(prod, rank, categoryTitle, shortName) {
     };
   }
 
-  // Smart editorial synthesis for any other product (organic or newly submitted by user)
   const awardLabel = prod.bestFor || `${RANK_AWARD_BADGES[(rank - 1) % RANK_AWARD_BADGES.length]} (${cleanHighlight})`;
-  const editorialSummary =
-    prod.editorialSummary ||
-    `${prod.name} (by ${prod.companyName}) is ranked #${rank} in ${categoryTitle} for its strong focus on ${cleanHighlight.toLowerCase()}. ${prod.tagline} In our evaluation, it stood out for teams seeking predictable pricing (${prod.pricingTag || 'flexible plans'}) and fast production onboarding.`;
-
-  const pros =
-    Array.isArray(prod.pros) && prod.pros.length > 0
-      ? prod.pros
-      : [
-          `Strong specialization in ${cleanHighlight} with fast initial setup`,
-          `Transparent pricing structure (${prod.pricingTag || 'Competitive tiers'}) with low operational overhead`,
-          `Consistently high user satisfaction (${prod.upvotes || 90}+ community upvotes)`
-        ];
-
-  const cons =
-    Array.isArray(prod.cons) && prod.cons.length > 0
-      ? prod.cons
-      : [
-          `Some advanced enterprise customization requires higher-tier plans or API configuration`,
-          `Ecosystem of third-party plugins is more focused than Rank #1–#2 category leaders`
-        ];
+  const natural = buildNaturalCategoryEditorial(prod, categoryTitle, shortName, cleanHighlight);
 
   const keyFeatures =
     Array.isArray(prod.keyFeatures) && prod.keyFeatures.length > 0
       ? prod.keyFeatures
-      : [cleanHighlight, prod.pricingTag || 'Flexible Tiers', 'API & Webhooks', 'Team Collaboration'];
+      : [cleanHighlight, prod.pricingTag || 'Flexible Tiers'];
 
   const specs = prod.specs || {
     startingPrice: prod.pricingTag || 'Contact / Custom',
     freeTrial: 'Free trial / sandbox available',
-    idealFor: `Small to Mid-Market ${shortName || 'Teams'}`,
+    idealFor: `Modern ${shortName || 'Teams'}`,
     deployment: 'Cloud / Web Platform'
   };
 
@@ -1797,9 +1947,9 @@ function enrichProductEditorial(prod, rank, categoryTitle, shortName) {
     rating: prod.rating || baseRating,
     editorialScore: prod.editorialScore || baseScore,
     reviewsCount: prod.reviewsCount || defaultReviews,
-    editorialSummary,
-    pros,
-    cons,
+    editorialSummary: natural.editorialSummary,
+    pros: natural.pros,
+    cons: natural.cons,
     keyFeatures,
     specs
   };
