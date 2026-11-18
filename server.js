@@ -7,6 +7,8 @@ const {
   ensureTenRealProducts,
   enrichCategoryEditorial,
   ensureDefaultEightCategories,
+  DEFAULT_SITE_OG_IMAGE,
+  getCategoryFeatureMeta,
   buildSeoJsonLd,
   buildLlmsTxt
 } = require('./editorial-enrichment');
@@ -419,8 +421,7 @@ function render404(res, req, base, message = 'The requested Top 10 directory, bu
     <div style="font-size:14px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:16px;">Directory Not Found</div>
     <p style="font-size:15px;color:#4B5563;line-height:1.6;margin-bottom:28px;">${escapeXml(message)}</p>
     <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-      <a href="/" style="display:inline-flex;align-items:center;height:42px;padding:0 20px;border-radius:8px;background:#111827;color:#B8FF01;font-size:13.5px;font-weight:700;text-decoration:none;">Back to All Directories</a>
-      <a href="/blog" style="display:inline-flex;align-items:center;height:42px;padding:0 20px;border-radius:8px;background:#F3F4F6;color:#111827;font-size:13.5px;font-weight:600;text-decoration:none;">Browse Buying Guides</a>
+      <a href="/" style="display:inline-flex;align-items:center;height:42px;padding:0 20px;border-radius:8px;background:#111827;color:#B8FF01;font-size:13.5px;font-weight:700;text-decoration:none;">Browse All Top 10 Guides</a>
     </div>
   </div>
 </body>
@@ -1748,7 +1749,10 @@ const server = http.createServer(async (req, res) => {
       }
 
       const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>\n  <url><loc>${base}/llms.txt</loc><changefreq>daily</changefreq><priority>0.8</priority></url>\n${catUrls}\n${compareUrls.join('\n')}\n</urlset>`;
-      res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8' });
+      res.writeHead(200, {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'X-Robots-Tag': 'noindex, nofollow'
+      });
       return res.end(xml);
     }
 
@@ -1760,25 +1764,31 @@ const server = http.createServer(async (req, res) => {
       return res.end(md);
     }
 
-    // 13c. GET /robots.txt (SEO & AI Bot Discovery Rules)
+    // 13c. GET /robots.txt (Sitemap remains disallowed/blocked while pages & AI guides are discoverable)
     if (req.method === 'GET' && pathname === '/robots.txt') {
       const robots = [
         'User-agent: *',
+        'Disallow: /admin',
+        'Disallow: /api/',
+        'Disallow: /sitemap.xml',
         'Allow: /',
         '',
         'User-agent: GPTBot',
-        'Allow: /',
-        '',
-        'User-agent: OAI-SearchBot',
+        'Disallow: /admin',
+        'Disallow: /sitemap.xml',
         'Allow: /',
         '',
         'User-agent: PerplexityBot',
+        'Disallow: /admin',
+        'Disallow: /sitemap.xml',
         'Allow: /',
         '',
         'User-agent: ClaudeBot',
+        'Disallow: /admin',
+        'Disallow: /sitemap.xml',
         'Allow: /',
         '',
-        `Sitemap: ${base}/sitemap.xml`,
+        `# Sitemap (currently blocked): ${base}/sitemap.xml`,
         `# AI/LLM Structured Index: ${base}/llms.txt`,
         `# RSS Feed: ${base}/feed.xml`
       ].join('\n');
@@ -1791,14 +1801,16 @@ const server = http.createServer(async (req, res) => {
       const db = readDb();
       const items = (db.categories || [])
         .map((c) => {
-          const top1Name = c.products && c.products[0] ? c.products[0].name : 'Top Rated Platform';
-          const desc = c.description || (c.editorialGuide && c.editorialGuide.summary) || 'Verified buyer reviews and live algorithmic rankings.';
+          const enriched = enrichCategory(c, db.platformStats);
+          const meta = getCategoryFeatureMeta(enriched);
+          const top1Name = enriched.top10 && enriched.top10[0] ? enriched.top10[0].name : 'Top Rated Option';
+          const desc = meta.description || enriched.editorialGuide?.intro || 'Curated Top 10 buying guide.';
           return `    <item>
-      <title>${escapeXml(c.title)} — Ranked #1: ${escapeXml(top1Name)}</title>
-      <link>${base}/list/${escapeXml(c.slug)}</link>
-      <guid isPermaLink="true">${base}/list/${escapeXml(c.slug)}</guid>
+      <title>${escapeXml(enriched.title)} — Ranked #1: ${escapeXml(top1Name)}</title>
+      <link>${base}/list/${escapeXml(enriched.slug)}</link>
+      <guid isPermaLink="true">${base}/list/${escapeXml(enriched.slug)}</guid>
       <description>${escapeXml(desc)}</description>
-      <pubDate>${new Date(c.updatedAt || Date.now()).toUTCString()}</pubDate>
+      <pubDate>${new Date(enriched.updatedAt || meta.isoDate || Date.now()).toUTCString()}</pubDate>
     </item>`;
         })
         .join('\n');
@@ -3021,16 +3033,175 @@ ${items}
     const isClaimView = pathname.startsWith('/claim/');
     const isPricingView = pathname === '/pricing';
 
+    function truncateMetaDesc(str, maxLen = 158) {
+      const clean = String(str || '').replace(/\s+/g, ' ').trim();
+      if (clean.length <= maxLen) return clean;
+      return clean.slice(0, maxLen - 3).replace(/\s+\S*$/, '') + '...';
+    }
+
+    function renderSsrHomepageBody(rawHtml, allCats) {
+      const leadCat = allCats.find((c) => c.slug === 'audiobook-apps') || allCats[0];
+      let heroInner = '';
+      if (leadCat) {
+        const lm = getCategoryFeatureMeta(leadCat);
+        heroInner = `
+          <div class="ehc-left">
+            <div class="ehc-top-row">
+              <div class="ehc-guide-pill"><span class="ehc-guide-label">○ Top 10</span></div>
+            </div>
+            <div class="ehc-body">
+              <p class="ehc-date">${escapeXml(lm.dateText)}</p>
+              <h2 class="ehc-title">${escapeXml(lm.editorialTitle)}</h2>
+              <p class="ehc-desc">${escapeXml(lm.description)}</p>
+            </div>
+            <div class="ehc-author-row">
+              <img src="${escapeXml(lm.authorAvatar)}" alt="${escapeXml(lm.authorName)}" class="ehc-author-avatar" loading="eager" />
+              <div class="ehc-author-meta">
+                <span class="ehc-author-name">${escapeXml(lm.authorName)}</span>
+                <span class="ehc-author-role">${escapeXml(lm.authorRole)}</span>
+              </div>
+            </div>
+          </div>
+          <div class="ehc-right">
+            <div class="ehc-feature-media">
+              <img src="${escapeXml(lm.coverImage)}" alt="${escapeXml(leadCat.title)}" class="ehc-feature-img" loading="eager" />
+            </div>
+          </div>`;
+      }
+
+      const gridInner = allCats
+        .map((c) => {
+          const meta = getCategoryFeatureMeta(c);
+          return `
+            <article class="home-list-card related-dir-card editorial-feature-card" data-open-list="${escapeXml(c.slug)}" data-cat-card-slug="${escapeXml(c.slug)}">
+              <div class="rdc-top-content">
+                <div class="rdc-media-wrap">
+                  <img src="${escapeXml(meta.coverImage)}" alt="${escapeXml(c.title)}" class="rdc-feature-img" loading="eager" />
+                </div>
+                <div class="rdc-body">
+                  <div class="rdc-date">${escapeXml(meta.dateText)}</div>
+                  <h3 class="rdc-title"><a href="/list/${escapeXml(c.slug)}" style="color:inherit;text-decoration:none;">${escapeXml(meta.editorialTitle)}</a></h3>
+                  <p class="rdc-desc">${escapeXml(meta.description)}</p>
+                </div>
+              </div>
+              <div class="rdc-author-row">
+                <img src="${escapeXml(meta.authorAvatar)}" alt="${escapeXml(meta.authorName)}" class="rdc-author-avatar" loading="eager" />
+                <div class="rdc-author-meta">
+                  <span class="rdc-author-name">${escapeXml(meta.authorName)}</span>
+                  <span class="rdc-author-role">${escapeXml(meta.authorRole)}</span>
+                </div>
+              </div>
+            </article>`;
+        })
+        .join('');
+
+      let out = rawHtml;
+      out = out.replace(
+        '<div id="homeFeaturedHeroCard" class="editorial-hero-card home-featured-hero" style="cursor: pointer;"></div>',
+        `<div id="homeFeaturedHeroCard" class="editorial-hero-card home-featured-hero" style="cursor: pointer;">${heroInner}</div>`
+      );
+      out = out.replace(
+        '<div class="home-lists-grid related-dirs-grid" id="homeListsGrid"></div>',
+        `<div class="home-lists-grid related-dirs-grid" id="homeListsGrid">${gridInner}</div>`
+      );
+      return out;
+    }
+
+    function renderSsrListBody(rawHtml, cat, allCats) {
+      const meta = getCategoryFeatureMeta(cat);
+      const top10 = cat.top10 || [];
+      const allProds = [...top10, ...(cat.pushedOut || [])];
+
+      const listHtml = allProds
+        .map((prod) => {
+          const rankNum = prod.rank || 1;
+          const rankClass = rankNum <= 3 ? `rank-${rankNum}` : '';
+          return `
+            <section class="clean-product-item card-product-node">
+              <div class="product-card-box minimal-unified-card ${rankClass ? 'card-' + rankClass : ''}" id="prod-card-${escapeXml(prod.id)}">
+                <div class="minimal-card-header">
+                  <div class="product-header-left">
+                    <div class="rank-node-badge ${rankClass}"><span class="rank-hash">#</span><span class="rank-num">${rankNum}</span></div>
+                    <div class="prod-identity-info">
+                      <div class="prod-title-row">
+                        <h3 class="minimal-prod-title"><a href="${escapeXml(prod.website)}" target="_blank" rel="noopener" class="prod-title-link">${escapeXml(prod.name)}</a></h3>
+                      </div>
+                      <div class="prod-sub-row"><span class="prod-company-muted">by ${escapeXml(prod.companyName)}</span></div>
+                    </div>
+                  </div>
+                  <div class="product-header-actions">
+                    <a href="${escapeXml(prod.website)}" target="_blank" rel="noopener" class="btn-reader-visit"><span>Visit</span></a>
+                  </div>
+                </div>
+                ${prod.media && prod.media.heroImage ? `<div class="card-media-stage"><img src="${escapeXml(prod.media.heroImage)}" alt="${escapeXml(prod.name)}" class="card-media-img" loading="lazy" /></div>` : ''}
+                <p class="minimal-card-desc">${escapeXml(prod.editorialSummary || prod.tagline)}</p>
+              </div>
+            </section>`;
+        })
+        .join('');
+
+      const relatedHtml = allCats
+        .filter((c) => c.slug !== cat.slug)
+        .slice(0, 3)
+        .map((c) => {
+          const m = getCategoryFeatureMeta(c);
+          return `
+            <article class="related-dir-card editorial-feature-card">
+              <div class="rdc-top-content">
+                <div class="rdc-media-wrap"><img src="${escapeXml(m.coverImage)}" alt="${escapeXml(c.title)}" class="rdc-feature-img" loading="lazy" /></div>
+                <div class="rdc-body">
+                  <div class="rdc-date">${escapeXml(m.dateText)}</div>
+                  <h3 class="rdc-title"><a href="/list/${escapeXml(c.slug)}" style="color:inherit;text-decoration:none;">${escapeXml(m.editorialTitle)}</a></h3>
+                  <p class="rdc-desc">${escapeXml(m.description)}</p>
+                </div>
+              </div>
+              <div class="rdc-author-row">
+                <img src="${escapeXml(m.authorAvatar)}" alt="${escapeXml(m.authorName)}" class="rdc-author-avatar" loading="lazy" />
+                <div class="rdc-author-meta"><span class="rdc-author-name">${escapeXml(m.authorName)}</span><span class="rdc-author-role">${escapeXml(m.authorRole)}</span></div>
+              </div>
+            </article>`;
+        })
+        .join('');
+
+      let out = rawHtml;
+      out = out.replace('<main id="homePageView" class="home-container">', '<main id="homePageView" class="home-container hidden">');
+      out = out.replace('<main id="singleListPageView" class="workspace-container hidden">', '<main id="singleListPageView" class="workspace-container">');
+      out = out.replace('id="heroCatPillLabel">Top 10 Guide<', `id="heroCatPillLabel">${escapeXml(cat.shortName || 'Top 10 Guide')}<`);
+      out = out.replace('id="heroCatSubtitle">18 Oct 2026<', `id="heroCatSubtitle">${escapeXml(meta.dateText)} · ${allProds.length} Platforms Ranked<`);
+      out = out.replace('id="heroCatTitle" itemprop="headline">Top 10 Billing Software<', `id="heroCatTitle" itemprop="headline">${escapeXml(cat.title)}<`);
+      out = out.replace(
+        /<p class="ehc-desc" id="heroCatDesc">[\s\S]*?<\/p>/i,
+        `<p class="ehc-desc" id="heroCatDesc">${escapeXml(meta.description)}</p>`
+      );
+      out = out.replace(
+        /<img id="heroCatFeatureImg" class="ehc-feature-img" src="[^"]*" alt="[^"]*"/i,
+        `<img id="heroCatFeatureImg" class="ehc-feature-img" src="${escapeXml(meta.coverImage)}" alt="${escapeXml(cat.title)}"`
+      );
+      out = out.replace(
+        '<div class="clean-product-list" id="top10TimelineList"></div>',
+        `<div class="clean-product-list" id="top10TimelineList">${listHtml}</div>`
+      );
+      out = out.replace(
+        '<div class="related-dirs-grid" id="relatedDirectoriesGrid"></div>',
+        `<div class="related-dirs-grid" id="relatedDirectoriesGrid">${relatedHtml}</div>`
+      );
+      return out;
+    }
+
     // Read state for SEO injection & route verification
     const db = readDb();
     const categories = (db.categories || []).map((c) => enrichCategory(c, db.platformStats));
-    const articles = (db.articles && db.articles.length > 0 ? db.articles : BLOG_ARTICLES);
 
     let activeCat = null;
-    let activeArticle = null;
-    let pageTitle = 'Top 10 — Independent Product Comparisons, Buying Guides & Reviews (2026)';
-    let pageDesc = 'Explore side-by-side Top 10 buying guides, comparison tables, pros & cons, pricing breakdowns, and verified user reviews across software and hardware categories.';
+    let comparePair = null;
+    let routeKind = 'home';
+    let pageTitle = 'Top 10 — Curated Product Buying Guides & Rankings (2026)';
+    let pageDesc = 'Explore curated Top 10 buying guides across software, hardware, and consumer apps with editorial summaries and direct official links.';
     let canonicalUrl = `${base}/`;
+    let ogType = 'website';
+    let ogImage = DEFAULT_SITE_OG_IMAGE;
+    let ogImageAlt = 'Top 10 Buying Guides & Curated Rankings';
+    let robotsDirective = 'index, follow, max-snippet:-1, max-image-preview:large';
 
     if (listPathMatch || parsedUrl.searchParams.get('list')) {
       const activeSlug = listPathMatch ? listPathMatch[1] : parsedUrl.searchParams.get('list');
@@ -3038,9 +3209,14 @@ ${items}
       if (!activeCat) {
         return render404(res, req, base, `The Top 10 directory "${escapeXml(activeSlug)}" does not exist or has been archived.`);
       }
-      pageTitle = `${activeCat.title} (2026) — Comparison Table, Pros & Cons, Reviews`;
-      pageDesc = `${activeCat.editorialGuide?.intro || activeCat.subtitle || activeCat.tagline || ''} Compare #1 ${activeCat.top10[0]?.name || ''} vs top alternatives.`;
+      routeKind = 'list';
+      const meta = getCategoryFeatureMeta(activeCat);
+      pageTitle = `${activeCat.title} (2026) — Best Picks & Buying Guide | Top 10`;
+      pageDesc = truncateMetaDesc(`${meta.description} Featured #1 pick: ${activeCat.top10[0]?.name || ''}.`);
       canonicalUrl = `${base}/list/${activeCat.slug}`;
+      ogType = 'article';
+      ogImage = meta.coverImage;
+      ogImageAlt = activeCat.title;
     } else if (blogArticleMatch || isBlogIndex) {
       res.writeHead(302, { Location: '/' });
       return res.end();
@@ -3055,62 +3231,53 @@ ${items}
       if (!prodA || !prodB) {
         return render404(res, req, base, `One or both comparison products could not be found in ${activeCat.title}.`);
       }
-      pageTitle = `${prodA.name} vs ${prodB.name} (2026 Comparison) — Which Is Better? | Top 10`;
-      pageDesc = `Side-by-side comparison of ${prodA.name} vs ${prodB.name} in ${activeCat.title}. Pricing teardown, pros & cons, specs, and verified practitioner reviews.`;
+      routeKind = 'compare';
+      comparePair = { prodA, prodB };
+      const meta = getCategoryFeatureMeta(activeCat);
+      pageTitle = `${prodA.name} vs ${prodB.name} (2026 Comparison) — ${activeCat.shortName || activeCat.title} | Top 10`;
+      pageDesc = truncateMetaDesc(`Compare ${prodA.name} vs ${prodB.name} side-by-side in ${activeCat.title}. See features, highlights, and pricing details.`);
       canonicalUrl = `${base}/compare/${activeCat.slug}/${idA}-vs-${idB}`;
-    } else if (isBlogIndex) {
-      pageTitle = 'Top 10 Editorial & Buying Guides (2026) — Deep Dives & Teardowns';
-      pageDesc = 'Independent buying guides, engineering teardowns, and side-by-side architecture comparisons across SaaS, hardware, smart TVs, and developer tools.';
-      canonicalUrl = `${base}/blog`;
+      ogImage = prodA.media?.heroImage || meta.coverImage;
+      ogImageAlt = `${prodA.name} vs ${prodB.name}`;
     } else if (isAdminView) {
+      routeKind = 'admin';
       pageTitle = 'Admin Operations Dashboard — Top 10 Platform';
-      pageDesc = 'Internal command center for managing listings, editorial reviews, programmatic bids, and real-time transaction ledgers.';
+      pageDesc = 'Internal command center for managing Top 10 listings and transactions.';
       canonicalUrl = `${base}/admin`;
+      robotsDirective = 'noindex, nofollow';
     } else if (!isHome && !isClaimView && !isPricingView) {
       // Unknown route that doesn't correspond to any page or static file -> Return Real 404!
       return render404(res, req, base, `The requested URL "${escapeXml(pathname)}" was not found on this platform.`);
     }
 
-    const jsonLd = activeCat
-      ? buildSeoJsonLd(activeCat, categories, base)
-      : activeArticle
-      ? JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': 'Article',
-          headline: activeArticle.title,
-          description: activeArticle.subtitle,
-          author: { '@type': 'Person', name: activeArticle.author?.name || activeArticle.author },
-          datePublished: activeArticle.date || activeArticle.publishedDate,
-          publisher: { '@type': 'Organization', name: 'Top 10 Media' },
-        })
-      : JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': 'WebSite',
-          name: 'Top 10',
-          url: base,
-          description: pageDesc,
-        });
+    const jsonLd = buildSeoJsonLd(activeCat, categories, base, comparePair);
 
     let html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf-8');
 
-    // Replace SEO tags in-place without duplicating tags in <head>
+    // Render full semantic SSR body for Home and List pages before JS hydration
+    if (routeKind === 'home') {
+      html = renderSsrHomepageBody(html, categories);
+    } else if (routeKind === 'list' && activeCat) {
+      html = renderSsrListBody(html, activeCat, categories);
+    }
+
+    // Replace SEO, OpenGraph, Twitter & JSON-LD tags cleanly in-place
     html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeXml(pageTitle)}</title>`);
     html = html.replace(/<meta name="description" id="metaDescriptionTag"[^>]*>/i, `<meta name="description" id="metaDescriptionTag" content="${escapeXml(pageDesc)}" />`);
+    html = html.replace(/<meta name="robots" id="metaRobotsTag"[^>]*>/i, `<meta name="robots" id="metaRobotsTag" content="${escapeXml(robotsDirective)}" />`);
     html = html.replace(/<link rel="canonical" id="canonicalLinkTag"[^>]*>/i, `<link rel="canonical" id="canonicalLinkTag" href="${escapeXml(canonicalUrl)}" />`);
+    html = html.replace(/href="\/feed\.xml"/i, `href="${escapeXml(base)}/feed.xml"`);
+    html = html.replace(/href="\/llms\.txt"/i, `href="${escapeXml(base)}/llms.txt"`);
+    html = html.replace(/<meta property="og:type" id="ogTypeTag"[^>]*>/i, `<meta property="og:type" id="ogTypeTag" content="${escapeXml(ogType)}" />`);
+    html = html.replace(/<meta property="og:title" id="ogTitleTag"[^>]*>/i, `<meta property="og:title" id="ogTitleTag" content="${escapeXml(pageTitle)}" />`);
+    html = html.replace(/<meta property="og:description" id="ogDescTag"[^>]*>/i, `<meta property="og:description" id="ogDescTag" content="${escapeXml(pageDesc)}" />`);
+    html = html.replace(/<meta property="og:url" id="ogUrlTag"[^>]*>/i, `<meta property="og:url" id="ogUrlTag" content="${escapeXml(canonicalUrl)}" />`);
+    html = html.replace(/<meta property="og:image" id="ogImageTag"[^>]*>/i, `<meta property="og:image" id="ogImageTag" content="${escapeXml(ogImage)}" />`);
+    html = html.replace(/<meta property="og:image:alt" id="ogImageAltTag"[^>]*>/i, `<meta property="og:image:alt" id="ogImageAltTag" content="${escapeXml(ogImageAlt)}" />`);
+    html = html.replace(/<meta name="twitter:title" id="twitterTitleTag"[^>]*>/i, `<meta name="twitter:title" id="twitterTitleTag" content="${escapeXml(pageTitle)}" />`);
+    html = html.replace(/<meta name="twitter:description" id="twitterDescTag"[^>]*>/i, `<meta name="twitter:description" id="twitterDescTag" content="${escapeXml(pageDesc)}" />`);
+    html = html.replace(/<meta name="twitter:image" id="twitterImageTag"[^>]*>/i, `<meta name="twitter:image" id="twitterImageTag" content="${escapeXml(ogImage)}" />`);
     html = html.replace(/<script type="application\/ld\+json" id="seoJsonLdScript">[\s\S]*?<\/script>/i, `<script type="application/ld+json" id="seoJsonLdScript">${jsonLd}</script>`);
-
-    // Add OpenGraph / robots metadata if not already injected
-    if (!html.includes('property="og:title"')) {
-      const extraSeo = `
-  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
-  <link rel="alternate" type="text/plain" title="LLMs Structured Guide" href="${base}/llms.txt" />
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="${escapeXml(pageTitle)}" />
-  <meta property="og:description" content="${escapeXml(pageDesc)}" />
-  <meta property="og:url" content="${escapeXml(canonicalUrl)}" />
-</head>`;
-      html = html.replace(/<\/head>/i, extraSeo);
-    }
 
     return sendResponse(req, res, 200, 'text/html; charset=utf-8', html, {
       'Cache-Control': 'no-cache'

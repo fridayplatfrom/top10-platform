@@ -2054,94 +2054,372 @@ function enrichCategoryEditorial(enrichedCat) {
   };
 }
 
-// Generates Schema.org JSON-LD (ItemList + Product + AggregateRating + FAQPage) for SEO & AI crawlers
-function buildSeoJsonLd(cat, allCategories, baseUrl) {
+const DEFAULT_FOUNDER_AVATAR = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80';
+const DEFAULT_SITE_OG_IMAGE = 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1200&q=80';
+
+const CATEGORY_FEATURE_META = {
+  'audiobook-apps': {
+    coverImage: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1200&q=80',
+    dateText: '18 Oct 2026',
+    isoDate: '2026-10-18T00:00:00Z',
+    editorialTitle: 'Our Guide to the Top 10 Audiobook Apps for Every Listener',
+    description: 'Learn how to choose the best audiobook app with our step-by-step guide, catalog comparisons, monthly credit value, and offline listening tips.',
+    authorName: 'Bill Roberts',
+    authorRole: 'Founder',
+    authorAvatar: DEFAULT_FOUNDER_AVATAR
+  },
+  'devops-observability-engines': {
+    coverImage: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80',
+    dateText: '15 Oct 2026',
+    isoDate: '2026-10-15T00:00:00Z',
+    editorialTitle: 'We Breakdown the Top 10 DevOps Observability & APM Engines',
+    description: 'Compare distributed tracing, OpenTelemetry ingestion, and real-time incident alerting with expert advice to scale your production reliability.',
+    authorName: 'Bill Roberts',
+    authorRole: 'Founder',
+    authorAvatar: DEFAULT_FOUNDER_AVATAR
+  },
+  'billing-software': {
+    coverImage: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1200&q=80',
+    dateText: '12 Oct 2026',
+    isoDate: '2026-10-12T00:00:00Z',
+    editorialTitle: 'How to Choose the Best SaaS Billing & Subscription Platform',
+    description: 'Learn how to automate global VAT compliance, usage-based metering, and recurring revenue orchestration with our complete 2026 breakdown.',
+    authorName: 'Bill Roberts',
+    authorRole: 'Founder',
+    authorAvatar: DEFAULT_FOUNDER_AVATAR
+  },
+  'studio-speakers': {
+    coverImage: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1200&q=80',
+    dateText: '10 Oct 2026',
+    isoDate: '2026-10-10T00:00:00Z',
+    editorialTitle: 'Top 10 Studio Reference Monitors: A Step-by-Step Buying Guide',
+    description: 'Discover the most accurate nearfield studio monitors, DSP room calibration systems, and acoustic strategies for mixing and mastering.',
+    authorName: 'Bill Roberts',
+    authorRole: 'Founder',
+    authorAvatar: DEFAULT_FOUNDER_AVATAR
+  },
+  'ai-coding-tools': {
+    coverImage: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
+    dateText: '08 Oct 2026',
+    isoDate: '2026-10-08T00:00:00Z',
+    editorialTitle: 'What Are the Best AI Coding Assistants? Everything You Need to Know',
+    description: 'Explore how multi-file codebase indexing, autonomous refactoring agents, and inline autocomplete accelerate engineering teams.',
+    authorName: 'Bill Roberts',
+    authorRole: 'Founder',
+    authorAvatar: DEFAULT_FOUNDER_AVATAR
+  },
+  'crm-platforms': {
+    coverImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+    dateText: '05 Oct 2026',
+    isoDate: '2026-10-05T00:00:00Z',
+    editorialTitle: 'Our Complete Guide to the Top 10 CRM & Revenue Platforms',
+    description: 'Compare pipeline automation, AI contact enrichment, and multi-channel outbound sequences to help your revenue team close faster.',
+    authorName: 'Bill Roberts',
+    authorRole: 'Founder',
+    authorAvatar: DEFAULT_FOUNDER_AVATAR
+  },
+  'cloud-hosting': {
+    coverImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
+    dateText: '02 Oct 2026',
+    isoDate: '2026-10-02T00:00:00Z',
+    editorialTitle: 'How to Pick the Right Cloud Hosting & Edge Compute Provider',
+    description: 'We evaluate global deployment speed, managed Kubernetes clusters, and predictable bandwidth pricing for modern web applications.',
+    authorName: 'Bill Roberts',
+    authorRole: 'Founder',
+    authorAvatar: DEFAULT_FOUNDER_AVATAR
+  },
+  'project-management': {
+    coverImage: 'https://images.unsplash.com/photo-1507925921958-8a62f3d1a50d?auto=format&fit=crop&w=1200&q=80',
+    dateText: '28 Sep 2026',
+    isoDate: '2026-09-28T00:00:00Z',
+    editorialTitle: 'Top 10 Project Management Tools for High-Velocity Product Teams',
+    description: 'Streamline sprint planning, issue tracking, and cross-functional roadmaps with our hands-on review of the best workspace platforms.',
+    authorName: 'Bill Roberts',
+    authorRole: 'Founder',
+    authorAvatar: DEFAULT_FOUNDER_AVATAR
+  },
+  'email-marketing': {
+    coverImage: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1200&q=80',
+    dateText: '24 Sep 2026',
+    isoDate: '2026-09-24T00:00:00Z',
+    editorialTitle: 'How to Scale Lifecycle Email Marketing: Top 10 Platforms Compared',
+    description: 'Boost inbox deliverability and subscriber conversion rates with behavioral segmentation, transactional APIs, and visual automation.',
+    authorName: 'Bill Roberts',
+    authorRole: 'Founder',
+    authorAvatar: DEFAULT_FOUNDER_AVATAR
+  },
+  'ai-video-generators': {
+    coverImage: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?auto=format&fit=crop&w=1200&q=80',
+    dateText: '20 Sep 2026',
+    isoDate: '2026-09-20T00:00:00Z',
+    editorialTitle: 'We Breakdown the Top 10 AI Video Generators & Motion Models',
+    description: 'Compare cinematic realism, temporal consistency, camera motion control, and commercial licensing across leading generative video tools.',
+    authorName: 'Bill Roberts',
+    authorRole: 'Founder',
+    authorAvatar: DEFAULT_FOUNDER_AVATAR
+  },
+  'ovens': {
+    coverImage: 'https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=1200&q=80',
+    dateText: '16 Sep 2026',
+    isoDate: '2026-09-16T00:00:00Z',
+    editorialTitle: 'Our Guide to the Top 10 Smart Ovens & Convection Ranges',
+    description: 'From countertop precision ovens to commercial-style induction ranges, discover our tested picks for even baking and smart temperature probes.',
+    authorName: 'Bill Roberts',
+    authorRole: 'Founder',
+    authorAvatar: DEFAULT_FOUNDER_AVATAR
+  },
+  'smart-tvs': {
+    coverImage: 'https://images.unsplash.com/photo-1461151304267-38535e780c79?auto=format&fit=crop&w=1200&q=80',
+    dateText: '13 Sep 2026',
+    isoDate: '2026-09-13T00:00:00Z',
+    editorialTitle: 'Top 10 Smart TVs: OLED, QD-OLED & Mini-LED Display Breakdown',
+    description: 'We tested peak HDR brightness, black-level uniformity, 144Hz gaming input lag, and anti-reflective coatings across flagship displays.',
+    authorName: 'Bill Roberts',
+    authorRole: 'Founder',
+    authorAvatar: DEFAULT_FOUNDER_AVATAR
+  },
+  'phone-covers': {
+    coverImage: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1200&q=80',
+    dateText: '10 Sep 2026',
+    isoDate: '2026-09-10T00:00:00Z',
+    editorialTitle: 'How to Protect Your Phone: Top 10 Drop-Tested Cases & Covers',
+    description: 'Compare aramid fiber, full-grain leather, and military-grade shockproof MagSafe cases designed to protect without adding bulk.',
+    authorName: 'Bill Roberts',
+    authorRole: 'Founder',
+    authorAvatar: DEFAULT_FOUNDER_AVATAR
+  },
+  'gambling-platforms': {
+    coverImage: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1200&q=80',
+    dateText: '06 Sep 2026',
+    isoDate: '2026-09-06T00:00:00Z',
+    editorialTitle: 'Top 10 Regulated Sportsbooks & Gaming Apps: Complete Breakdown',
+    description: 'Compare licensed sportsbooks across live in-play odds, instant withdrawal speeds, parlay builders, and mobile app reliability.',
+    authorName: 'Bill Roberts',
+    authorRole: 'Founder',
+    authorAvatar: DEFAULT_FOUNDER_AVATAR
+  },
+  'mobile-games': {
+    coverImage: 'https://images.unsplash.com/photo-1552820728-8b83bb6b773f?auto=format&fit=crop&w=1200&q=80',
+    dateText: '02 Sep 2026',
+    isoDate: '2026-09-02T00:00:00Z',
+    editorialTitle: 'Top 10 Mobile Games: Here Is Everything You Need to Play in 2026',
+    description: 'Explore the best iOS and Android games featuring 120fps console-grade graphics, controller support, and fair competitive progression.',
+    authorName: 'Bill Roberts',
+    authorRole: 'Founder',
+    authorAvatar: DEFAULT_FOUNDER_AVATAR
+  }
+};
+
+function getCategoryFeatureMeta(c) {
+  if (!c) {
+    return {
+      coverImage: DEFAULT_SITE_OG_IMAGE,
+      dateText: '18 Oct 2026',
+      isoDate: '2026-10-18T00:00:00Z',
+      editorialTitle: 'Top 10 Buying Guides & Curated Rankings (2026)',
+      description: 'Independent Top 10 product guides covering software, hardware, and lifestyle tools.',
+      authorName: 'Bill Roberts',
+      authorRole: 'Founder',
+      authorAvatar: DEFAULT_FOUNDER_AVATAR
+    };
+  }
+  const preset = CATEGORY_FEATURE_META[c.slug];
+  const firstProdImg = c.top10 && c.top10[0] && c.top10[0].media && c.top10[0].media.heroImage;
+  return {
+    coverImage: (preset && preset.coverImage) || c.coverImage || firstProdImg || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+    dateText: (preset && preset.dateText) || (c.editorialGuide && c.editorialGuide.lastUpdatedDate) || '15 Oct 2026',
+    isoDate: (preset && preset.isoDate) || (c.updatedAt ? new Date(c.updatedAt).toISOString() : '2026-10-15T00:00:00Z'),
+    editorialTitle: (preset && preset.editorialTitle) || c.title,
+    description: (preset && preset.description) || (c.editorialGuide && c.editorialGuide.intro) || c.description || `Explore the top 10 picks in ${c.title} with editorial summaries and official links.`,
+    authorName: (preset && preset.authorName) || 'Bill Roberts',
+    authorRole: (preset && preset.authorRole) || 'Founder',
+    authorAvatar: (preset && preset.authorAvatar) || DEFAULT_FOUNDER_AVATAR
+  };
+}
+
+// Generates World-Class Policy-Compliant Schema.org JSON-LD (@graph: Organization, WebSite, CollectionPage, Article, BreadcrumbList, ItemList)
+function buildSeoJsonLd(cat, allCategories, baseUrl, comparePair = null) {
+  const orgNode = {
+    '@type': 'Organization',
+    '@id': `${baseUrl}/#organization`,
+    name: 'Top 10',
+    url: baseUrl,
+    logo: {
+      '@type': 'ImageObject',
+      url: `${baseUrl}/favicon.svg`
+    }
+  };
+
+  const websiteNode = {
+    '@type': 'WebSite',
+    '@id': `${baseUrl}/#website`,
+    name: 'Top 10',
+    url: baseUrl,
+    publisher: { '@id': `${baseUrl}/#organization` },
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: `${baseUrl}/?q={search_term_string}`,
+      'query-input': 'required name=search_term_string'
+    }
+  };
+
+  // 1. Homepage Schema
   if (!cat) {
+    const cats = allCategories || [];
     return JSON.stringify(
       {
         '@context': 'https://schema.org',
-        '@type': 'WebSite',
-        name: 'Top 10 — Independent Buying Guides & Ranked Product Comparisons',
-        url: baseUrl,
-        description:
-          'Compare the Top 10 software and hardware products in every category with side-by-side comparison tables, pros & cons, pricing breakdowns, and verified reviews.',
-        potentialAction: {
-          '@type': 'SearchAction',
-          target: `${baseUrl}/?q={search_term_string}`,
-          'query-input': 'required name=search_term_string'
-        },
-        hasPart: (allCategories || []).map((c) => ({
-          '@type': 'CollectionPage',
-          name: `${c.title} (2026 Buying Guide & Reviews)`,
-          url: `${baseUrl}/list/${c.slug}`
-        }))
+        '@graph': [
+          orgNode,
+          websiteNode,
+          {
+            '@type': 'CollectionPage',
+            '@id': `${baseUrl}/#webpage`,
+            url: `${baseUrl}/`,
+            name: 'Top 10 — Curated Product Buying Guides & Rankings (2026)',
+            description: 'Browse editorial Top 10 buying guides across software, hardware, and consumer apps.',
+            isPartOf: { '@id': `${baseUrl}/#website` }
+          },
+          {
+            '@type': 'ItemList',
+            '@id': `${baseUrl}/#directories`,
+            name: 'Top 10 Directories',
+            numberOfItems: cats.length,
+            itemListOrder: 'https://schema.org/ItemListOrderAscending',
+            itemListElement: cats.map((c, idx) => {
+              const meta = getCategoryFeatureMeta(c);
+              return {
+                '@type': 'ListItem',
+                position: idx + 1,
+                url: `${baseUrl}/list/${c.slug}`,
+                name: meta.editorialTitle || c.title,
+                image: meta.coverImage,
+                description: meta.description
+              };
+            })
+          }
+        ]
       },
       null,
       2
     );
   }
 
-  const itemListSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: `${cat.title} (2026 Comparison & Reviews)`,
-    description: cat.editorialGuide?.intro || cat.subtitle,
-    url: `${baseUrl}/list/${cat.slug}`,
-    numberOfItems: (cat.top10 || []).length,
-    itemListOrder: 'https://schema.org/ItemListOrderDescending',
-    itemListElement: (cat.top10 || []).map((p) => ({
-      '@type': 'ListItem',
-      position: p.rank,
-      item: {
-        '@type': 'Product',
-        name: p.name,
-        brand: {
-          '@type': 'Brand',
-          name: p.companyName
+  // 2. Comparison Page Schema (/compare/:cat/:p1-vs-:p2)
+  if (comparePair && comparePair.prodA && comparePair.prodB) {
+    const { prodA, prodB } = comparePair;
+    const compareUrl = `${baseUrl}/compare/${cat.slug}/${prodA.id}-vs-${prodB.id}`;
+    const listUrl = `${baseUrl}/list/${cat.slug}`;
+    return JSON.stringify(
+      {
+        '@context': 'https://schema.org',
+        '@graph': [
+          orgNode,
+          websiteNode,
+          {
+            '@type': 'WebPage',
+            '@id': `${compareUrl}#webpage`,
+            url: compareUrl,
+            name: `${prodA.name} vs ${prodB.name} (2026) — Side-by-Side Comparison | Top 10`,
+            description: `Compare ${prodA.name} by ${prodA.companyName} and ${prodB.name} by ${prodB.companyName} in ${cat.title}.`,
+            isPartOf: { '@id': `${baseUrl}/#website` }
+          },
+          {
+            '@type': 'BreadcrumbList',
+            '@id': `${compareUrl}#breadcrumb`,
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: `${baseUrl}/` },
+              { '@type': 'ListItem', position: 2, name: cat.title, item: listUrl },
+              { '@type': 'ListItem', position: 3, name: `${prodA.name} vs ${prodB.name}`, item: compareUrl }
+            ]
+          },
+          {
+            '@type': 'ItemList',
+            '@id': `${compareUrl}#comparison`,
+            name: `${prodA.name} vs ${prodB.name}`,
+            numberOfItems: 2,
+            itemListElement: [prodA, prodB].map((p, idx) => ({
+              '@type': 'ListItem',
+              position: idx + 1,
+              item: {
+                '@type': 'Thing',
+                name: p.name,
+                description: p.editorialSummary || p.tagline,
+                url: p.website,
+                image: p.media?.heroImage || undefined
+              }
+            }))
+          }
+        ]
+      },
+      null,
+      2
+    );
+  }
+
+  // 3. Category List Page Schema (Article + BreadcrumbList + ItemList matching strictly visible DOM)
+  const listUrl = `${baseUrl}/list/${cat.slug}`;
+  const meta = getCategoryFeatureMeta(cat);
+  const top10 = cat.top10 || [];
+
+  return JSON.stringify(
+    {
+      '@context': 'https://schema.org',
+      '@graph': [
+        orgNode,
+        websiteNode,
+        {
+          '@type': 'Article',
+          '@id': `${listUrl}#article`,
+          mainEntityOfPage: { '@type': 'WebPage', '@id': listUrl },
+          headline: `${cat.title} (2026) — Best Picks & Buying Guide`,
+          description: meta.description,
+          image: [meta.coverImage],
+          datePublished: meta.isoDate,
+          dateModified: cat.updatedAt ? new Date(cat.updatedAt).toISOString() : meta.isoDate,
+          author: {
+            '@type': 'Person',
+            name: meta.authorName,
+            jobTitle: meta.authorRole
+          },
+          publisher: { '@id': `${baseUrl}/#organization` },
+          isPartOf: { '@id': `${baseUrl}/#website` }
         },
-        description: p.editorialSummary || p.tagline,
-        url: p.website,
-        image: p.media?.heroImage || undefined,
-        aggregateRating: {
-          '@type': 'AggregateRating',
-          ratingValue: String(p.rating || 4.8),
-          bestRating: '5',
-          ratingCount: String(p.reviewsCount || 250)
+        {
+          '@type': 'BreadcrumbList',
+          '@id': `${listUrl}#breadcrumb`,
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: `${baseUrl}/` },
+            { '@type': 'ListItem', position: 2, name: cat.title, item: listUrl }
+          ]
         },
-        positiveNotes: {
+        {
           '@type': 'ItemList',
-          itemListElement: (p.pros || []).map((pro, i) => ({
+          '@id': `${listUrl}#top10`,
+          name: cat.title,
+          description: meta.description,
+          url: listUrl,
+          numberOfItems: top10.length,
+          itemListOrder: 'https://schema.org/ItemListOrderAscending',
+          itemListElement: top10.map((p) => ({
             '@type': 'ListItem',
-            position: i + 1,
-            name: pro
-          }))
-        },
-        negativeNotes: {
-          '@type': 'ItemList',
-          itemListElement: (p.cons || []).map((con, i) => ({
-            '@type': 'ListItem',
-            position: i + 1,
-            name: con
+            position: p.rank,
+            url: p.website,
+            name: p.name,
+            item: {
+              '@type': 'Thing',
+              name: p.name,
+              description: p.editorialSummary || p.tagline,
+              url: p.website,
+              image: p.media?.heroImage || undefined
+            }
           }))
         }
-      }
-    }))
-  };
-
-  const faqSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: (cat.editorialGuide?.faqs || []).map((f) => ({
-      '@type': 'Question',
-      name: f.q,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: f.a
-      }
-    }))
-  };
-
-  return JSON.stringify([itemListSchema, faqSchema], null, 2);
+      ]
+    },
+    null,
+    2
+  );
 }
 
 // Generates /llms.txt for AI Search Engines (Perplexity, ChatGPT Search, Claude, Google AI)
@@ -4587,6 +4865,10 @@ module.exports = {
   ensureTenRealProducts,
   enrichCategoryEditorial,
   ensureDefaultEightCategories,
+  CATEGORY_FEATURE_META,
+  DEFAULT_FOUNDER_AVATAR,
+  DEFAULT_SITE_OG_IMAGE,
+  getCategoryFeatureMeta,
   buildSeoJsonLd,
   buildLlmsTxt
 };

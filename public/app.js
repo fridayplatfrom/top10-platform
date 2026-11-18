@@ -650,68 +650,171 @@
     const baseUrl = window.location.origin;
     const isCompare = currentView === 'compare';
     const isList = currentView === 'list' && cat;
+    const isAdmin = currentView === 'admin';
+    const truncDesc = (s, m = 158) => {
+      const clean = String(s || '').replace(/\s+/g, ' ').trim();
+      return clean.length <= m ? clean : clean.slice(0, m - 3).replace(/\s+\S*$/, '') + '...';
+    };
 
-    let title = 'Top 10 — Independent Product Comparisons, Buying Guides & Reviews (2026)';
-    let desc = 'Explore side-by-side Top 10 buying guides, comparison tables, pros & cons, pricing breakdowns, and verified user reviews.';
+    let title = 'Top 10 — Curated Product Buying Guides & Rankings (2026)';
+    let desc = 'Explore curated Top 10 buying guides across software, hardware, and consumer apps with editorial summaries and direct official links.';
     let canonical = `${baseUrl}/`;
+    let ogType = 'website';
+    let ogImg = 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1200&q=80';
+    let ogAlt = 'Top 10 Buying Guides';
+    let robots = 'index, follow, max-snippet:-1, max-image-preview:large';
 
     if (isCompare) {
       const nameA = (currentCompareA || 'Product A').replace(/[_-]/g, ' ');
       const nameB = (currentCompareB || 'Product B').replace(/[_-]/g, ' ');
-      title = `${nameA} vs ${nameB}: 2026 Shootout, Pricing, Specs & Verdict | Top 10`;
-      desc = `In-depth head-to-head comparison of ${nameA} vs ${nameB}. Features, pricing models, developer pros & cons, and verified editorial recommendations.`;
+      title = `${nameA} vs ${nameB} (2026 Comparison) — Top 10`;
+      desc = truncDesc(`Compare ${nameA} vs ${nameB} side-by-side. Features, highlights, and pricing details.`);
       canonical = `${baseUrl}/compare/${currentCategorySlug}/${currentCompareA}-vs-${currentCompareB}`;
+      if (cat) {
+        ogImg = getCategoryFeatureMeta(cat).coverImage;
+      }
+      ogAlt = `${nameA} vs ${nameB}`;
     } else if (isList) {
-      title = `${cat.title} (2026) — Comparison Table, Pros & Cons, Reviews`;
-      desc = `${cat.editorialGuide?.intro || cat.subtitle} Compare #1 ${cat.top10?.[0]?.name || ''} vs top alternatives.`;
+      const meta = getCategoryFeatureMeta(cat);
+      title = `${cat.title} (2026) — Best Picks & Buying Guide | Top 10`;
+      desc = truncDesc(`${meta.description} Featured #1 pick: ${cat.top10?.[0]?.name || ''}.`);
       canonical = `${baseUrl}/list/${cat.slug}`;
+      ogType = 'article';
+      ogImg = meta.coverImage;
+      ogAlt = cat.title;
+    } else if (isAdmin) {
+      title = 'Admin Operations Dashboard — Top 10 Platform';
+      desc = 'Internal command center for managing Top 10 listings and transactions.';
+      canonical = `${baseUrl}/admin`;
+      robots = 'noindex, nofollow';
     }
 
     document.title = title;
-    const metaDesc = document.getElementById('metaDescriptionTag');
-    if (metaDesc) metaDesc.setAttribute('content', desc);
-    const canonEl = document.getElementById('canonicalLinkTag');
-    if (canonEl) canonEl.setAttribute('href', canonical);
+    const setAttr = (id, attr, val) => {
+      const el = document.getElementById(id);
+      if (el) el.setAttribute(attr, val);
+    };
+    setAttr('metaDescriptionTag', 'content', desc);
+    setAttr('metaRobotsTag', 'content', robots);
+    setAttr('canonicalLinkTag', 'href', canonical);
+    setAttr('ogTypeTag', 'content', ogType);
+    setAttr('ogTitleTag', 'content', title);
+    setAttr('ogDescTag', 'content', desc);
+    setAttr('ogUrlTag', 'content', canonical);
+    setAttr('ogImageTag', 'content', ogImg);
+    setAttr('ogImageAltTag', 'content', ogAlt);
+    setAttr('twitterTitleTag', 'content', title);
+    setAttr('twitterDescTag', 'content', desc);
+    setAttr('twitterImageTag', 'content', ogImg);
 
     const jsonLdEl = document.getElementById('seoJsonLdScript');
-    if (jsonLdEl && isList) {
-      const schemaPayload = [
-        {
-          '@context': 'https://schema.org',
-          '@type': 'ItemList',
-          name: `${cat.title} (2026 Buying Guide & Reviews)`,
-          description: desc,
-          url: canonical,
-          numberOfItems: (cat.top10 || []).length,
-          itemListElement: (cat.top10 || []).map((p) => ({
-            '@type': 'ListItem',
-            position: p.rank,
-            item: {
-              '@type': 'Product',
-              name: p.name,
-              brand: { '@type': 'Brand', name: p.companyName },
-              description: p.editorialSummary || p.tagline,
-              url: p.website,
-              aggregateRating: {
-                '@type': 'AggregateRating',
-                ratingValue: String(p.rating || 4.8),
-                bestRating: '5',
-                ratingCount: String(p.reviewsCount || 250)
-              }
-            }
-          }))
-        },
-        {
-          '@context': 'https://schema.org',
-          '@type': 'FAQPage',
-          mainEntity: (cat.editorialGuide?.faqs || []).map((f) => ({
-            '@type': 'Question',
-            name: f.q,
-            acceptedAnswer: { '@type': 'Answer', text: f.a }
-          }))
+    if (jsonLdEl && appState) {
+      const orgNode = {
+        '@type': 'Organization',
+        '@id': `${baseUrl}/#organization`,
+        name: 'Top 10',
+        url: baseUrl
+      };
+      const websiteNode = {
+        '@type': 'WebSite',
+        '@id': `${baseUrl}/#website`,
+        name: 'Top 10',
+        url: baseUrl,
+        publisher: { '@id': `${baseUrl}/#organization` },
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: `${baseUrl}/?q={search_term_string}`,
+          'query-input': 'required name=search_term_string'
         }
-      ];
-      jsonLdEl.textContent = JSON.stringify(schemaPayload);
+      };
+
+      let graph = [orgNode, websiteNode];
+      if (isList) {
+        const meta = getCategoryFeatureMeta(cat);
+        graph.push(
+          {
+            '@type': 'Article',
+            '@id': `${canonical}#article`,
+            mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+            headline: title,
+            description: meta.description,
+            image: [meta.coverImage],
+            author: { '@type': 'Person', name: meta.authorName, jobTitle: meta.authorRole },
+            publisher: { '@id': `${baseUrl}/#organization` }
+          },
+          {
+            '@type': 'BreadcrumbList',
+            '@id': `${canonical}#breadcrumb`,
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: `${baseUrl}/` },
+              { '@type': 'ListItem', position: 2, name: cat.title, item: canonical }
+            ]
+          },
+          {
+            '@type': 'ItemList',
+            '@id': `${canonical}#top10`,
+            name: cat.title,
+            description: meta.description,
+            url: canonical,
+            numberOfItems: (cat.top10 || []).length,
+            itemListOrder: 'https://schema.org/ItemListOrderAscending',
+            itemListElement: (cat.top10 || []).map((p) => ({
+              '@type': 'ListItem',
+              position: p.rank,
+              url: p.website,
+              name: p.name,
+              item: {
+                '@type': 'Thing',
+                name: p.name,
+                description: p.editorialSummary || p.tagline,
+                url: p.website,
+                image: p.media?.heroImage || undefined
+              }
+            }))
+          }
+        );
+      } else if (isCompare) {
+        graph.push({
+          '@type': 'WebPage',
+          '@id': `${canonical}#webpage`,
+          url: canonical,
+          name: title,
+          description: desc,
+          isPartOf: { '@id': `${baseUrl}/#website` }
+        });
+      } else if (!isAdmin) {
+        const cats = appState.categories || [];
+        graph.push(
+          {
+            '@type': 'CollectionPage',
+            '@id': `${baseUrl}/#webpage`,
+            url: `${baseUrl}/`,
+            name: title,
+            description: desc,
+            isPartOf: { '@id': `${baseUrl}/#website` }
+          },
+          {
+            '@type': 'ItemList',
+            '@id': `${baseUrl}/#directories`,
+            name: 'Top 10 Directories',
+            numberOfItems: cats.length,
+            itemListOrder: 'https://schema.org/ItemListOrderAscending',
+            itemListElement: cats.map((c, idx) => {
+              const m = getCategoryFeatureMeta(c);
+              return {
+                '@type': 'ListItem',
+                position: idx + 1,
+                url: `${baseUrl}/list/${c.slug}`,
+                name: m.editorialTitle || c.title,
+                image: m.coverImage,
+                description: m.description
+              };
+            })
+          }
+        );
+      }
+
+      jsonLdEl.textContent = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph });
     }
   }
 

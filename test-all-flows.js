@@ -499,10 +499,10 @@ async function req(path, options = {}) {
     assert(res.data.includes('/compare/billing-software/'));
   });
 
-  await test('Flow 12b: robots.txt declares sitemap location', async () => {
+  await test('Flow 12b: robots.txt enforces crawler rules & keeps sitemap blocked', async () => {
     const res = await req('/robots.txt');
     assert.strictEqual(res.status, 200);
-    assert(res.data.includes('Sitemap:'));
+    assert(res.data.includes('Disallow: /sitemap.xml'));
     assert(res.data.includes('User-agent: *'));
   });
 
@@ -510,6 +510,17 @@ async function req(path, options = {}) {
     const res = await req('/feed.xml');
     assert.strictEqual(res.status, 200);
     assert(res.data.includes('<rss version="2.0"'));
+  });
+
+  await test('Flow 12e: List pages render full SSR body content, clean @graph schema & OpenGraph/Twitter tags', async () => {
+    const res = await req('/list/studio-speakers');
+    assert.strictEqual(res.status, 200);
+    assert(res.data.includes('Sonos Era 300'), 'SSR HTML must include top ranked product inside #top10TimelineList');
+    assert(res.data.includes('"@type": "Article"'), 'JSON-LD must include Article schema');
+    assert(res.data.includes('"@type": "BreadcrumbList"'), 'JSON-LD must include BreadcrumbList schema');
+    assert(res.data.includes('og:image'), 'HTML head must include og:image');
+    assert(res.data.includes('twitter:card'), 'HTML head must include twitter:card');
+    assert(!res.data.includes('"@type": "FAQPage"'), 'Hidden FAQPage schema must not be emitted');
   });
 
   await test('Flow 12d: Dynamic SVG embed badge generator', async () => {
