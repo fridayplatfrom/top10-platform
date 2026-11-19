@@ -1,6 +1,6 @@
 // ==============================================================================
 // TOP 10 PLATFORM — PM2 PROCESS MANAGER CONFIGURATION
-// Zero-downtime clustering, log management, and auto-restart
+// Single-process runtime: file-backed state and in-memory sessions are not cluster-safe
 // Run with: pm2 start ecosystem.config.js --env production
 // ==============================================================================
 
@@ -9,8 +9,8 @@ module.exports = {
     {
       name: 'top10-platform',
       script: 'server.js',
-      instances: 'max',
-      exec_mode: 'cluster',
+      instances: 1,
+      exec_mode: 'fork',
       autorestart: true,
       watch: false,
       max_memory_restart: '500M',

@@ -6,8 +6,11 @@
 const path = require('path');
 const puppeteer = require(path.resolve(__dirname, 'node_modules', 'puppeteer-core'));
 
-const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const BASE_URL = 'http://localhost:3456';
+const CHROME_PATH = process.env.CHROME_PATH || (process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : '/usr/bin/chromium');
+const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3456';
+if (!['localhost', '127.0.0.1', '[::1]'].includes(new URL(BASE_URL).hostname)) {
+  throw new Error('Browser audits must target an isolated loopback server.');
+}
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 (async () => {
@@ -18,7 +21,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const browser = await puppeteer.launch({
     executablePath: CHROME_PATH,
     headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--window-size=1280,900']
+    args: ['--window-size=1280,900']
   });
 
   const page = await browser.newPage();
@@ -66,14 +69,15 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     const loginRes = await fetch(`${BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'admin@top10.io', password: 'Top10Admin2026!' })
+      body: JSON.stringify({ email: 'admin@top10.io', password: process.env.TEST_ADMIN_PASSWORD || 'Top10Admin2026!' })
     });
     const loginData = await loginRes.json();
+    if (!loginRes.ok || !loginData.token) throw new Error('Isolated audit admin login failed');
     if (loginData.token) {
       await page.setCookie({
         name: 'top10_session',
         value: loginData.token,
-        domain: 'localhost',
+        domain: new URL(BASE_URL).hostname,
         path: '/'
       });
       await page.evaluateOnNewDocument((token) => {
@@ -81,7 +85,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
       }, loginData.token);
     }
   } catch (err) {
-    console.warn('Admin session pre-auth notice:', err.message);
+    await browser.close();
+    throw err;
   }
 
   // --------------------------------------------------------------------------
@@ -240,6 +245,23 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     if (txRows === 0) throw new Error('Transactions audit table failed to render rows');
   });
 
+  // Editorial browsing only: no publishing or scheduler actions.
+  await test('Editorial dashboard filtering and search reset', async () => {
+    await page.click('[data-admin-tab="editorial"]');
+    await page.waitForSelector('#adminTabEditorial:not(.hidden)');
+    const initial = await page.$eval('#adminEditorialTableBody', el => el.textContent);
+    if (!initial.trim()) throw new Error('Editorial table did not hydrate');
+    await page.type('#adminEditorialSearchInput', 'audit-no-match-782f');
+    await page.waitForFunction(() => !document.querySelector('#adminEditorialTableBody .ed-edit-btn'));
+    await page.$eval('#adminEditorialSearchInput', el => { el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); });
+    await page.waitForFunction(expected => document.querySelector('#adminEditorialTableBody').textContent === expected, {}, initial);
+    for (const status of ['draft', 'scheduled', 'published', 'all']) {
+      await page.click(`[data-ed-filter="${status}"]`);
+      const active = await page.$eval(`[data-ed-filter="${status}"]`, el => el.classList.contains('active'));
+      if (!active) throw new Error(`Editorial filter ${status} did not activate`);
+    }
+  });
+
   // --------------------------------------------------------------------------
   // FLOW 7: Quick Action Buttons & Keyboard Accessibility
   // --------------------------------------------------------------------------
@@ -270,8 +292,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     await Promise.race([browser.close(), new Promise((r) => setTimeout(r, 1000))]);
   } catch (err) {}
 
-  if (passedTests === totalTests && consoleErrors.length === 0) {
-    console.log('100% DASHBOARD SUCCESS: COMPLETE DASHBOARD IS PRODUCTION-READY!');
+  if (passedTests === totalTests && consoleErrors.length === 0 && httpErrors.length === 0) {
+    console.log('All covered dashboard flows passed; this is not production certification.');
     process.exit(0);
   } else {
     process.exit(1);

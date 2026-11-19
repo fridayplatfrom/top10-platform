@@ -7,6 +7,7 @@
     "start": "node server.js",
     "build": "node --check server.js",
     "test": "node test-all-flows.js",
+    "test:editorial": "node test-publisher-lifecycle.js && node test-crawler-surfaces.js && node test-seo-schema.js && node test-ui-data-integrity.js",
     "test:flows": "node test-all-flows.js",
     "test:browser": "node test-browser-debug.js",
     "test:scenarios": "node test-all-scenarios.js",

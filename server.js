@@ -80,7 +80,7 @@ function getSession(req) {
 
 function sanitizeUser(user) {
   if (!user) return null;
-  const { passwordHash, ...clean } = user;
+  const { passwordHash, pass, ...clean } = user;
   return clean;
 }
 
@@ -163,12 +163,16 @@ function ensureUserPasswords() {
   for (const def of defaults) {
     let u = db.users.find((x) => x.email && x.email.toLowerCase() === def.email.toLowerCase());
     if (!u) {
-      u = { id: 'usr_' + Date.now() + Math.random().toString(36).slice(2, 5), ...def };
-      u.passwordHash = hashPassword(def.pass);
+      const { pass, ...profile } = def;
+      u = { id: 'usr_' + Date.now() + Math.random().toString(36).slice(2, 5), ...profile, passwordHash: hashPassword(pass) };
       db.users.push(u);
       modified = true;
     } else if (!u.passwordHash) {
       u.passwordHash = hashPassword(def.pass);
+      modified = true;
+    }
+    if (Object.hasOwn(u, 'pass')) {
+      delete u.pass;
       modified = true;
     }
   }
@@ -448,9 +452,15 @@ function getPublicState(user) {
       if (isAdmin) return true;
       return cmt.status === 'approved' || !cmt.status || cmt.type === 'system_event';
     });
+    if (isAdmin) return { ...enriched, comments };
+    const publicProduct = ({ ownerEmail, claimedBy, retainerSubscription, ...product }) => product;
+    const publicComments = comments.map(({ email, authorEmail, ...comment }) => comment);
     return {
       ...enriched,
-      comments
+      products: (enriched.products || []).map(publicProduct),
+      top10: (enriched.top10 || []).map(publicProduct),
+      pushedOut: (enriched.pushedOut || []).map(publicProduct),
+      comments: publicComments
     };
   });
 
@@ -1089,8 +1099,22 @@ const server = http.createServer(async (req, res) => {
         };
       }
       // Publication Status & Scheduling
-      const reqStatus = body.status ? String(body.status).toLowerCase() : null;
+      const reqStatus = body.status === undefined ? null : String(body.status).toLowerCase();
+      if (reqStatus !== null && !['published', 'scheduled', 'draft'].includes(reqStatus)) {
+        const err = new Error('status must be published, scheduled, or draft');
+        err.statusCode = 400;
+        throw err;
+      }
       const reqSched = body.scheduledAt ? String(body.scheduledAt).trim() : null;
+      if (body.scheduledAt === null) {
+        if (reqStatus === 'scheduled') {
+          const err = new Error('scheduledAt ISO timestamp is required when status is scheduled');
+          err.statusCode = 400;
+          throw err;
+        }
+        cat.scheduledAt = null;
+        if (!reqStatus && cat.status === 'scheduled') cat.status = 'draft';
+      }
       if (reqSched) {
         const ts = Date.parse(reqSched);
         if (Number.isNaN(ts)) {
@@ -1108,11 +1132,6 @@ const server = http.createServer(async (req, res) => {
           cat.publishedAt = cat.scheduledAt;
         }
       } else if (reqStatus) {
-        if (!['published', 'scheduled', 'draft'].includes(reqStatus)) {
-          const err = new Error('status must be published, scheduled, or draft');
-          err.statusCode = 400;
-          throw err;
-        }
         if (reqStatus === 'scheduled' && !cat.scheduledAt) {
           const err = new Error('scheduledAt ISO timestamp is required when status is scheduled');
           err.statusCode = 400;
@@ -1171,8 +1190,17 @@ const server = http.createServer(async (req, res) => {
         createdAt: new Date().toISOString()
       };
       const existingIdx = db.authors.findIndex((a) => a.id === id);
-      if (existingIdx !== -1) db.authors[existingIdx] = { ...db.authors[existingIdx], ...newAuthor };
-      else db.authors.push(newAuthor);
+      if (existingIdx !== -1) {
+        const previous = db.authors[existingIdx];
+        db.authors[existingIdx] = { ...previous, ...newAuthor, custom: previous.custom, createdAt: previous.createdAt || newAuthor.createdAt };
+        for (const article of db.categories.filter((item) => item.authorId === id)) {
+          for (const [field, profileField] of Object.entries({
+            authorName: 'name', authorRole: 'role', authorAvatar: 'avatar', authorBio: 'bio'
+          })) {
+            if (!article[field] || article[field] === previous[profileField]) article[field] = newAuthor[profileField];
+          }
+        }
+      } else db.authors.push(newAuthor);
       writeDb(db);
       return sendJson(res, 201, { success: true, author: newAuthor, state: getPublicState(getSession(req)) }, req);
     }
@@ -1182,6 +1210,9 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'DELETE' && authorIdMatch) {
       if (!requirePublisherOrAdmin(req, res)) return;
       const aId = authorIdMatch[1];
+      if (EDITORIAL_AUTHORS.some((author) => author.id === aId)) {
+        return sendJson(res, 409, { error: 'Built-in authors cannot be deleted' }, req);
+      }
       const db = readDb();
       const idx = (db.authors || []).findIndex((a) => a.id === aId);
       if (idx === -1) return sendJson(res, 404, { error: 'Author not found' }, req);
@@ -1229,6 +1260,9 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'DELETE' && delTopicMatch) {
       if (!requirePublisherOrAdmin(req, res)) return;
       const slug = delTopicMatch[1];
+      if (DEFAULT_TOPIC_CATEGORIES.some((topic) => topic.slug === slug)) {
+        return sendJson(res, 409, { error: 'Built-in categories cannot be deleted' }, req);
+      }
       const db = readDb();
       const idx = (db.topicCategories || []).findIndex((tc) => tc.slug === slug);
       if (idx === -1) return sendJson(res, 404, { error: 'Topic category not found' }, req);
@@ -1285,6 +1319,21 @@ const server = http.createServer(async (req, res) => {
       if (topicFilter) list = list.filter((a) => a.topic === topicFilter);
       if (authorFilter) list = list.filter((a) => a.authorId === authorFilter);
       if (tagFilter) list = list.filter((a) => Array.isArray(a.tags) && a.tags.includes(tagFilter.toLowerCase()));
+      const limitParam = parsedUrl.searchParams.get('limit');
+      const offsetParam = parsedUrl.searchParams.get('offset');
+      if (limitParam !== null || offsetParam !== null) {
+        const limit = limitParam === null ? 50 : Number(limitParam);
+        const offset = offsetParam === null ? 0 : Number(offsetParam);
+        if ((limitParam !== null && !/^\d+$/.test(limitParam)) ||
+            (offsetParam !== null && !/^\d+$/.test(offsetParam)) ||
+            !Number.isInteger(limit) || limit < 1 || limit > 100 ||
+            !Number.isSafeInteger(offset) || offset < 0) {
+          return sendJson(res, 400, { error: 'limit must be an integer from 1 to 100; offset must be a nonnegative safe integer' }, req);
+        }
+        const articles = list.slice(offset, offset + limit);
+        const nextOffset = offset + articles.length < list.length ? offset + articles.length : null;
+        return sendJson(res, 200, { count: articles.length, total: list.length, limit, offset, nextOffset, articles }, req);
+      }
       return sendJson(res, 200, { count: list.length, articles: list }, req);
     }
 
@@ -1313,8 +1362,8 @@ const server = http.createServer(async (req, res) => {
       const title = rawTitle.toLowerCase().startsWith('top 10') ? rawTitle : `Top 10 ${rawTitle}`;
       const existingCat = existingIdx !== -1 ? db.categories[existingIdx] : null;
 
-      const rawProducts = Array.isArray(body.products) ? body.products : (Array.isArray(body.items) ? body.items : []);
-      const mappedProducts = rawProducts.length > 0
+      const rawProducts = Array.isArray(body.products) ? body.products : (Array.isArray(body.items) ? body.items : null);
+      const mappedProducts = rawProducts !== null
         ? rawProducts.map((p, idx) => buildStructuredProductItem(p, idx, slug, title))
         : (existingCat?.products || []);
 
@@ -1358,7 +1407,7 @@ const server = http.createServer(async (req, res) => {
         if (body.monthlyViews !== undefined) targetCat.monthlyViews = Number(body.monthlyViews) || targetCat.monthlyViews;
         if (Array.isArray(body.criteria)) targetCat.criteria = body.criteria;
         if (Array.isArray(body.faqs)) targetCat.faqs = body.faqs;
-        if (rawProducts.length > 0) targetCat.products = mappedProducts;
+        if (rawProducts !== null) targetCat.products = mappedProducts;
       }
 
       if (!body.editorialTitle && body.title) {
@@ -1408,6 +1457,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     const pubArticleMatch = pathname.match(/^\/api\/(?:publish|admin)\/articles?\/([^/]+)$/);
+    if (req.method === 'GET' && pubArticleMatch) {
+      if (!requirePublisherOrAdmin(req, res)) return;
+      const db = readDb();
+      const cat = db.categories.find((c) => c.slug === pubArticleMatch[1]);
+      if (!cat) return sendJson(res, 404, { error: 'Article not found' }, req);
+      return sendJson(res, 200, { article: enrichCategory(cat, db.platformStats, db.authors) }, req);
+    }
+
     if ((req.method === 'PUT' || req.method === 'PATCH') && pubArticleMatch) {
       if (!requirePublisherOrAdmin(req, res)) return;
       const slug = pubArticleMatch[1];
@@ -1416,7 +1473,14 @@ const server = http.createServer(async (req, res) => {
       const cat = db.categories.find((c) => c.slug === slug);
       if (!cat) return sendJson(res, 404, { error: 'Article not found' }, req);
 
-      if (body.title !== undefined) cat.title = String(body.title).trim();
+      if (body.title !== undefined) {
+        const title = String(body.title).trim();
+        if (!title) return sendJson(res, 400, { error: 'Article title is required' }, req);
+        if (!cat.editorialTitle || cat.editorialTitle === cat.title || cat.title === `Top 10 ${cat.editorialTitle}`) {
+          cat.editorialTitle = title;
+        }
+        cat.title = title;
+      }
       if (body.tagline !== undefined) cat.tagline = String(body.tagline).trim();
       if (body.subtitle !== undefined) cat.subtitle = String(body.subtitle).trim();
       if (body.description !== undefined) cat.description = String(body.description).trim();
@@ -1424,7 +1488,7 @@ const server = http.createServer(async (req, res) => {
       if (body.monthlyViews !== undefined) cat.monthlyViews = Number(body.monthlyViews) || cat.monthlyViews;
       if (Array.isArray(body.criteria)) cat.criteria = body.criteria;
       if (Array.isArray(body.faqs)) cat.faqs = body.faqs;
-      if (Array.isArray(body.products) && body.products.length > 0) {
+      if (Array.isArray(body.products)) {
         cat.products = body.products.map((p, idx) => buildStructuredProductItem(p, idx, slug, cat.title));
       }
       applyEditorialFieldsToCategory(cat, body, db);
@@ -1628,9 +1692,9 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && badgeMatch) {
       const [, slug, prodId] = badgeMatch;
       const db = readDb();
-      const rawCat = db.categories.find((c) => c.slug === slug);
+      const rawCat = db.categories.find((c) => c.slug === slug && isPubliclyPublished(c));
       if (!rawCat) {
-        res.writeHead(404);
+        res.writeHead(404, { 'Cache-Control': 'no-store' });
         return res.end('Not found');
       }
       const enriched = enrichCategory(rawCat, db.platformStats);
@@ -1864,7 +1928,7 @@ const server = http.createServer(async (req, res) => {
       });
 
       writeDb(db);
-      const fullState = getFullState();
+      const publicState = getPublicState(null);
       broadcastSse('bid_placed', {
         categorySlug: cat.slug,
         categoryTitle: cat.title,
@@ -1874,12 +1938,12 @@ const server = http.createServer(async (req, res) => {
         amountPaid: paymentAmount,
         totalPaid: targetProduct.amountPaid,
         timestamp: new Date().toISOString(),
-        state: fullState
+        state: publicState
       });
       return sendJson(res, 200, {
         newRank,
         product: targetProduct,
-        state: fullState
+        state: publicState
       });
     }
 
@@ -1907,7 +1971,7 @@ const server = http.createServer(async (req, res) => {
       if (body.logoText) prod.logoText = body.logoText.trim().slice(0, 3).toUpperCase();
 
       writeDb(db);
-      return sendJson(res, 200, { product: prod, state: getFullState() });
+      return sendJson(res, 200, { product: prod, state: getPublicState(getSession(req)) });
     }
 
     // 5. DELETE /api/admin/categories/:slug/products/:productId (Admin delete or reset bid - Admin only)
@@ -2083,7 +2147,7 @@ const server = http.createServer(async (req, res) => {
 
       cat.comments.unshift(newComment);
       writeDb(db);
-      return sendJson(res, 200, { comment: newComment, state: getFullState() });
+      return sendJson(res, 200, { comment: newComment, state: getPublicState(getSession(req)) });
     }
 
     // 8. POST /api/categories/:slug/comments/:commentId/like
@@ -2097,7 +2161,7 @@ const server = http.createServer(async (req, res) => {
       if (!cmt) return sendJson(res, 404, { error: 'Comment not found' });
       cmt.likes = Number(cmt.likes || 0) + 1;
       writeDb(db);
-      return sendJson(res, 200, { state: getFullState() });
+      return sendJson(res, 200, { state: getPublicState(getSession(req)) });
     }
 
 
@@ -2167,7 +2231,7 @@ const server = http.createServer(async (req, res) => {
 
       const existing = db.categories.find((c) => c.slug === slug);
       if (existing) {
-        return sendJson(res, 200, { category: existing, state: getFullState() });
+        return sendJson(res, 200, { category: existing, state: getPublicState(getSession(req)) });
       }
 
       const paywallFee = Math.max(49, Number(body.paymentAmount || 99));
@@ -2278,7 +2342,7 @@ const server = http.createServer(async (req, res) => {
       });
 
       writeDb(db);
-      const state = getFullState();
+      const state = getPublicState(null);
       const formattedCat = (state.categories || []).find((c) => c.slug === slug) || newCategory;
       broadcastSse('new_directory', {
         categorySlug: slug,
@@ -2563,16 +2627,19 @@ const server = http.createServer(async (req, res) => {
         '',
         'User-agent: GPTBot',
         'Disallow: /admin',
+        'Disallow: /api/',
         'Disallow: /sitemap.xml',
         'Allow: /',
         '',
         'User-agent: PerplexityBot',
         'Disallow: /admin',
+        'Disallow: /api/',
         'Disallow: /sitemap.xml',
         'Allow: /',
         '',
         'User-agent: ClaudeBot',
         'Disallow: /admin',
+        'Disallow: /api/',
         'Disallow: /sitemap.xml',
         'Allow: /',
         '',
@@ -2624,12 +2691,12 @@ ${items}
     if (req.method === 'GET' && ogMatch) {
       const slug = ogMatch[1];
       const db = readDb();
-      const rawCat = db.categories.find((c) => c.slug === slug);
+      const rawCat = db.categories.find((c) => c.slug === slug && isPubliclyPublished(c));
       if (!rawCat) {
-        res.writeHead(404);
+        res.writeHead(404, { 'Cache-Control': 'no-store' });
         return res.end('Category not found');
       }
-      const enriched = enrichCategory(rawCat, db.platformStats);
+      const enriched = enrichCategory(rawCat, db.platformStats, db.authors);
       const top1 = (enriched.top10 && enriched.top10[0]) ? enriched.top10[0] : { name: 'Top Pick', tagline: 'Verified Leader' };
       const top2 = (enriched.top10 && enriched.top10[1]) ? enriched.top10[1] : { name: 'Runner Up' };
       const top3 = (enriched.top10 && enriched.top10[2]) ? enriched.top10[2] : { name: 'Contender' };
@@ -2758,7 +2825,7 @@ ${items}
           timestamp: new Date().toISOString()
         });
         writeDb(db);
-        return sendJson(res, 200, { success: true, categorySlug: slug, rankAchieved: 1, state: getFullState() });
+        return sendJson(res, 200, { success: true, categorySlug: slug, rankAchieved: 1, state: getPublicState(getSession(req)) });
       }
 
       const cat = db.categories.find((c) => c.slug === body.categorySlug);
@@ -2805,7 +2872,7 @@ ${items}
       });
 
       writeDb(db);
-      const fullState = getFullState();
+      const publicState = getPublicState(null);
       broadcastSse('rank_boosted', {
         categorySlug: cat.slug,
         categoryTitle: cat.title,
@@ -2814,9 +2881,9 @@ ${items}
         amount,
         rankAchieved: rankAchieved > 0 ? rankAchieved : 1,
         timestamp: new Date().toISOString(),
-        state: fullState
+        state: publicState
       });
-      return sendJson(res, 200, { success: true, orderId, product: targetProd, rankAchieved: rankAchieved > 0 ? rankAchieved : 1, state: fullState });
+      return sendJson(res, 200, { success: true, orderId, product: targetProd, rankAchieved: rankAchieved > 0 ? rankAchieved : 1, state: publicState });
     }
 
     // 13h. POST /api/paypal/create-subscription (Recurring Sponsorship Retainer: Lock #1 ($299/mo) | Guaranteed Top 3 ($149/mo))
@@ -2883,7 +2950,7 @@ ${items}
       });
 
       writeDb(db);
-      const fullState = getFullState();
+      const publicState = getPublicState(null);
       broadcastSse('retainer_locked', {
         categorySlug: cat.slug,
         categoryTitle: cat.title,
@@ -2894,12 +2961,12 @@ ${items}
         monthlyAmount,
         rank: tier === 'lock_rank_1' ? 1 : 3,
         timestamp: new Date().toISOString(),
-        state: fullState
+        state: publicState
       });
       return sendJson(res, 200, {
         success: true,
         subscription: prod.retainerSubscription,
-        state: fullState
+        state: publicState
       });
     }
 
@@ -2920,7 +2987,7 @@ ${items}
         }
         writeDb(db);
       }
-      return sendJson(res, 200, { success: true, state: getFullState() });
+      return sendJson(res, 200, { success: true, state: getPublicState(getSession(req)) });
     }
 
     // 13j. POST /api/webhooks/paypal (Automated PayPal Webhook Event Processing for MRR & Bids)
@@ -3037,7 +3104,7 @@ ${items}
         received: true,
         eventType,
         processed: stateModified,
-        state: getFullState()
+        state: getPublicState(getSession(req))
       });
     }
 
@@ -3090,7 +3157,7 @@ ${items}
       cat.comments.unshift(newReview);
 
       writeDb(db);
-      const fullState = getFullState();
+      const publicState = getPublicState(null);
       broadcastSse('new_review', {
         categorySlug: cat.slug,
         categoryTitle: cat.title,
@@ -3099,12 +3166,12 @@ ${items}
         authorName: newReview.authorName,
         stars: newReview.stars,
         timestamp: new Date().toISOString(),
-        state: fullState
+        state: publicState
       });
       return sendJson(res, 200, {
         success: true,
         review: newReview,
-        state: fullState,
+        state: publicState,
         message: 'Your verified review has been submitted for moderation.'
       });
     }
@@ -3143,7 +3210,7 @@ ${items}
       }
 
       writeDb(db);
-      return sendJson(res, 200, { success: true, review: cmt, state: getFullState() });
+      return sendJson(res, 200, { success: true, review: cmt, state: getPublicState(getSession(req)) });
     }
 
     // 13m. GET /api/admin/reviews (Review Moderation Queue - Admin only)
@@ -3288,7 +3355,7 @@ ${items}
         success: true,
         message: `Successfully verified and claimed ${prod.name}!`,
         product: prod,
-        state: getFullState()
+        state: getPublicState(getSession(req))
       });
     }
 
@@ -3297,12 +3364,12 @@ ${items}
     if (req.method === 'GET' && embedMatch) {
       const slug = embedMatch[1];
       const db = readDb();
-      const rawCat = db.categories.find((c) => c.slug === slug);
+      const rawCat = db.categories.find((c) => c.slug === slug && isPubliclyPublished(c));
       if (!rawCat) {
-        res.writeHead(404);
+        res.writeHead(404, { 'Cache-Control': 'no-store' });
         return res.end('Category not found');
       }
-      const enriched = enrichCategory(rawCat, db.platformStats);
+      const enriched = enrichCategory(rawCat, db.platformStats, db.authors);
       const rowsHtml = enriched.top10
         .map(
           (p) => `
@@ -3358,7 +3425,7 @@ ${items}
       };
       db.categoryRequests.unshift(newReq);
       writeDb(db);
-      return sendJson(res, 200, { request: newReq, state: getFullState() });
+      return sendJson(res, 200, { request: newReq, state: getPublicState(getSession(req)) });
     }
 
     // 16. POST /api/admin/category-requests/:reqId/approve (Admin approves & launches requested page! - Admin only)
@@ -3504,7 +3571,7 @@ ${items}
       };
       db.buyerLeads.unshift(newLead);
       writeDb(db);
-      return sendJson(res, 200, { lead: newLead, state: getFullState() });
+      return sendJson(res, 200, { lead: newLead, state: getPublicState(getSession(req)) });
     }
 
     // 18. POST /api/leads/:leadId/unlock (Organic company pays $49 to unlock buyer lead + convert to Paid Sponsor!)
@@ -3541,7 +3608,7 @@ ${items}
       });
 
       writeDb(db);
-      return sendJson(res, 200, { lead, state: getFullState() });
+      return sendJson(res, 200, { lead, state: getPublicState(getSession(req)) });
     }
 
     // 19. POST /api/utils/extract-url (1-Click Auto-Fill Product Info from Website URL)
@@ -3584,7 +3651,7 @@ ${items}
         createdAt: new Date().toISOString()
       });
       writeDb(db);
-      return sendJson(res, 200, { count: db.subscribers.length, state: getFullState() });
+      return sendJson(res, 200, { count: db.subscribers.length, state: getPublicState(getSession(req)) });
     }
 
     // 21. POST /api/founder/update-product (Self-Serve Listing Editor for Claimed Founders)
@@ -3625,7 +3692,7 @@ ${items}
 
       prod.updatedAt = new Date().toISOString();
       writeDb(db);
-      return sendJson(res, 200, { success: true, product: prod, state: getFullState() });
+      return sendJson(res, 200, { success: true, product: prod, state: getPublicState(getSession(req)) });
     }
 
     // 22. GET /api/founder/portal-data (Fetch Managed Platforms & Live Lead Feed for Founders)
@@ -3734,7 +3801,6 @@ ${items}
       if (!db.buyerLeads) db.buyerLeads = [];
       db.buyerLeads.unshift(newLead);
       writeDb(db);
-      const fullState = getFullState();
       broadcastSse('new_lead', {
         categorySlug: cat.slug,
         categoryTitle: cat.title,
@@ -3797,7 +3863,7 @@ ${items}
     }
 
     // Static file serving + Server-Side SEO / JSON-LD / AI Crawler Injection for index.html
-    const hasStaticFile = pathname !== '/' && fs.existsSync(path.join(PUBLIC_DIR, pathname)) && !fs.statSync(path.join(PUBLIC_DIR, pathname)).isDirectory();
+    const hasStaticFile = pathname !== '/' && pathname !== '/index.html' && fs.existsSync(path.join(PUBLIC_DIR, pathname)) && !fs.statSync(path.join(PUBLIC_DIR, pathname)).isDirectory();
     if (hasStaticFile) {
       const filePath = path.join(PUBLIC_DIR, pathname);
       if (!filePath.startsWith(PUBLIC_DIR)) {
@@ -3816,7 +3882,7 @@ ${items}
     const listPathMatch = pathname.match(/^\/list\/([^/]+)$/);
     const blogArticleMatch = pathname.match(/^\/blog\/([^/]+)$/);
     const compareMatch = pathname.match(/^\/compare\/([^/]+)\/([^/]+)-vs-([^/]+)$/);
-    const isHome = pathname === '/';
+    const isHome = pathname === '/' || pathname === '/index.html';
     const isBlogIndex = pathname === '/blog';
     const isAdminView = pathname === '/admin';
     const isClaimView = pathname.startsWith('/claim/');
@@ -3980,6 +4046,15 @@ ${items}
       return out;
     }
 
+    function getSsrProductLink(product) {
+      try {
+        const url = new URL(product.website || product.url || '');
+        return ['http:', 'https:'].includes(url.protocol) ? url.href : '#';
+      } catch {
+        return '#';
+      }
+    }
+
     function renderSsrCompareBody(rawHtml, cat, pair) {
       const { prodA, prodB } = pair || {};
       if (!cat || !prodA || !prodB) return rawHtml;
@@ -3995,35 +4070,35 @@ ${items}
 
       out = out.replace('id="compareRankA">#1<', `id="compareRankA">#${escapeXml(String(prodA.rank || 1))}<`);
       out = out.replace('id="compareNameA">Stripe Billing<', `id="compareNameA">${escapeXml(prodA.name)}<`);
-      out = out.replace('id="compareCompanyA">by Stripe Inc<', `id="compareCompanyA">by ${escapeXml(prodA.company || prodA.name)}<`);
+      out = out.replace('id="compareCompanyA">by Stripe Inc<', `id="compareCompanyA">by ${escapeXml(prodA.companyName || prodA.company || prodA.name)}<`);
       out = out.replace(
         /<p class="h2h-tagline" id="compareTaglineA">[\s\S]*?<\/p>/i,
         `<p class="h2h-tagline" id="compareTaglineA">${escapeXml(prodA.tagline || '')}</p>`
       );
-      out = out.replace('id="comparePriceA">0.5% per transaction<', `id="comparePriceA">${escapeXml(prodA.pricing || '')}<`);
-      out = out.replace('id="compareTrialA">Free Sandbox<', `id="compareTrialA">${escapeXml(prodA.freeTrial || 'Free Tier')}<`);
+      out = out.replace('id="comparePriceA">0.5% per transaction<', `id="comparePriceA">${escapeXml(prodA.specs?.startingPrice || prodA.pricingTag || prodA.pricing || 'Not listed')}<`);
+      out = out.replace('id="compareTrialA">Free Sandbox<', `id="compareTrialA">${escapeXml(prodA.specs?.freeTrial || prodA.freeTrial || 'Not listed')}<`);
       out = out.replace(
         'href="#" target="_blank" rel="noopener" class="h2h-visit-btn primary" id="compareVisitBtnA">Visit Stripe Billing ↗</a>',
-        `href="${escapeXml(prodA.url || '#')}" target="_blank" rel="noopener" class="h2h-visit-btn primary" id="compareVisitBtnA">Visit ${escapeXml(prodA.name)} ↗</a>`
+        `href="${escapeXml(getSsrProductLink(prodA))}" target="_blank" rel="noopener" class="h2h-visit-btn primary" id="compareVisitBtnA">Visit ${escapeXml(prodA.name)} ↗</a>`
       );
 
       out = out.replace('id="compareRankB">#2<', `id="compareRankB">#${escapeXml(String(prodB.rank || 2))}<`);
       out = out.replace('id="compareNameB">Paddle Billing<', `id="compareNameB">${escapeXml(prodB.name)}<`);
-      out = out.replace('id="compareCompanyB">by Paddle Ltd<', `id="compareCompanyB">by ${escapeXml(prodB.company || prodB.name)}<`);
+      out = out.replace('id="compareCompanyB">by Paddle Ltd<', `id="compareCompanyB">by ${escapeXml(prodB.companyName || prodB.company || prodB.name)}<`);
       out = out.replace(
         /<p class="h2h-tagline" id="compareTaglineB">[\s\S]*?<\/p>/i,
         `<p class="h2h-tagline" id="compareTaglineB">${escapeXml(prodB.tagline || '')}</p>`
       );
-      out = out.replace('id="comparePriceB">5% + 50¢ flat<', `id="comparePriceB">${escapeXml(prodB.pricing || '')}<`);
-      out = out.replace('id="compareTrialB">Free Sandbox<', `id="compareTrialB">${escapeXml(prodB.freeTrial || 'Free Tier')}<`);
+      out = out.replace('id="comparePriceB">5% + 50¢ flat<', `id="comparePriceB">${escapeXml(prodB.specs?.startingPrice || prodB.pricingTag || prodB.pricing || 'Not listed')}<`);
+      out = out.replace('id="compareTrialB">Free Sandbox<', `id="compareTrialB">${escapeXml(prodB.specs?.freeTrial || prodB.freeTrial || 'Not listed')}<`);
       out = out.replace(
         'href="#" target="_blank" rel="noopener" class="h2h-visit-btn primary" id="compareVisitBtnB">Visit Paddle Billing ↗</a>',
-        `href="${escapeXml(prodB.url || '#')}" target="_blank" rel="noopener" class="h2h-visit-btn primary" id="compareVisitBtnB">Visit ${escapeXml(prodB.name)} ↗</a>`
+        `href="${escapeXml(getSsrProductLink(prodB))}" target="_blank" rel="noopener" class="h2h-visit-btn primary" id="compareVisitBtnB">Visit ${escapeXml(prodB.name)} ↗</a>`
       );
 
       out = out.replace(
         /<p class="h2h-verdict-body" id="compareVerdictBody">[\s\S]*?<\/p>/i,
-        `<p class="h2h-verdict-body" id="compareVerdictBody">Compare <strong>${escapeXml(prodA.name)}</strong> against <strong>${escapeXml(prodB.name)}</strong> in ${escapeXml(cat.title)}. ${escapeXml(prodA.editorial?.summary || prodA.tagline || '')} ${escapeXml(prodB.editorial?.summary || prodB.tagline || '')}</p>`
+        `<p class="h2h-verdict-body" id="compareVerdictBody">Compare <strong>${escapeXml(prodA.name)}</strong> against <strong>${escapeXml(prodB.name)}</strong> in ${escapeXml(cat.title)}. ${escapeXml(prodA.editorialSummary || prodA.editorial?.summary || prodA.tagline || '')} ${escapeXml(prodB.editorialSummary || prodB.editorial?.summary || prodB.tagline || '')}</p>`
       );
       out = out.replace('id="compareWinnerDev">Stripe Billing<', `id="compareWinnerDev">${escapeXml(prodA.name)}<`);
       out = out.replace('id="compareWinnerValue">Paddle Billing<', `id="compareWinnerValue">${escapeXml(prodB.name)}<`);
@@ -4057,9 +4132,9 @@ ${items}
       }
       routeKind = 'list';
       const meta = getCategoryFeatureMeta(activeCat);
-      pageTitle = `${activeCat.title} (2026) — Best Picks & Buying Guide | Top 10`;
+      pageTitle = activeCat.seo?.metaTitle || `${activeCat.title} (${new Date().getFullYear()}) — Best Picks & Buying Guide | Top 10`;
       const topPickName = activeCat.top10[0]?.name || '';
-      pageDesc = truncateMetaDesc(topPickName ? `#1 Pick: ${topPickName} — ${meta.description}` : meta.description);
+      pageDesc = truncateMetaDesc(activeCat.seo?.metaDescription || (topPickName ? `#1 Pick: ${topPickName} — ${meta.description}` : meta.description));
       canonicalUrl = `${base}/list/${activeCat.slug}`;
       ogType = 'article';
       ogImage = meta.coverImage;
@@ -4111,22 +4186,22 @@ ${items}
     }
 
     // Replace SEO, OpenGraph, Twitter & JSON-LD tags cleanly in-place
-    html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeXml(pageTitle)}</title>`);
-    html = html.replace(/<meta name="description" id="metaDescriptionTag"[^>]*>/i, `<meta name="description" id="metaDescriptionTag" content="${escapeXml(pageDesc)}" />`);
-    html = html.replace(/<meta name="robots" id="metaRobotsTag"[^>]*>/i, `<meta name="robots" id="metaRobotsTag" content="${escapeXml(robotsDirective)}" />`);
-    html = html.replace(/<link rel="canonical" id="canonicalLinkTag"[^>]*>/i, `<link rel="canonical" id="canonicalLinkTag" href="${escapeXml(canonicalUrl)}" />`);
-    html = html.replace(/href="\/feed\.xml"/i, `href="${escapeXml(base)}/feed.xml"`);
-    html = html.replace(/href="\/llms\.txt"/i, `href="${escapeXml(base)}/llms.txt"`);
-    html = html.replace(/<meta property="og:type" id="ogTypeTag"[^>]*>/i, `<meta property="og:type" id="ogTypeTag" content="${escapeXml(ogType)}" />`);
-    html = html.replace(/<meta property="og:title" id="ogTitleTag"[^>]*>/i, `<meta property="og:title" id="ogTitleTag" content="${escapeXml(pageTitle)}" />`);
-    html = html.replace(/<meta property="og:description" id="ogDescTag"[^>]*>/i, `<meta property="og:description" id="ogDescTag" content="${escapeXml(pageDesc)}" />`);
-    html = html.replace(/<meta property="og:url" id="ogUrlTag"[^>]*>/i, `<meta property="og:url" id="ogUrlTag" content="${escapeXml(canonicalUrl)}" />`);
-    html = html.replace(/<meta property="og:image" id="ogImageTag"[^>]*>/i, `<meta property="og:image" id="ogImageTag" content="${escapeXml(ogImage)}" />`);
-    html = html.replace(/<meta property="og:image:alt" id="ogImageAltTag"[^>]*>/i, `<meta property="og:image:alt" id="ogImageAltTag" content="${escapeXml(ogImageAlt)}" />`);
-    html = html.replace(/<meta name="twitter:title" id="twitterTitleTag"[^>]*>/i, `<meta name="twitter:title" id="twitterTitleTag" content="${escapeXml(pageTitle)}" />`);
-    html = html.replace(/<meta name="twitter:description" id="twitterDescTag"[^>]*>/i, `<meta name="twitter:description" id="twitterDescTag" content="${escapeXml(pageDesc)}" />`);
-    html = html.replace(/<meta name="twitter:image" id="twitterImageTag"[^>]*>/i, `<meta name="twitter:image" id="twitterImageTag" content="${escapeXml(ogImage)}" />`);
-    html = html.replace(/<script type="application\/ld\+json" id="seoJsonLdScript">[\s\S]*?<\/script>/i, `<script type="application/ld+json" id="seoJsonLdScript">${jsonLd}</script>`);
+    html = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${escapeXml(pageTitle)}</title>`);
+    html = html.replace(/<meta name="description" id="metaDescriptionTag"[^>]*>/i, () => `<meta name="description" id="metaDescriptionTag" content="${escapeXml(pageDesc)}" />`);
+    html = html.replace(/<meta name="robots" id="metaRobotsTag"[^>]*>/i, () => `<meta name="robots" id="metaRobotsTag" content="${escapeXml(robotsDirective)}" />`);
+    html = html.replace(/<link rel="canonical" id="canonicalLinkTag"[^>]*>/i, () => `<link rel="canonical" id="canonicalLinkTag" href="${escapeXml(canonicalUrl)}" />`);
+    html = html.replace(/href="\/feed\.xml"/i, () => `href="${escapeXml(base)}/feed.xml"`);
+    html = html.replace(/href="\/llms\.txt"/i, () => `href="${escapeXml(base)}/llms.txt"`);
+    html = html.replace(/<meta property="og:type" id="ogTypeTag"[^>]*>/i, () => `<meta property="og:type" id="ogTypeTag" content="${escapeXml(ogType)}" />`);
+    html = html.replace(/<meta property="og:title" id="ogTitleTag"[^>]*>/i, () => `<meta property="og:title" id="ogTitleTag" content="${escapeXml(pageTitle)}" />`);
+    html = html.replace(/<meta property="og:description" id="ogDescTag"[^>]*>/i, () => `<meta property="og:description" id="ogDescTag" content="${escapeXml(pageDesc)}" />`);
+    html = html.replace(/<meta property="og:url" id="ogUrlTag"[^>]*>/i, () => `<meta property="og:url" id="ogUrlTag" content="${escapeXml(canonicalUrl)}" />`);
+    html = html.replace(/<meta property="og:image" id="ogImageTag"[^>]*>/i, () => `<meta property="og:image" id="ogImageTag" content="${escapeXml(ogImage)}" />`);
+    html = html.replace(/<meta property="og:image:alt" id="ogImageAltTag"[^>]*>/i, () => `<meta property="og:image:alt" id="ogImageAltTag" content="${escapeXml(ogImageAlt)}" />`);
+    html = html.replace(/<meta name="twitter:title" id="twitterTitleTag"[^>]*>/i, () => `<meta name="twitter:title" id="twitterTitleTag" content="${escapeXml(pageTitle)}" />`);
+    html = html.replace(/<meta name="twitter:description" id="twitterDescTag"[^>]*>/i, () => `<meta name="twitter:description" id="twitterDescTag" content="${escapeXml(pageDesc)}" />`);
+    html = html.replace(/<meta name="twitter:image" id="twitterImageTag"[^>]*>/i, () => `<meta name="twitter:image" id="twitterImageTag" content="${escapeXml(ogImage)}" />`);
+    html = html.replace(/<script type="application\/ld\+json" id="seoJsonLdScript">[\s\S]*?<\/script>/i, () => `<script type="application/ld+json" id="seoJsonLdScript">${jsonLd}</script>`);
 
     return sendResponse(req, res, 200, 'text/html; charset=utf-8', html, {
       'Cache-Control': 'no-cache'
@@ -4138,14 +4213,17 @@ ${items}
   }
 });
 
-server.listen(PORT, async () => {
-  console.log(`Top 10 Auction Directory running at http://localhost:${PORT}`);
+async function start() {
+  await initMongo();
   ensureUserPasswords();
-  try {
-    await initMongo();
-  } catch (err) {
-    console.error('[Database Notice]', err.message);
-  }
   runScheduledPublisher();
-  setInterval(runScheduledPublisher, 15000).unref();
+  server.listen(PORT, () => {
+    console.log(`Top 10 Auction Directory running at http://localhost:${server.address().port}`);
+    setInterval(runScheduledPublisher, 15000).unref();
+  });
+}
+
+start().catch((err) => {
+  console.error('[Startup Error]', err.message);
+  process.exit(1);
 });

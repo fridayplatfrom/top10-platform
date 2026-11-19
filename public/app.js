@@ -2041,20 +2041,20 @@
     // Sort pipeline
     if (activeCategorySort === 'score') {
       displayTop10.sort((a, b) => {
-        const scoreA = Number(a.editorialScore || (10 - ((a.rank || 1) - 1) * 0.14));
-        const scoreB = Number(b.editorialScore || (10 - ((b.rank || 1) - 1) * 0.14));
+        const scoreA = Number(a.editorialScore ?? 0);
+        const scoreB = Number(b.editorialScore ?? 0);
         return scoreB - scoreA;
       });
     } else if (activeCategorySort === 'rating') {
       displayTop10.sort((a, b) => {
-        const rA = Number(a.rating || (4.95 - ((a.rank || 1) - 1) * 0.05));
-        const rB = Number(b.rating || (4.95 - ((b.rank || 1) - 1) * 0.05));
+        const rA = Number(a.rating ?? 0);
+        const rB = Number(b.rating ?? 0);
         return rB - rA;
       });
     } else if (activeCategorySort === 'reviews') {
       displayTop10.sort((a, b) => {
-        const revA = Number(a.reviewsCount || (a.upvotes || 80) * 4 + (11 - (a.rank || 1)) * 40);
-        const revB = Number(b.reviewsCount || (b.upvotes || 80) * 4 + (11 - (b.rank || 1)) * 40);
+        const revA = Number(a.reviewsCount ?? 0);
+        const revB = Number(b.reviewsCount ?? 0);
         return revB - revA;
       });
     } else if (activeCategorySort === 'alpha') {
@@ -2087,10 +2087,7 @@
         .map((prod, idx) => {
         const rankNum = prod.rank || (idx + 1);
         const rankClass = rankNum === 1 ? 'rank-1' : rankNum === 2 ? 'rank-2' : rankNum === 3 ? 'rank-3' : '';
-        const editorialScore = Number(prod.editorialScore || (10 - (rankNum - 1) * 0.14)).toFixed(1);
-        const rating = Number(prod.rating || (4.95 - (rankNum - 1) * 0.05)).toFixed(1);
-        const reviewsCount = Number(prod.reviewsCount || (prod.upvotes || 80) * 4 + (11 - rankNum) * 40);
-        const reviewsFormatted = reviewsCount >= 1000 ? (reviewsCount / 1000).toFixed(1) + 'k' : reviewsCount;
+
 
         const prosList = Array.isArray(prod.pros) && prod.pros.length > 0 ? prod.pros : [];
         const consList = Array.isArray(prod.cons) && prod.cons.length > 0 ? prod.cons : [];
@@ -4031,9 +4028,9 @@
     if (compareLogoA) compareLogoA.innerHTML = renderBrandLogo(prodA, 28);
     if (compareNameA) compareNameA.textContent = prodA.name;
     if (compareCompanyA) compareCompanyA.textContent = `by ${prodA.companyName}`;
-    if (compareTaglineA) compareTaglineA.textContent = prodA.tagline || 'Leading solution in category.';
-    if (comparePriceA) comparePriceA.textContent = prodA.specs?.startingPrice || prodA.pricingTag || 'Custom Pricing';
-    if (compareTrialA) compareTrialA.textContent = prodA.specs?.freeTrial || 'Free Sandbox / Trial';
+    if (compareTaglineA) compareTaglineA.textContent = prodA.tagline || '';
+    if (comparePriceA) comparePriceA.textContent = prodA.specs?.startingPrice || prodA.pricingTag || 'Not listed';
+    if (compareTrialA) compareTrialA.textContent = prodA.specs?.freeTrial || 'Not listed';
     if (compareVisitBtnA) {
       compareVisitBtnA.href = prodA.website;
       compareVisitBtnA.textContent = `Visit ${prodA.name} ↗`;
@@ -4044,9 +4041,9 @@
     if (compareLogoB) compareLogoB.innerHTML = renderBrandLogo(prodB, 28);
     if (compareNameB) compareNameB.textContent = prodB.name;
     if (compareCompanyB) compareCompanyB.textContent = `by ${prodB.companyName}`;
-    if (compareTaglineB) compareTaglineB.textContent = prodB.tagline || 'Leading solution in category.';
-    if (comparePriceB) comparePriceB.textContent = prodB.specs?.startingPrice || prodB.pricingTag || 'Custom Pricing';
-    if (compareTrialB) compareTrialB.textContent = prodB.specs?.freeTrial || 'Free Sandbox / Trial';
+    if (compareTaglineB) compareTaglineB.textContent = prodB.tagline || '';
+    if (comparePriceB) comparePriceB.textContent = prodB.specs?.startingPrice || prodB.pricingTag || 'Not listed';
+    if (compareTrialB) compareTrialB.textContent = prodB.specs?.freeTrial || 'Not listed';
     if (compareVisitBtnB) {
       compareVisitBtnB.href = prodB.website;
       compareVisitBtnB.textContent = `Visit ${prodB.name} ↗`;
@@ -4057,12 +4054,18 @@
       compareVerdictTitle.textContent = `${prodA.name} vs ${prodB.name}: 2026 Editorial Verdict`;
     }
     if (compareVerdictBody) {
-      const idealA = prodA.specs?.idealFor || 'teams needing developer flexibility and direct API control';
-      const idealB = prodB.specs?.idealFor || 'companies prioritizing automated compliance and turn-key scale';
-      compareVerdictBody.innerHTML = `Choose <strong>${escapeHtml(prodA.name)}</strong> if your priority is ${escapeHtml(idealA)}. Choose <strong>${escapeHtml(prodB.name)}</strong> if you prefer ${escapeHtml(idealB)}. Both are top-tier in <em>${escapeHtml(cat.title)}</em>, but their architectures serve distinct operating models.`;
+      compareVerdictBody.textContent = [prodA.editorialSummary || prodA.tagline, prodB.editorialSummary || prodB.tagline].filter(Boolean).join(' ') || 'No editorial verdict has been published for this comparison.';
     }
-    if (compareWinnerDev) compareWinnerDev.textContent = prodA.name;
-    if (compareWinnerValue) compareWinnerValue.textContent = prodB.name;
+    if (compareWinnerDev) compareWinnerDev.textContent = 'Not evaluated';
+    if (compareWinnerValue) compareWinnerValue.textContent = 'Not evaluated';
+
+    const reviewScoreLabel = (product) => {
+      const score = Number(product.editorialScore);
+      const hasScore = product.editorialScore != null && product.editorialScore !== '' && Number.isFinite(score) && score >= 0 && score <= 10;
+      const count = Number(product.reviewsCount ?? product.commentCount ?? 0);
+      const reviews = Number.isFinite(count) && count > 0 ? `${Math.floor(count)} reviews` : 'No reviews';
+      return `${reviews} · ${hasScore ? score.toFixed(1) + '/10' : 'Not rated'}`;
+    };
 
     // Feature Shootout Table
     if (thMatrixNameA) thMatrixNameA.textContent = prodA.name;
@@ -4070,13 +4073,13 @@
     if (compareMatrixTableBody) {
       const specsRows = [
         { label: 'Category Ranking', valA: `#${prodA.rank || 1} in ${cat.shortName || cat.title}`, valB: `#${prodB.rank || 2} in ${cat.shortName || cat.title}` },
-        { label: 'Starting Price', valA: prodA.specs?.startingPrice || prodA.pricingTag || 'Contact Sales', valB: prodB.specs?.startingPrice || prodB.pricingTag || 'Contact Sales' },
-        { label: 'Free Trial / Sandbox', valA: prodA.specs?.freeTrial || 'Yes', valB: prodB.specs?.freeTrial || 'Yes' },
-        { label: 'Ideal Target Audience', valA: prodA.specs?.idealFor || 'Modern Engineering Teams', valB: prodB.specs?.idealFor || 'Enterprise Teams' },
-        { label: 'Platform & API Architecture', valA: prodA.specs?.platforms || 'Cloud, Web, REST APIs', valB: prodB.specs?.platforms || 'Cloud, Web, REST APIs' },
-        { label: 'Verified Reviews & Score', valA: `${prodA.commentCount || 0} reviews · ${(prodA.editorialScore || 9.4).toFixed(1)}/10`, valB: `${prodB.commentCount || 0} reviews · ${(prodB.editorialScore || 9.1).toFixed(1)}/10` },
+        { label: 'Starting Price', valA: prodA.specs?.startingPrice || prodA.pricingTag || 'Not listed', valB: prodB.specs?.startingPrice || prodB.pricingTag || 'Not listed' },
+        { label: 'Free Trial / Sandbox', valA: prodA.specs?.freeTrial || 'Not listed', valB: prodB.specs?.freeTrial || 'Not listed' },
+        { label: 'Ideal Target Audience', valA: prodA.specs?.idealFor || 'Not listed', valB: prodB.specs?.idealFor || 'Not listed' },
+        { label: 'Platform & API Architecture', valA: prodA.specs?.platforms || 'Not listed', valB: prodB.specs?.platforms || 'Not listed' },
+        { label: 'Reviews & Editorial Score', valA: reviewScoreLabel(prodA), valB: reviewScoreLabel(prodB) },
         { label: 'Founder Verification', valA: prodA.claimed ? '✓ Verified Founder' : 'Curated Listing', valB: prodB.claimed ? '✓ Verified Founder' : 'Curated Listing' },
-        { label: 'Sponsorship Status', valA: (prodA.amountPaid || 0) > 0 ? 'Sponsored (#1 Bidder)' : 'Organic Editorial', valB: (prodB.amountPaid || 0) > 0 ? 'Sponsored' : 'Organic Editorial' }
+        { label: 'Sponsorship Status', valA: (prodA.amountPaid || 0) > 0 ? 'Sponsored' : 'Organic Editorial', valB: (prodB.amountPaid || 0) > 0 ? 'Sponsored' : 'Organic Editorial' }
       ];
 
       compareMatrixTableBody.innerHTML = specsRows

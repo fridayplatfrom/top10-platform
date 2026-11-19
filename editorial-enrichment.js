@@ -1857,45 +1857,18 @@ const EXTENDED_PRODUCT_PROFILES = {
 
 function buildNaturalCategoryEditorial(prod, categoryTitle, shortName, cleanHighlight) {
   const knownExt = EXTENDED_PRODUCT_PROFILES[prod.id];
-  if (knownExt) return knownExt;
+  if (knownExt) return {
+    ...knownExt,
+    editorialSummary: prod.editorialSummary ?? knownExt.editorialSummary,
+    pros: prod.pros ?? knownExt.pros,
+    cons: prod.cons ?? knownExt.cons
+  };
 
-  const baseDesc = (prod.tagline || '').trim().replace(/\.$/, '');
-  const catLower = `${categoryTitle} ${shortName}`.toLowerCase();
-  const isHardwareOrConsumer = /speaker|tv|oven|phone|cover|case|game|audiobook|book|gambling|sport|audio/i.test(catLower);
-
-  const editorialSummary =
-    prod.editorialSummary ||
-    (baseDesc
-      ? `${baseDesc}. Built by ${prod.companyName}, ${prod.name} stands out for its ${cleanHighlight.toLowerCase()} and ${prod.pricingTag || 'competitive pricing'}.`
-      : `${prod.name} by ${prod.companyName} delivers ${cleanHighlight.toLowerCase()} with ${prod.pricingTag || 'transparent pricing'}.`);
-
-  const pros =
-    Array.isArray(prod.pros) && prod.pros.length > 0
-      ? prod.pros
-      : isHardwareOrConsumer
-      ? [
-          `Standout ${cleanHighlight.toLowerCase()} with refined everyday usability and build quality`,
-          `Strong value at ${prod.pricingTag || 'its price tier'} compared to competing ${shortName.toLowerCase()}`,
-          `Consistently praised by buyers for reliability and out-of-the-box performance`
-        ]
-      : [
-          `Purpose-built for ${cleanHighlight.toLowerCase()} with a fast, intuitive workflow`,
-          `Clear pricing at ${prod.pricingTag || 'flexible tiers'} without hidden implementation fees`,
-          `Strong developer and operator adoption with responsive documentation and support`
-        ];
-
-  const cons =
-    Array.isArray(prod.cons) && prod.cons.length > 0
-      ? prod.cons
-      : isHardwareOrConsumer
-      ? [
-          `Premium accessories and extended protection plans add to the total cost`,
-          `Fewer manual customization toggles than enthusiast-only alternatives`
-        ]
-      : [
-          `Advanced custom workflows and high-volume seats require moving to higher tiers`,
-          `Smaller third-party plugin marketplace than legacy category incumbents`
-        ];
+  // Do not turn missing editorial research into claims of tests, buyer feedback,
+  // support quality, free trials, or competitive value.
+  const editorialSummary = prod.editorialSummary || prod.tagline || `${prod.name}: product details have not been supplied.`;
+  const pros = Array.isArray(prod.pros) ? prod.pros : [];
+  const cons = Array.isArray(prod.cons) ? prod.cons : [];
 
   return { editorialSummary, pros, cons };
 }
@@ -1903,10 +1876,7 @@ function buildNaturalCategoryEditorial(prod, categoryTitle, shortName, cleanHigh
 function enrichProductEditorial(prod, rank, categoryTitle, shortName) {
   const known = PRODUCT_EDITORIAL_DB[prod.id];
   const cleanHighlight = String(prod.highlightTag || 'Core Platform').replace(/^@/, '');
-  const baseScore = Math.max(8.4, Number((9.9 - (rank - 1) * 0.14).toFixed(1)));
-  const baseRating = Math.max(4.4, Number((4.95 - (rank - 1) * 0.05).toFixed(1)));
-  const defaultReviews = Math.max(95, (prod.upvotes || 120) * 4 + (11 - rank) * 45);
-  const shortAward = SHORT_RANK_BADGES[(rank - 1) % SHORT_RANK_BADGES.length];
+  const shortAward = prod.shortAward || `Rank #${rank}`;
   const media = prod.media || PRODUCT_MEDIA_CATALOG[prod.id] || null;
 
   if (known) {
@@ -1914,19 +1884,19 @@ function enrichProductEditorial(prod, rank, categoryTitle, shortName) {
       ...prod,
       media,
       shortAward,
-      bestFor: known.bestFor,
-      rating: known.rating,
-      editorialScore: known.editorialScore,
-      reviewsCount: known.reviewsCount,
-      editorialSummary: known.editorialSummary,
-      pros: known.pros,
-      cons: known.cons,
-      keyFeatures: known.keyFeatures,
-      specs: known.specs
+      bestFor: prod.bestFor ?? known.bestFor,
+      rating: prod.rating ?? known.rating,
+      editorialScore: prod.editorialScore ?? known.editorialScore,
+      reviewsCount: prod.reviewsCount ?? known.reviewsCount,
+      editorialSummary: prod.editorialSummary ?? known.editorialSummary,
+      pros: prod.pros ?? known.pros,
+      cons: prod.cons ?? known.cons,
+      keyFeatures: prod.keyFeatures ?? known.keyFeatures,
+      specs: { ...known.specs, ...prod.specs }
     };
   }
 
-  const awardLabel = prod.bestFor || `${RANK_AWARD_BADGES[(rank - 1) % RANK_AWARD_BADGES.length]} (${cleanHighlight})`;
+  const awardLabel = prod.bestFor || cleanHighlight;
   const natural = buildNaturalCategoryEditorial(prod, categoryTitle, shortName, cleanHighlight);
 
   const keyFeatures =
@@ -1936,9 +1906,9 @@ function enrichProductEditorial(prod, rank, categoryTitle, shortName) {
 
   const specs = prod.specs || {
     startingPrice: prod.pricingTag || 'Contact / Custom',
-    freeTrial: 'Free trial / sandbox available',
-    idealFor: `Modern ${shortName || 'Teams'}`,
-    deployment: 'Cloud / Web Platform'
+    freeTrial: 'Not specified',
+    idealFor: 'Not specified',
+    deployment: 'Not specified'
   };
 
   return {
@@ -1946,9 +1916,9 @@ function enrichProductEditorial(prod, rank, categoryTitle, shortName) {
     media,
     shortAward,
     bestFor: awardLabel,
-    rating: prod.rating || baseRating,
-    editorialScore: prod.editorialScore || baseScore,
-    reviewsCount: prod.reviewsCount || defaultReviews,
+    rating: prod.rating ?? null,
+    editorialScore: prod.editorialScore ?? null,
+    reviewsCount: prod.reviewsCount ?? null,
     editorialSummary: natural.editorialSummary,
     pros: natural.pros,
     cons: natural.cons,
@@ -1985,44 +1955,26 @@ function enrichCategoryEditorial(enrichedCat, customAuthors = []) {
   );
   const totalListingsCount = top10WithEditorial.length + pushedOutWithEditorial.length;
 
-  const avgScore =
-    top10WithEditorial.length > 0
-      ? (
-          top10WithEditorial.reduce((s, p) => s + Number(p.editorialScore || 9.0), 0) /
-          top10WithEditorial.length
-        ).toFixed(1)
-      : '9.4';
+  const scored = top10WithEditorial.filter((p) => p.editorialScore != null && Number.isFinite(Number(p.editorialScore)));
+  const avgScore = scored.length ? (scored.reduce((sum, p) => sum + Number(p.editorialScore), 0) / scored.length).toFixed(1) : null;
+  const reviewCounts = [...top10WithEditorial, ...pushedOutWithEditorial]
+    .filter((p) => p.reviewsCount != null && Number.isFinite(Number(p.reviewsCount)));
+  const totalReviews = reviewCounts.length ? reviewCounts.reduce((sum, p) => sum + Number(p.reviewsCount), 0) : null;
 
-  const totalReviews =
-    top10WithEditorial.reduce((s, p) => s + Number(p.reviewsCount || 200), 0) +
-    pushedOutWithEditorial.reduce((s, p) => s + Number(p.reviewsCount || 90), 0);
-
-  const defaultTldr = [
-    {
-      label: 'Best Overall (#1 Ranked)',
-      winner: top10WithEditorial[0] ? top10WithEditorial[0].name : 'Top Pick #1',
-      reason: top10WithEditorial[0] ? top10WithEditorial[0].tagline : 'Leading choice in this category.'
-    },
-    {
-      label: 'Runner-Up (#2 Ranked)',
-      winner: top10WithEditorial[1] ? top10WithEditorial[1].name : 'Top Pick #2',
-      reason: top10WithEditorial[1] ? top10WithEditorial[1].tagline : 'Strong runner-up option.'
-    },
-    {
-      label: 'Best Value Pick',
-      winner: top10WithEditorial[2] ? top10WithEditorial[2].name : 'Top Pick #3',
-      reason: top10WithEditorial[2] ? top10WithEditorial[2].tagline : 'High value-to-cost ratio.'
-    }
-  ];
+  const defaultTldr = top10WithEditorial.slice(0, 3).map((p, index) => ({
+    label: `Current Rank #${index + 1}`,
+    winner: p.name,
+    reason: p.tagline || 'See the supplied listing details.'
+  }));
 
   const defaultFaqs = [
     {
       q: `What is the #1 ranked choice in ${enrichedCat.title} for 2026?`,
-      a: `${top10WithEditorial[0] ? top10WithEditorial[0].name : 'Our #1 pick'} currently holds Rank #1 in ${enrichedCat.title} with an editorial score of ${top10WithEditorial[0] ? top10WithEditorial[0].editorialScore : '9.8'}/10 (${top10WithEditorial[0] ? top10WithEditorial[0].pricingTag : 'verified pricing'}).`
+      a: top10WithEditorial[0] ? `${top10WithEditorial[0].name} currently holds Rank #1 in this directory. Rank reflects paid placement first, then community upvotes for unpaid listings; it is not an independent quality score.` : 'No products are currently listed in this directory.'
     },
     {
       q: `How are products evaluated and ranked on ${enrichedCat.title}?`,
-      a: `We combine hands-on feature evaluation, pricing transparency, real buyer upvotes, and verified vendor participation so readers get both deep comparison specs (pros, cons, pricing, best-for use cases) and live market activity.`
+      a: `Directory placement is ordered by paid bids first and community upvotes for unpaid listings. Product details and any editorial scores are separate from placement; confirm current pricing and terms with the vendor.`
     },
     {
       q: `How can I compare pricing across all ${totalListingsCount} ${shortName} options?`,
@@ -2036,7 +1988,7 @@ function enrichCategoryEditorial(enrichedCat, customAuthors = []) {
     ...enrichedCat,
     status: enrichedCat.status || 'published',
     scheduledAt: enrichedCat.scheduledAt || null,
-    publishedAt: enrichedCat.publishedAt || featureMeta.isoDate || null,
+    publishedAt: validIsoDate(enrichedCat.publishedAt) || null,
     topic: featureMeta.topic,
     tags: featureMeta.tags,
     coverImage: featureMeta.coverImage,
@@ -2059,13 +2011,13 @@ function enrichCategoryEditorial(enrichedCat, customAuthors = []) {
         enrichedCat.editorialIntro ||
         enrichedCat.description ||
         guide?.editorialIntro ||
-        `We researched, tested, and compared ${totalListingsCount} ${shortName} options for 2026 across real-world performance, pricing transparency, key features, and verified user feedback.`,
+        `Compare the supplied details for ${totalListingsCount} ${shortName} options. Confirm current specifications, prices, and terms with each vendor.`,
       methodology:
         enrichedCat.methodology ||
         guide?.methodology ||
-        `Every product in ${enrichedCat.title} is evaluated across ease of setup, core feature depth, pricing value, and community sentiment.`,
-      avgEditorialScore: `${avgScore}/10`,
-      totalVerifiedReviews: totalReviews.toLocaleString(),
+        `Directory order reflects paid placement first, then community upvotes for unpaid listings. Listing details are not evidence of independent product testing.`,
+      avgEditorialScore: avgScore == null ? 'Not rated' : `${avgScore}/10`,
+      totalVerifiedReviews: totalReviews == null ? 'Not supplied' : totalReviews.toLocaleString(),
       lastUpdatedDate: featureMeta.dateText || 'October 2026',
       tldr: guide?.tldr || defaultTldr,
       faqs: Array.isArray(enrichedCat.faqs) && enrichedCat.faqs.length > 0 ? enrichedCat.faqs : (guide?.faqs || defaultFaqs)
@@ -2263,10 +2215,9 @@ function getCategoryFeatureMeta(c, customAuthors = []) {
     authorAvatar: c.authorAvatar,
     authorBio: c.authorBio
   });
-  const isoDate = c.publishedAt || c.scheduledAt || preset.isoDate || c.updatedAt || c.createdAt || '2026-10-15T00:00:00Z';
-  const dateText = c.publishedAt
-    ? formatShortEditorialDate(c.publishedAt)
-    : preset.dateText || (c.editorialGuide && c.editorialGuide.lastUpdatedDate) || formatShortEditorialDate(isoDate);
+  const isoDate = validIsoDate(c.publishedAt) || validIsoDate(c.createdAt) || validIsoDate(preset.isoDate);
+  const displayDate = validIsoDate(c.updatedAt) || isoDate;
+  const dateText = displayDate ? formatShortEditorialDate(displayDate) : 'Date not supplied';
 
   return {
     coverImage: c.coverImage || preset.coverImage || firstProdImg || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
@@ -2284,8 +2235,20 @@ function getCategoryFeatureMeta(c, customAuthors = []) {
   };
 }
 
+function serializeJsonLd(value) {
+  return JSON.stringify(value, null, 2).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+}
+
+function validIsoDate(value) {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : undefined;
+}
+
 // Generates World-Class Policy-Compliant Schema.org JSON-LD (@graph: Organization, WebSite, CollectionPage, Article, BreadcrumbList, ItemList)
 function buildSeoJsonLd(cat, allCategories, baseUrl, comparePair = null) {
+  baseUrl = String(baseUrl || '').replace(/\/+$/, '');
   const orgNode = {
     '@type': 'Organization',
     '@id': `${baseUrl}/#organization`,
@@ -2316,7 +2279,7 @@ function buildSeoJsonLd(cat, allCategories, baseUrl, comparePair = null) {
   // 1. Homepage Schema
   if (!cat) {
     const cats = allCategories || [];
-    return JSON.stringify(
+    return serializeJsonLd(
       {
         '@context': 'https://schema.org',
         '@graph': [
@@ -2361,7 +2324,7 @@ function buildSeoJsonLd(cat, allCategories, baseUrl, comparePair = null) {
     const { prodA, prodB } = comparePair;
     const compareUrl = `${baseUrl}/compare/${cat.slug}/${prodA.id}-vs-${prodB.id}`;
     const listUrl = `${baseUrl}/list/${cat.slug}`;
-    return JSON.stringify(
+    return serializeJsonLd(
       {
         '@context': 'https://schema.org',
         '@graph': [
@@ -2414,7 +2377,7 @@ function buildSeoJsonLd(cat, allCategories, baseUrl, comparePair = null) {
   const meta = getCategoryFeatureMeta(cat);
   const top10 = cat.top10 || [];
 
-  return JSON.stringify(
+  return serializeJsonLd(
     {
       '@context': 'https://schema.org',
       '@graph': [
@@ -2429,8 +2392,8 @@ function buildSeoJsonLd(cat, allCategories, baseUrl, comparePair = null) {
           description: (cat.seo && cat.seo.metaDescription) || meta.description,
           image: [meta.coverImage],
           keywords: meta.tags && meta.tags.length > 0 ? meta.tags.join(', ') : undefined,
-          datePublished: meta.isoDate,
-          dateModified: cat.updatedAt ? new Date(cat.updatedAt).toISOString() : meta.isoDate,
+          datePublished: validIsoDate(cat.publishedAt || cat.createdAt),
+          dateModified: validIsoDate(cat.updatedAt) || validIsoDate(cat.publishedAt || cat.createdAt),
           author: {
             '@type': 'Person',
             name: meta.authorName,

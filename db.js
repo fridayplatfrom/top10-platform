@@ -21,6 +21,7 @@ async function initMariaDb() {
     return;
   }
 
+  let conn;
   try {
     pool = mysql.createPool({
       host: DB_HOST,
@@ -34,7 +35,7 @@ async function initMariaDb() {
       connectTimeout: 4000
     });
 
-    const conn = await pool.getConnection();
+    conn = await pool.getConnection();
     await conn.ping();
 
     // Create MariaDB tables for durable state persistence + relational entity indexing
@@ -91,15 +92,12 @@ async function initMariaDb() {
     // Hydrate from MariaDB if state already exists across deployments; otherwise seed MariaDB from data/db.json
     const [rows] = await conn.query('SELECT payload FROM top10_state_store WHERE state_key = ?', ['full_state']);
     if (rows && rows.length > 0 && rows[0].payload) {
-      try {
-        const remoteState = JSON.parse(rows[0].payload);
-        if (remoteState && Array.isArray(remoteState.categories) && remoteState.categories.length > 0) {
-          writeLocalDb(remoteState);
-          console.log(`[Database] Hydrated ${remoteState.categories.length} categories from Hostinger MariaDB (${DB_NAME}).`);
-        }
-      } catch (parseErr) {
-        console.warn('[Database] Could not parse stored MariaDB state, seeding from local db.json:', parseErr.message);
+      const remoteState = JSON.parse(rows[0].payload);
+      if (!remoteState || !Array.isArray(remoteState.categories)) {
+        throw new Error('Invalid stored MariaDB snapshot; refusing to replace it with local seed data');
       }
+      writeLocalDb(remoteState);
+      console.log(`[Database] Hydrated ${remoteState.categories.length} categories from MariaDB (${DB_NAME}).`);
     } else {
       const localData = readLocalDb();
       await conn.query(
@@ -110,6 +108,7 @@ async function initMariaDb() {
     }
 
     conn.release();
+    conn = null;
     isConnected = true;
     console.log(`[Database] Connected to Hostinger MariaDB at ${DB_HOST}:${DB_PORT}/${DB_NAME}`);
 
@@ -117,6 +116,8 @@ async function initMariaDb() {
     syncTablesToMariaDb(readLocalDb());
   } catch (err) {
     isConnected = false;
+    if (conn) conn.release();
+    if (pool) await pool.end().catch(() => {});
     pool = null;
     console.log(`[Database] MariaDB offline or unreachable (${err.message}). Seamlessly using persistent local data/db.json.`);
   }
@@ -208,18 +209,7 @@ function readLocalDb() {
     return parsed;
   } catch (err) {
     console.error('[Database] Error reading local db:', err.message);
-    return {
-      platformStats: { totalVolume: 0, activeSponsors: 0, pendingReviews: 0, minEntryBid: 49 },
-      users: [],
-      transactions: [],
-      categories: [],
-      articles: [],
-      outbidAlerts: [],
-      subscriptions: [],
-      reviews: [],
-      claims: [],
-      buyerLeads: []
-    };
+    throw err; // Never turn corrupt/unreadable persisted data into an empty writable database.
   }
 }
 
@@ -232,6 +222,7 @@ function writeLocalDb(data) {
     fs.renameSync(tmpPath, DB_PATH);
   } catch (err) {
     console.error('[Database] Error writing local db:', err.message);
+    throw err; // Callers must not report a successful save after a filesystem failure.
   }
 }
 

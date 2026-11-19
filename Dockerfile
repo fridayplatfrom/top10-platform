@@ -1,6 +1,6 @@
 # ==============================================================================
 # TOP 10 PLATFORM — PRODUCTION DOCKERFILE
-# Multi-stage lightweight, secure Alpine Node.js container
+# Lightweight, secure Alpine Node.js container
 # ==============================================================================
 
 FROM node:22-alpine AS runner
@@ -15,7 +15,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev --ignore-scripts
 
 # Copy application source code
-COPY server.js db.js blog-data.js initial-data.js ./
+COPY server.js db.js blog-data.js editorial-enrichment.js authors-data.js ./
 COPY public ./public
 COPY data ./data
 
@@ -29,6 +29,6 @@ EXPOSE 3456
 
 # Healthcheck to ensure container is responsive
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3456/api/admin/db-status || exit 1
+  CMD node -e "require('http').get('http://127.0.0.1:'+(process.env.PORT||3456)+'/api/auth/me',r=>{r.resume();process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"
 
 CMD ["node", "server.js"]

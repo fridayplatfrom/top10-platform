@@ -6,8 +6,11 @@
 const path = require('path');
 const puppeteer = require(path.resolve(__dirname, 'node_modules', 'puppeteer-core'));
 
-const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const BASE_URL = 'http://localhost:3456';
+const CHROME_PATH = process.env.CHROME_PATH || (process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : '/usr/bin/chromium');
+const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3456';
+if (!['localhost', '127.0.0.1', '[::1]'].includes(new URL(BASE_URL).hostname)) {
+  throw new Error('Browser audits must target an isolated loopback server.');
+}
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 (async () => {
@@ -18,7 +21,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const browser = await puppeteer.launch({
     executablePath: CHROME_PATH,
     headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--window-size=1280,900']
+    args: ['--window-size=1280,900']
   });
 
   const page = await browser.newPage();
@@ -40,6 +43,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   page.on('response', (res) => {
     if (res.status() >= 400) {
+      if (new URL(res.url()).origin === new URL(BASE_URL).origin) failedRequests.push(`HTTP ${res.status()} ${res.url()}`);
       console.warn(`[BROWSER HTTP ${res.status()}] ${res.url()}`);
     }
   });
@@ -74,14 +78,15 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     const loginRes = await fetch(`${BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'admin@top10.io', password: 'Top10Admin2026!' })
+      body: JSON.stringify({ email: 'admin@top10.io', password: process.env.TEST_ADMIN_PASSWORD || 'Top10Admin2026!' })
     });
     const loginData = await loginRes.json();
+    if (!loginRes.ok || !loginData.token) throw new Error('Isolated audit admin login failed');
     if (loginData.token) {
       await page.setCookie({
         name: 'top10_session',
         value: loginData.token,
-        domain: 'localhost',
+        domain: new URL(BASE_URL).hostname,
         path: '/'
       });
       await page.evaluateOnNewDocument((token) => {
@@ -89,7 +94,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
       }, loginData.token);
     }
   } catch (err) {
-    console.warn('Admin session pre-auth notice:', err.message);
+    await browser.close();
+    throw err;
   }
 
   // --------------------------------------------------------------------------
@@ -307,6 +313,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
     // Verify product card is visible and fits mobile viewport
     const cardWidth = await page.$eval('#top10TimelineList .card-product-node', (el) => el.getBoundingClientRect().width);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+    if (overflow) throw new Error('Document overflows the mobile viewport');
     if (cardWidth > 375) throw new Error(`Card overflowed mobile screen width: ${cardWidth}px > 375px`);
   });
 
@@ -328,7 +336,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     await Promise.race([browser.close(), new Promise((r) => setTimeout(r, 1000))]);
   } catch (err) {}
 
-  if (passedBrowserTests === totalBrowserTests && consoleErrors.length === 0) {
+  if (passedBrowserTests === totalBrowserTests && consoleErrors.length === 0 && failedRequests.length === 0) {
     console.log('PERFECT: ALL BROWSER FLOWS PASSED WITH 0 CONSOLE ERRORS!');
     process.exit(0);
   } else {

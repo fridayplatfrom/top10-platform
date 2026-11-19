@@ -85,6 +85,17 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // 5. Publish SCHEDULED article via X-API-Key
   const futureIso = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
   const schedSlug = `cloud-security-tools-${Date.now().toString().slice(-4)}`;
+  const invalidSlug = `${schedSlug}-invalid-status`;
+  const invalidCreate = await fetch(`${BASE_URL}/api/publish/article`, {
+    method: 'POST',
+    headers: apiKeyHeaders,
+    body: JSON.stringify({ title: 'Invalid status regression', slug: invalidSlug, status: 'invalid', scheduledAt: futureIso })
+  });
+  assert.strictEqual(invalidCreate.status, 400);
+  const afterRejectedCreate = await (await fetch(`${BASE_URL}/api/publish/articles`, { headers: apiKeyHeaders })).json();
+  assert(!afterRejectedCreate.articles.some((article) => article.slug === invalidSlug));
+  console.log('[PASS] Regression: invalid status with a future timestamp does not create an article');
+
   const pubRes = await fetch(`${BASE_URL}/api/publish/article`, {
     method: 'POST',
     headers: apiKeyHeaders,
@@ -117,6 +128,29 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const publicListCheck = await fetch(`${BASE_URL}/list/${schedSlug}`);
   assert.strictEqual(publicListCheck.status, 404, 'Scheduled article URL must return 404 before publish time');
   console.log('[PASS] 8. Verified scheduled article stays hidden from public /api/state & /list/:slug until go-live');
+
+  const invalidPatch = await fetch(`${BASE_URL}/api/publish/article/${schedSlug}`, {
+    method: 'PATCH',
+    headers: apiKeyHeaders,
+    body: JSON.stringify({ status: 'invalid', scheduledAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString() })
+  });
+  assert.strictEqual(invalidPatch.status, 400);
+  const afterRejectedPatch = await (await fetch(`${BASE_URL}/api/publish/articles?status=scheduled`, { headers: apiKeyHeaders })).json();
+  assert.strictEqual(afterRejectedPatch.articles.find((article) => article.slug === schedSlug)?.scheduledAt, futureIso);
+  console.log('[PASS] Regression: invalid status with a future timestamp does not reschedule an article');
+
+  const detailPath = `${BASE_URL}/api/publish/article/${schedSlug}`;
+  assert.strictEqual((await fetch(detailPath)).status, 401);
+  assert.strictEqual((await fetch(`${detailPath}-missing`, { headers: apiKeyHeaders })).status, 404);
+  const detail = await fetch(detailPath, { headers: apiKeyHeaders });
+  assert.strictEqual(detail.status, 200);
+  assert.strictEqual((await detail.json()).article.slug, schedSlug);
+  const paged = await (await fetch(`${BASE_URL}/api/publish/articles?status=scheduled&limit=1&offset=0`, { headers: apiKeyHeaders })).json();
+  assert.strictEqual(paged.count, 1);
+  assert(paged.total >= 1);
+  assert.strictEqual(paged.articles[0].slug, schedSlug);
+  assert.strictEqual((await fetch(`${BASE_URL}/api/publish/articles?limit=101`, { headers: apiKeyHeaders })).status, 400);
+  console.log('[PASS] Authenticated detail and optional filtered pagination');
 
   // Check Admin Analytics sees scheduled article & new author
   const analytics = await (await fetch(`${BASE_URL}/api/admin/analytics`, { headers: adminHeaders })).json();
