@@ -670,6 +670,7 @@ const MIME_TYPES = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
+  '.webp': 'image/webp',
   '.ico': 'image/x-icon'
 };
 
@@ -3874,7 +3875,7 @@ ${items}
       const contentType = MIME_TYPES[ext] || 'application/octet-stream';
       const fileBuf = fs.readFileSync(filePath);
       return sendResponse(req, res, 200, contentType, fileBuf, {
-        'Cache-Control': ext === '.svg' || ext === '.png' || ext === '.jpg' ? 'public, max-age=86400' : 'no-cache'
+        'Cache-Control': ['.svg', '.png', '.jpg', '.webp'].includes(ext) ? 'public, max-age=86400' : 'no-cache'
       });
     }
 
