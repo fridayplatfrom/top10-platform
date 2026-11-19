@@ -3051,7 +3051,7 @@ ${items}
             </div>
             <div class="ehc-body">
               <p class="ehc-date">${escapeXml(lm.dateText)}</p>
-              <h2 class="ehc-title">${escapeXml(lm.editorialTitle)}</h2>
+              <h1 class="ehc-title">${escapeXml(lm.editorialTitle)}</h1>
               <p class="ehc-desc">${escapeXml(lm.description)}</p>
             </div>
             <div class="ehc-author-row">
@@ -3168,7 +3168,7 @@ ${items}
       out = out.replace('<main id="singleListPageView" class="workspace-container hidden">', '<main id="singleListPageView" class="workspace-container">');
       out = out.replace('id="heroCatPillLabel">Top 10 Guide<', `id="heroCatPillLabel">${escapeXml(cat.shortName || 'Top 10 Guide')}<`);
       out = out.replace('id="heroCatSubtitle">18 Oct 2026<', `id="heroCatSubtitle">${escapeXml(meta.dateText)} · ${allProds.length} Platforms Ranked<`);
-      out = out.replace('id="heroCatTitle" itemprop="headline">Top 10 Billing Software<', `id="heroCatTitle" itemprop="headline">${escapeXml(cat.title)}<`);
+      out = out.replace('id="heroCatTitle">Top 10 Billing Software<', `id="heroCatTitle">${escapeXml(cat.title)}<`);
       out = out.replace(
         /<p class="ehc-desc" id="heroCatDesc">[\s\S]*?<\/p>/i,
         `<p class="ehc-desc" id="heroCatDesc">${escapeXml(meta.description)}</p>`
@@ -3185,6 +3185,54 @@ ${items}
         '<div class="related-dirs-grid" id="relatedDirectoriesGrid"></div>',
         `<div class="related-dirs-grid" id="relatedDirectoriesGrid">${relatedHtml}</div>`
       );
+      return out;
+    }
+
+    function renderSsrCompareBody(rawHtml, cat, pair) {
+      const { prodA, prodB } = pair || {};
+      if (!cat || !prodA || !prodB) return rawHtml;
+      let out = rawHtml;
+      out = out.replace('<main id="homePageView" class="home-container">', '<main id="homePageView" class="home-container hidden">');
+      out = out.replace('<section id="compareHeadToHeadView" class="compare-h2h-view hidden">', '<section id="compareHeadToHeadView" class="compare-h2h-view">');
+      out = out.replace('id="compareCatNameCrumb">Billing Software<', `id="compareCatNameCrumb">${escapeXml(cat.shortName || cat.title)}<`);
+      out = out.replace('id="compareVersusTitle">Stripe vs Paddle<', `id="compareVersusTitle">${escapeXml(prodA.name)} vs ${escapeXml(prodB.name)}<`);
+
+      out = out.replace('id="compareRankA">#1<', `id="compareRankA">#${escapeXml(String(prodA.rank || 1))}<`);
+      out = out.replace('id="compareNameA">Stripe Billing<', `id="compareNameA">${escapeXml(prodA.name)}<`);
+      out = out.replace('id="compareCompanyA">by Stripe Inc<', `id="compareCompanyA">by ${escapeXml(prodA.company || prodA.name)}<`);
+      out = out.replace(
+        /<p class="h2h-tagline" id="compareTaglineA">[\s\S]*?<\/p>/i,
+        `<p class="h2h-tagline" id="compareTaglineA">${escapeXml(prodA.tagline || '')}</p>`
+      );
+      out = out.replace('id="comparePriceA">0.5% per transaction<', `id="comparePriceA">${escapeXml(prodA.pricing || '')}<`);
+      out = out.replace('id="compareTrialA">Free Sandbox<', `id="compareTrialA">${escapeXml(prodA.freeTrial || 'Free Tier')}<`);
+      out = out.replace(
+        'href="#" target="_blank" rel="noopener" class="h2h-visit-btn primary" id="compareVisitBtnA">Visit Stripe Billing ↗</a>',
+        `href="${escapeXml(prodA.url || '#')}" target="_blank" rel="noopener" class="h2h-visit-btn primary" id="compareVisitBtnA">Visit ${escapeXml(prodA.name)} ↗</a>`
+      );
+
+      out = out.replace('id="compareRankB">#2<', `id="compareRankB">#${escapeXml(String(prodB.rank || 2))}<`);
+      out = out.replace('id="compareNameB">Paddle Billing<', `id="compareNameB">${escapeXml(prodB.name)}<`);
+      out = out.replace('id="compareCompanyB">by Paddle Ltd<', `id="compareCompanyB">by ${escapeXml(prodB.company || prodB.name)}<`);
+      out = out.replace(
+        /<p class="h2h-tagline" id="compareTaglineB">[\s\S]*?<\/p>/i,
+        `<p class="h2h-tagline" id="compareTaglineB">${escapeXml(prodB.tagline || '')}</p>`
+      );
+      out = out.replace('id="comparePriceB">5% + 50¢ flat<', `id="comparePriceB">${escapeXml(prodB.pricing || '')}<`);
+      out = out.replace('id="compareTrialB">Free Sandbox<', `id="compareTrialB">${escapeXml(prodB.freeTrial || 'Free Tier')}<`);
+      out = out.replace(
+        'href="#" target="_blank" rel="noopener" class="h2h-visit-btn primary" id="compareVisitBtnB">Visit Paddle Billing ↗</a>',
+        `href="${escapeXml(prodB.url || '#')}" target="_blank" rel="noopener" class="h2h-visit-btn primary" id="compareVisitBtnB">Visit ${escapeXml(prodB.name)} ↗</a>`
+      );
+
+      out = out.replace(
+        /<p class="h2h-verdict-body" id="compareVerdictBody">[\s\S]*?<\/p>/i,
+        `<p class="h2h-verdict-body" id="compareVerdictBody">Compare <strong>${escapeXml(prodA.name)}</strong> against <strong>${escapeXml(prodB.name)}</strong> in ${escapeXml(cat.title)}. ${escapeXml(prodA.editorial?.summary || prodA.tagline || '')} ${escapeXml(prodB.editorial?.summary || prodB.tagline || '')}</p>`
+      );
+      out = out.replace('id="compareWinnerDev">Stripe Billing<', `id="compareWinnerDev">${escapeXml(prodA.name)}<`);
+      out = out.replace('id="compareWinnerValue">Paddle Billing<', `id="compareWinnerValue">${escapeXml(prodB.name)}<`);
+      out = out.replace('id="thMatrixNameA">Stripe Billing<', `id="thMatrixNameA">${escapeXml(prodA.name)}<`);
+      out = out.replace('id="thMatrixNameB">Paddle Billing<', `id="thMatrixNameB">${escapeXml(prodB.name)}<`);
       return out;
     }
 
@@ -3212,7 +3260,8 @@ ${items}
       routeKind = 'list';
       const meta = getCategoryFeatureMeta(activeCat);
       pageTitle = `${activeCat.title} (2026) — Best Picks & Buying Guide | Top 10`;
-      pageDesc = truncateMetaDesc(`${meta.description} Featured #1 pick: ${activeCat.top10[0]?.name || ''}.`);
+      const topPickName = activeCat.top10[0]?.name || '';
+      pageDesc = truncateMetaDesc(topPickName ? `#1 Pick: ${topPickName} — ${meta.description}` : meta.description);
       canonicalUrl = `${base}/list/${activeCat.slug}`;
       ogType = 'article';
       ogImage = meta.coverImage;
@@ -3254,11 +3303,13 @@ ${items}
 
     let html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf-8');
 
-    // Render full semantic SSR body for Home and List pages before JS hydration
+    // Render full semantic SSR body for Home, List, and Compare pages before JS hydration
     if (routeKind === 'home') {
       html = renderSsrHomepageBody(html, categories);
     } else if (routeKind === 'list' && activeCat) {
       html = renderSsrListBody(html, activeCat, categories);
+    } else if (routeKind === 'compare' && activeCat && comparePair) {
+      html = renderSsrCompareBody(html, activeCat, comparePair);
     }
 
     // Replace SEO, OpenGraph, Twitter & JSON-LD tags cleanly in-place

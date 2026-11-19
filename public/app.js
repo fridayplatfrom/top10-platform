@@ -677,7 +677,8 @@
     } else if (isList) {
       const meta = getCategoryFeatureMeta(cat);
       title = `${cat.title} (2026) — Best Picks & Buying Guide | Top 10`;
-      desc = truncDesc(`${meta.description} Featured #1 pick: ${cat.top10?.[0]?.name || ''}.`);
+      const topPickName = cat.top10?.[0]?.name || '';
+      desc = truncDesc(topPickName ? `#1 Pick: ${topPickName} — ${meta.description}` : meta.description);
       canonical = `${baseUrl}/list/${cat.slug}`;
       ogType = 'article';
       ogImg = meta.coverImage;
@@ -1259,7 +1260,7 @@
               </div>
               <div class="ehc-body">
                 <p class="ehc-date">${escapeHtml(leadMeta.dateText)}</p>
-                <h2 class="ehc-title">${escapeHtml(leadMeta.editorialTitle)}</h2>
+                <h1 class="ehc-title">${escapeHtml(leadMeta.editorialTitle)}</h1>
                 <p class="ehc-desc">${escapeHtml(leadMeta.description)}</p>
               </div>
               <div class="ehc-author-row">

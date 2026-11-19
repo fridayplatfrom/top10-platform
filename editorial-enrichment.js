@@ -2246,7 +2246,9 @@ function buildSeoJsonLd(cat, allCategories, baseUrl, comparePair = null) {
     url: baseUrl,
     logo: {
       '@type': 'ImageObject',
-      url: `${baseUrl}/favicon.svg`
+      url: `${baseUrl}/logo.png`,
+      width: 512,
+      height: 512
     }
   };
 
@@ -2380,7 +2382,8 @@ function buildSeoJsonLd(cat, allCategories, baseUrl, comparePair = null) {
           author: {
             '@type': 'Person',
             name: meta.authorName,
-            jobTitle: meta.authorRole
+            jobTitle: meta.authorRole,
+            url: `${baseUrl}/`
           },
           publisher: { '@id': `${baseUrl}/#organization` },
           isPartOf: { '@id': `${baseUrl}/#website` }
@@ -2425,43 +2428,31 @@ function buildSeoJsonLd(cat, allCategories, baseUrl, comparePair = null) {
 // Generates /llms.txt for AI Search Engines (Perplexity, ChatGPT Search, Claude, Google AI)
 function buildLlmsTxt(categories, baseUrl) {
   const lines = [
-    '# Top 10 — Structured Product Comparisons, Buying Guides & Reviews (2026)',
+    '# Top 10 — Curated Product Buying Guides & Rankings (2026)',
     '',
-    '> Authoritative, structured Top 10 product comparisons featuring at-a-glance comparison tables, Best-For verdicts, pricing breakdowns, Pros & Cons, and FAQs.',
+    '> Independent, curated Top 10 buying guides featuring editorial summaries, category rankings, and direct official links across software, hardware, and consumer apps.',
     '',
     '## Available Top 10 Buying Guides',
     ''
   ];
 
   for (const c of categories) {
-    lines.push(`- [${c.title}](${baseUrl}/list/${c.slug}): ${c.editorialGuide?.intro || c.subtitle}`);
+    const m = getCategoryFeatureMeta(c);
+    lines.push(`- [${c.title}](${baseUrl}/list/${c.slug}): ${m.description}`);
   }
 
   lines.push('', '---', '');
 
   for (const c of categories) {
-    lines.push(`## ${c.title} (URL: ${baseUrl}/list/${c.slug})`);
-    lines.push(`${c.editorialGuide?.intro || ''}`);
+    const m = getCategoryFeatureMeta(c);
+    lines.push(`## ${c.title}`);
+    lines.push(`URL: ${baseUrl}/list/${c.slug} | Updated: ${m.dateText} | Author: ${m.authorName}`);
+    lines.push(`${m.description}`);
     lines.push('');
-    lines.push('### Quick Verdict Summary (TL;DR)');
-    for (const item of c.editorialGuide?.tldr || []) {
-      lines.push(`- **${item.label}**: **${item.winner}** — ${item.reason}`);
-    }
-    lines.push('');
-    lines.push('### Ranked Top 10 Products');
+    lines.push('### Ranked Top 10 Picks');
     for (const p of c.top10 || []) {
-      lines.push(
-        `${p.rank}. **${p.name}** by ${p.companyName} — *${p.bestFor}* | Score: ${p.editorialScore}/10 (★ ${p.rating}/5) | Pricing: ${p.pricingTag} | Website: ${p.website}`
-      );
-      lines.push(`   - Summary: ${p.editorialSummary}`);
-      lines.push(`   - Pros: ${(p.pros || []).join(' ; ')}`);
-      lines.push(`   - Cons: ${(p.cons || []).join(' ; ')}`);
-    }
-    lines.push('');
-    lines.push('### Frequently Asked Questions');
-    for (const f of c.editorialGuide?.faqs || []) {
-      lines.push(`- **Q: ${f.q}**`);
-      lines.push(`  A: ${f.a}`);
+      lines.push(`${p.rank}. **${p.name}** by ${p.companyName} — ${p.website}`);
+      lines.push(`   ${p.editorialSummary || p.tagline}`);
     }
     lines.push('', '---', '');
   }
