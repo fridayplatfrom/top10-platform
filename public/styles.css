@@ -9994,6 +9994,15 @@ html[data-theme="dark"] .home-topic-pill.active {
   border-bottom: none !important;
 }
 
+.h2h-main-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.22;
+  color: var(--text-main);
+  margin: 0 0 14px 0;
+}
+
 
 
 

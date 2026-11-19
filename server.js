@@ -3168,7 +3168,10 @@ ${items}
       out = out.replace('<main id="singleListPageView" class="workspace-container hidden">', '<main id="singleListPageView" class="workspace-container">');
       out = out.replace('id="heroCatPillLabel">Top 10 Guide<', `id="heroCatPillLabel">${escapeXml(cat.shortName || 'Top 10 Guide')}<`);
       out = out.replace('id="heroCatSubtitle">18 Oct 2026<', `id="heroCatSubtitle">${escapeXml(meta.dateText)} · ${allProds.length} Platforms Ranked<`);
-      out = out.replace('id="heroCatTitle">Top 10 Billing Software<', `id="heroCatTitle">${escapeXml(cat.title)}<`);
+      out = out.replace(
+        '<h2 class="entity-title ehc-title" id="heroCatTitle">Top 10 Billing Software</h2>',
+        `<h1 class="entity-title ehc-title" id="heroCatTitle">${escapeXml(cat.title)}</h1>`
+      );
       out = out.replace(
         /<p class="ehc-desc" id="heroCatDesc">[\s\S]*?<\/p>/i,
         `<p class="ehc-desc" id="heroCatDesc">${escapeXml(meta.description)}</p>`
@@ -3196,6 +3199,10 @@ ${items}
       out = out.replace('<section id="compareHeadToHeadView" class="compare-h2h-view hidden">', '<section id="compareHeadToHeadView" class="compare-h2h-view">');
       out = out.replace('id="compareCatNameCrumb">Billing Software<', `id="compareCatNameCrumb">${escapeXml(cat.shortName || cat.title)}<`);
       out = out.replace('id="compareVersusTitle">Stripe vs Paddle<', `id="compareVersusTitle">${escapeXml(prodA.name)} vs ${escapeXml(prodB.name)}<`);
+      out = out.replace(
+        '<h2 class="h2h-main-title" id="comparePageTitleHeading">Stripe Billing vs Paddle Billing (2026 Comparison)</h2>',
+        `<h1 class="h2h-main-title" id="comparePageTitleHeading">${escapeXml(prodA.name)} vs ${escapeXml(prodB.name)} (${new Date().getFullYear()} Comparison)</h1>`
+      );
 
       out = out.replace('id="compareRankA">#1<', `id="compareRankA">#${escapeXml(String(prodA.rank || 1))}<`);
       out = out.replace('id="compareNameA">Stripe Billing<', `id="compareNameA">${escapeXml(prodA.name)}<`);

@@ -2257,6 +2257,7 @@ function buildSeoJsonLd(cat, allCategories, baseUrl, comparePair = null) {
     '@id': `${baseUrl}/#website`,
     name: 'Top 10',
     url: baseUrl,
+    inLanguage: 'en',
     publisher: { '@id': `${baseUrl}/#organization` },
     potentialAction: {
       '@type': 'SearchAction',
@@ -2278,6 +2279,7 @@ function buildSeoJsonLd(cat, allCategories, baseUrl, comparePair = null) {
             '@type': 'CollectionPage',
             '@id': `${baseUrl}/#webpage`,
             url: `${baseUrl}/`,
+            inLanguage: 'en',
             name: 'Top 10 — Curated Product Buying Guides & Rankings (2026)',
             description: 'Browse editorial Top 10 buying guides across software, hardware, and consumer apps.',
             isPartOf: { '@id': `${baseUrl}/#website` }
@@ -2322,6 +2324,7 @@ function buildSeoJsonLd(cat, allCategories, baseUrl, comparePair = null) {
             '@type': 'WebPage',
             '@id': `${compareUrl}#webpage`,
             url: compareUrl,
+            inLanguage: 'en',
             name: `${prodA.name} vs ${prodB.name} (2026) — Side-by-Side Comparison | Top 10`,
             description: `Compare ${prodA.name} by ${prodA.companyName} and ${prodB.name} by ${prodB.companyName} in ${cat.title}.`,
             isPartOf: { '@id': `${baseUrl}/#website` }
@@ -2373,6 +2376,7 @@ function buildSeoJsonLd(cat, allCategories, baseUrl, comparePair = null) {
         {
           '@type': 'Article',
           '@id': `${listUrl}#article`,
+          inLanguage: 'en',
           mainEntityOfPage: { '@type': 'WebPage', '@id': listUrl },
           headline: `${cat.title} (2026) — Best Picks & Buying Guide`,
           description: meta.description,

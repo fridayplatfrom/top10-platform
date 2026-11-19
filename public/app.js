@@ -219,7 +219,7 @@
   const heroUpdatedAgo = document.getElementById('heroUpdatedAgo');
   const heroPaidBadge = document.getElementById('heroPaidBadge');
   const refreshStateBtn = document.getElementById('refreshStateBtn');
-  const heroCatTitle = document.getElementById('heroCatTitle');
+  let heroCatTitle = document.getElementById('heroCatTitle');
   const copyListUrlBtn = document.getElementById('copyListUrlBtn');
   const copyListUrlLabel = document.getElementById('copyListUrlLabel');
   const openCategoryRfpBtn = document.getElementById('openCategoryRfpBtn');
@@ -859,6 +859,26 @@
       navAdminBtn.classList.toggle('active', currentView === 'admin');
     }
 
+    function swapHeadingTag(el, targetTag) {
+      if (!el || el.tagName === targetTag.toUpperCase()) return el;
+      const replacement = document.createElement(targetTag);
+      for (const attr of el.attributes) {
+        replacement.setAttribute(attr.name, attr.value);
+      }
+      replacement.innerHTML = el.innerHTML;
+      el.replaceWith(replacement);
+      return replacement;
+    }
+
+    function syncSingleH1(viewKind) {
+      const homeTitleEl = document.querySelector('#homeFeaturedHeroCard .ehc-title');
+      if (homeTitleEl) swapHeadingTag(homeTitleEl, viewKind === 'home' ? 'h1' : 'h2');
+      const listEl = document.getElementById('heroCatTitle');
+      if (listEl) heroCatTitle = swapHeadingTag(listEl, viewKind === 'list' ? 'h1' : 'h2');
+      const compareEl = document.getElementById('comparePageTitleHeading');
+      if (compareEl) swapHeadingTag(compareEl, viewKind === 'compare' ? 'h1' : 'h2');
+    }
+
     // Topbar state & View Switching
     if (currentView === 'home') {
       topCatName.textContent = `All Guides (${(appState.categories || []).length})`;
@@ -869,6 +889,7 @@
       if (adminViewSection) adminViewSection.classList.add('hidden');
       if (compareHeadToHeadView) compareHeadToHeadView.classList.add('hidden');
       renderHomePage();
+      syncSingleH1('home');
     } else if (currentView === 'blog') {
       topCatName.textContent = 'Editorial & Blog';
       homePageView.classList.add('hidden');
@@ -878,6 +899,7 @@
       if (adminViewSection) adminViewSection.classList.add('hidden');
       if (compareHeadToHeadView) compareHeadToHeadView.classList.add('hidden');
       renderBlogIndex();
+      syncSingleH1('other');
     } else if (currentView === 'article') {
       topCatName.textContent = 'Buying Guide';
       homePageView.classList.add('hidden');
@@ -887,6 +909,7 @@
       if (adminViewSection) adminViewSection.classList.add('hidden');
       if (compareHeadToHeadView) compareHeadToHeadView.classList.add('hidden');
       renderBlogArticle(currentBlogSlug);
+      syncSingleH1('other');
     } else if (currentView === 'admin') {
       if (!isAdmin) {
         currentView = 'home';
@@ -896,6 +919,7 @@
         }
         showToast('Admin authorization required to access Command Center');
         renderHomePage();
+        syncSingleH1('home');
         return;
       }
       topCatName.textContent = 'Admin Operations';
@@ -906,6 +930,7 @@
       if (adminViewSection) adminViewSection.classList.remove('hidden');
       if (compareHeadToHeadView) compareHeadToHeadView.classList.add('hidden');
       renderAdminPanel();
+      syncSingleH1('admin');
     } else if (currentView === 'compare') {
       topCatName.textContent = 'Head-to-Head Comparison';
       homePageView.classList.add('hidden');
@@ -915,6 +940,7 @@
       if (adminViewSection) adminViewSection.classList.add('hidden');
       if (compareHeadToHeadView) compareHeadToHeadView.classList.remove('hidden');
       renderCompareHeadToHead(currentCategorySlug, currentCompareA, currentCompareB);
+      syncSingleH1('compare');
     } else {
       // Single category list view
       topCatName.textContent = cat.shortName || cat.title;
@@ -924,6 +950,7 @@
       if (blogArticleSection) blogArticleSection.classList.add('hidden');
       if (adminViewSection) adminViewSection.classList.add('hidden');
       if (compareHeadToHeadView) compareHeadToHeadView.classList.add('hidden');
+      syncSingleH1('list');
       renderSingleListPage(cat);
     }
 
@@ -3901,6 +3928,10 @@
     }
     if (compareVersusTitle) {
       compareVersusTitle.textContent = `${prodA.name} vs ${prodB.name}`;
+    }
+    const comparePageTitleHeading = document.getElementById('comparePageTitleHeading');
+    if (comparePageTitleHeading) {
+      comparePageTitleHeading.textContent = `${prodA.name} vs ${prodB.name} (2026 Comparison)`;
     }
     if (compareBackBtn) {
       compareBackBtn.onclick = () => navigateToCategory(cat.slug);
