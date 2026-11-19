@@ -1226,17 +1226,27 @@
 
     let displayList = matchedCats.length > 0 ? matchedCats : allCats;
 
-    // Filter by Homepage Topic Pill (All, Software & AI, Hardware & Home, Lifestyle & Gaming)
+    // Filter by Homepage Topic Pill (All, Software & AI, Hardware & Home, Lifestyle & Gaming, plus API-created topics)
     if (!window._activeHomeTopic) window._activeHomeTopic = 'all';
     const homeTopicPillsBar = document.getElementById('homeTopicPillsBar');
-    if (homeTopicPillsBar && !homeTopicPillsBar._bound) {
-      homeTopicPillsBar._bound = true;
+    if (homeTopicPillsBar) {
+      const dynamicTopics = Array.isArray(appState.topicCategories) && appState.topicCategories.length > 0
+        ? appState.topicCategories
+        : [
+            { slug: 'software', name: 'Software & AI' },
+            { slug: 'hardware', name: 'Hardware & Home' },
+            { slug: 'lifestyle', name: 'Lifestyle & Gaming' }
+          ];
+      const topicButtonsHtml = [
+        `<button type="button" class="home-topic-pill ${window._activeHomeTopic === 'all' ? 'active' : ''}" data-home-topic="all">All Guides</button>`,
+        ...dynamicTopics.map(
+          (tc) => `<button type="button" class="home-topic-pill ${window._activeHomeTopic === tc.slug ? 'active' : ''}" data-home-topic="${escapeHtml(tc.slug)}">${escapeHtml(tc.name)}</button>`
+        )
+      ].join('');
+      homeTopicPillsBar.innerHTML = topicButtonsHtml;
       homeTopicPillsBar.querySelectorAll('[data-home-topic]').forEach((btn) => {
         btn.addEventListener('click', () => {
           window._activeHomeTopic = btn.getAttribute('data-home-topic') || 'all';
-          homeTopicPillsBar.querySelectorAll('[data-home-topic]').forEach((b) => {
-            b.classList.toggle('active', b.getAttribute('data-home-topic') === window._activeHomeTopic);
-          });
           renderHomePage();
         });
       });
@@ -1244,6 +1254,7 @@
     if (!rawQuery && window._activeHomeTopic && window._activeHomeTopic !== 'all') {
       const topicKey = window._activeHomeTopic;
       displayList = displayList.filter((c) => {
+        if (c.topic) return c.topic === topicKey;
         const s = c.slug || '';
         if (topicKey === 'hardware') {
           return THEMATIC_CLUSTERS.hardware.includes(s) || /tv|oven|speaker|phone|audio|hardware/i.test(s);
@@ -1252,12 +1263,9 @@
           return THEMATIC_CLUSTERS.lifestyle.includes(s) || /game|audiobook|book|gambling|sport/i.test(s);
         }
         if (topicKey === 'software') {
-          return (
-            !THEMATIC_CLUSTERS.hardware.includes(s) &&
-            !THEMATIC_CLUSTERS.lifestyle.includes(s)
-          );
+          return !THEMATIC_CLUSTERS.hardware.includes(s) && !THEMATIC_CLUSTERS.lifestyle.includes(s);
         }
-        return true;
+        return false;
       });
       if (homeGridHeading) {
         homeGridHeading.textContent = `Top 10 Directories (${displayList.length})`;
@@ -1854,14 +1862,15 @@
     }
     const preset = CATEGORY_FEATURE_META[c.slug];
     const firstProdImg = c.top10 && c.top10[0] && c.top10[0].media && c.top10[0].media.heroImage;
+    const authorFromPool = (appState?.authors || []).find((a) => a.id === c.authorId);
     return {
-      coverImage: (preset && preset.coverImage) || c.coverImage || firstProdImg || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
-      dateText: (preset && preset.dateText) || (c.editorialGuide && c.editorialGuide.lastUpdatedDate) || '15 Oct 2026',
-      editorialTitle: (preset && preset.editorialTitle) || c.title,
-      description: (preset && preset.description) || (c.editorialGuide && c.editorialGuide.intro) || c.description || `Learn how to pick the best option in ${c.title} with our step-by-step comparison, pros & cons, and expert advice.`,
-      authorName: (preset && preset.authorName) || 'Bill Roberts',
-      authorRole: (preset && preset.authorRole) || 'Founder',
-      authorAvatar: (preset && preset.authorAvatar) || DEFAULT_FOUNDER_AVATAR
+      coverImage: c.coverImage || (preset && preset.coverImage) || firstProdImg || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+      dateText: (c.editorialGuide && c.editorialGuide.lastUpdatedDate) || (preset && preset.dateText) || '15 Oct 2026',
+      editorialTitle: c.editorialTitle || (preset && preset.editorialTitle) || c.title,
+      description: c.description || (preset && preset.description) || (c.editorialGuide && c.editorialGuide.intro) || `Learn how to pick the best option in ${c.title} with our step-by-step comparison, pros & cons, and expert advice.`,
+      authorName: c.authorName || authorFromPool?.name || (preset && preset.authorName) || 'Bill Roberts',
+      authorRole: c.authorRole || authorFromPool?.role || (preset && preset.authorRole) || 'Founder',
+      authorAvatar: c.authorAvatar || authorFromPool?.avatar || (preset && preset.authorAvatar) || DEFAULT_FOUNDER_AVATAR
     };
   }
 
@@ -3432,6 +3441,11 @@
       }
       if (categoryEditorModalBackdrop && !categoryEditorModalBackdrop.classList.contains('hidden')) {
         categoryEditorModalBackdrop.classList.add('hidden');
+        return;
+      }
+      const authorBackdropEsc = document.getElementById('authorEditorModalBackdrop');
+      if (authorBackdropEsc && !authorBackdropEsc.classList.contains('hidden')) {
+        authorBackdropEsc.classList.add('hidden');
         return;
       }
       if (blogEditorModalBackdrop && !blogEditorModalBackdrop.classList.contains('hidden')) {
@@ -5333,6 +5347,16 @@
       adminCategoryFilterSelect.value = cur;
     }
 
+    const adminScheduledCountBadge = document.getElementById('adminScheduledCountBadge');
+    const editorialAll = Array.isArray(appState.editorialArticles) && appState.editorialArticles.length > 0
+      ? appState.editorialArticles
+      : (appState.categories || []);
+    const scheduledCount = editorialAll.filter((a) => a.status === 'scheduled').length;
+    if (adminScheduledCountBadge) {
+      adminScheduledCountBadge.textContent = String(scheduledCount);
+      adminScheduledCountBadge.classList.toggle('hidden', scheduledCount === 0);
+    }
+
     renderAdminOverview();
     renderAdminProductsTable();
     renderAdminCategoriesTable();
@@ -5341,6 +5365,7 @@
     renderAdminSubscriptionsTable();
     renderAdminReviews();
     renderAdminLeads();
+    renderAdminEditorialTab();
   }
 
   // Admin Tab Switcher
@@ -5356,7 +5381,8 @@
         blogs: 'adminTabBlogs',
         transactions: 'adminTabTransactions',
         reviews: 'adminTabReviews',
-        leads: 'adminTabLeads'
+        leads: 'adminTabLeads',
+        editorial: 'adminTabEditorial'
       };
 
       Object.entries(tabMap).forEach(([tKey, elId]) => {
@@ -5374,6 +5400,7 @@
       }
       if (activeAdminTab === 'reviews') renderAdminReviews();
       if (activeAdminTab === 'leads') renderAdminLeads();
+      if (activeAdminTab === 'editorial') renderAdminEditorialTab();
     });
   });
 
@@ -5507,6 +5534,73 @@
             `;
             })
             .join('');
+        }
+      }
+
+      // Render Editorial Publishing & Author Performance Analytics
+      const edAnalytics = data.editorialAnalytics || {};
+      const dashAuthorPerfTableBody = document.getElementById('dashAuthorPerfTableBody');
+      if (dashAuthorPerfTableBody && Array.isArray(edAnalytics.authorStats)) {
+        dashAuthorPerfTableBody.innerHTML = edAnalytics.authorStats
+          .slice(0, 10)
+          .map(
+            (a) => `
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <img src="${escapeHtml(a.avatar)}" alt="${escapeHtml(a.name)}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;" />
+                <div>
+                  <div style="font-weight:700;font-size:12.5px;">${escapeHtml(a.name)}</div>
+                  <div style="font-size:10.5px;color:var(--text-muted);">${escapeHtml(a.role)}</div>
+                </div>
+              </div>
+            </td>
+            <td><strong>${a.articlesCount || 0}</strong></td>
+            <td><span style="color:#7C3AED;font-weight:700;">${a.scheduledCount || 0}</span></td>
+            <td>${(a.totalViews || 0).toLocaleString()}</td>
+            <td>${(a.totalClicks || 0).toLocaleString()}</td>
+          </tr>`
+          )
+          .join('');
+      }
+
+      const dashEditorialStatusSub = document.getElementById('dashEditorialStatusSub');
+      if (dashEditorialStatusSub) {
+        dashEditorialStatusSub.textContent = `${ov.publishedArticlesCount ?? ov.totalArticles ?? 0} published · ${ov.scheduledArticlesCount ?? 0} scheduled · ${ov.totalAuthors ?? 14} human authors · ${ov.totalTags ?? 0} tags`;
+      }
+
+      const dashScheduledQueueContainer = document.getElementById('dashScheduledQueueContainer');
+      if (dashScheduledQueueContainer) {
+        const sq = edAnalytics.scheduledQueue || [];
+        if (sq.length === 0) {
+          dashScheduledQueueContainer.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12.5px;">No upcoming scheduled articles in queue. Use <strong>Articles, Authors &amp; Schedule</strong> or <code>POST /api/publish/article</code> to schedule guides.</div>`;
+        } else {
+          dashScheduledQueueContainer.innerHTML = sq
+            .map((item) => {
+              const dt = new Date(item.scheduledAt);
+              return `
+              <div class="dash-sales-feed-item">
+                <div class="sales-feed-left">
+                  <span class="ed-status-badge scheduled">Scheduled</span>
+                  <div>
+                    <div class="sales-feed-desc">${escapeHtml(item.editorialTitle || item.title)}</div>
+                    <div class="sales-feed-time">By ${escapeHtml(item.authorName)} · Goes live ${dt.toLocaleString()}</div>
+                  </div>
+                </div>
+                <button type="button" class="admin-btn-action dash-pub-now-btn" data-pub-now="${escapeHtml(item.slug)}">Publish Now</button>
+              </div>`;
+            })
+            .join('');
+          dashScheduledQueueContainer.querySelectorAll('[data-pub-now]').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              const slug = btn.getAttribute('data-pub-now');
+              const r = await fetch(`/api/publish/article/${slug}/publish-now`, { method: 'POST' });
+              const resData = await r.json();
+              if (resData.state) appState = resData.state;
+              renderAdminPanel();
+              showToast(`Published "${slug}" immediately!`);
+            });
+          });
         }
       }
     } catch (e) {
@@ -5928,11 +6022,64 @@
   const closeCategoryEditorModalBtn = document.getElementById('closeCategoryEditorModalBtn');
   const cancelCategoryEditorBtn = document.getElementById('cancelCategoryEditorBtn');
   const adminHeaderNewCatBtn = document.getElementById('adminHeaderNewCatBtn');
+  const catEditAuthorSelect = document.getElementById('catEditAuthorSelect');
+  const catEditTopicSelect = document.getElementById('catEditTopicSelect');
+  const catEditAuthorPreview = document.getElementById('catEditAuthorPreview');
+  const catEditStatus = document.getElementById('catEditStatus');
+  const catEditScheduledAt = document.getElementById('catEditScheduledAt');
+  const catEditScheduleWrap = document.getElementById('catEditScheduleWrap');
+  const catEditTags = document.getElementById('catEditTags');
+  const catEditCoverImage = document.getElementById('catEditCoverImage');
+  const catEditEditorialTitle = document.getElementById('catEditEditorialTitle');
+
+  function updateAuthorPreviewPill() {
+    if (!catEditAuthorPreview || !catEditAuthorSelect) return;
+    const selectedId = catEditAuthorSelect.value;
+    const author = (appState?.authors || []).find((a) => a.id === selectedId) || (appState?.authors || [])[0];
+    if (!author) {
+      catEditAuthorPreview.innerHTML = '';
+      return;
+    }
+    catEditAuthorPreview.innerHTML = `
+      <img src="${escapeHtml(author.avatar)}" alt="${escapeHtml(author.name)}" />
+      <div>
+        <div style="font-size:12.5px;font-weight:700;color:var(--text-main);">${escapeHtml(author.name)} · <span style="color:var(--text-muted);font-weight:600;">${escapeHtml(author.role)}</span></div>
+        <div style="font-size:11px;color:var(--text-secondary);">${escapeHtml(author.bio || '')}</div>
+      </div>`;
+  }
+
+  function syncScheduleFieldVisibility() {
+    if (!catEditStatus || !catEditScheduleWrap) return;
+    const isSched = catEditStatus.value === 'scheduled';
+    catEditScheduleWrap.style.opacity = isSched ? '1' : '0.55';
+    if (catEditScheduledAt) catEditScheduledAt.required = isSched;
+  }
+
+  if (catEditAuthorSelect) catEditAuthorSelect.addEventListener('change', updateAuthorPreviewPill);
+  if (catEditStatus) catEditStatus.addEventListener('change', syncScheduleFieldVisibility);
 
   function openCategoryEditorModal(cat = null) {
     if (!categoryEditorModalBackdrop) return;
+    if (catEditAuthorSelect) {
+      const authors = appState?.authors || [];
+      catEditAuthorSelect.innerHTML = authors
+        .map((a) => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)} — ${escapeHtml(a.role)}</option>`)
+        .join('');
+    }
+    if (catEditTopicSelect) {
+      const topics = appState?.topicCategories || [
+        { slug: 'software', name: 'Software & AI' },
+        { slug: 'hardware', name: 'Hardware & Home' },
+        { slug: 'lifestyle', name: 'Lifestyle & Gaming' }
+      ];
+      catEditTopicSelect.innerHTML = topics
+        .map((tc) => `<option value="${escapeHtml(tc.slug)}">${escapeHtml(tc.icon || '📂')} ${escapeHtml(tc.name)}</option>`)
+        .join('');
+    }
+
     if (cat) {
-      catModalHeading.textContent = `Edit Directory: ${cat.title}`;
+      const meta = getCategoryFeatureMeta(cat);
+      catModalHeading.textContent = `Edit Article & Directory: ${cat.title}`;
       catEditIsUpdate.value = 'true';
       catEditOriginalSlug.value = cat.slug;
       catEditTitle.value = cat.title || '';
@@ -5943,14 +6090,29 @@
       catEditDescription.value = cat.description || '';
       catEditCriteria.value = Array.isArray(cat.criteria) ? cat.criteria.join('\n') : '';
       catEditFaqs.value = Array.isArray(cat.faqs) ? cat.faqs.map((f) => `Q: ${f.q}\nA: ${f.a}`).join('\n\n') : '';
+      if (catEditAuthorSelect && (cat.authorId || meta.authorName)) {
+        const matchA = (appState?.authors || []).find((a) => a.id === cat.authorId || a.name === meta.authorName);
+        if (matchA) catEditAuthorSelect.value = matchA.id;
+      }
+      if (catEditTopicSelect) catEditTopicSelect.value = cat.topic || 'software';
+      if (catEditStatus) catEditStatus.value = cat.status || 'published';
+      if (catEditScheduledAt) {
+        catEditScheduledAt.value = cat.scheduledAt ? new Date(cat.scheduledAt).toISOString().slice(0, 16) : '';
+      }
+      if (catEditTags) catEditTags.value = Array.isArray(cat.tags) ? cat.tags.join(', ') : '';
+      if (catEditCoverImage) catEditCoverImage.value = cat.coverImage || meta.coverImage || '';
+      if (catEditEditorialTitle) catEditEditorialTitle.value = cat.editorialTitle || meta.editorialTitle || '';
     } else {
-      catModalHeading.textContent = 'Create New Top 10 Directory';
+      catModalHeading.textContent = 'Publish or Schedule Top 10 Article';
       catEditIsUpdate.value = 'false';
       catEditOriginalSlug.value = '';
       categoryEditorForm.reset();
       catEditIcon.value = '📁';
       catEditViews.value = 15000;
+      if (catEditStatus) catEditStatus.value = 'published';
     }
+    updateAuthorPreviewPill();
+    syncScheduleFieldVisibility();
     categoryEditorModalBackdrop.classList.remove('hidden');
   }
 
@@ -6003,6 +6165,10 @@
         }
       });
 
+      const scheduledVal = catEditScheduledAt && catEditScheduledAt.value
+        ? new Date(catEditScheduledAt.value).toISOString()
+        : undefined;
+
       const payload = {
         title: catEditTitle.value.trim(),
         slug,
@@ -6010,6 +6176,13 @@
         monthlyViews: Number(catEditViews.value) || 12000,
         tagline: catEditTagline.value.trim(),
         description: catEditDescription.value.trim(),
+        editorialTitle: catEditEditorialTitle ? catEditEditorialTitle.value.trim() || undefined : undefined,
+        authorId: catEditAuthorSelect ? catEditAuthorSelect.value || undefined : undefined,
+        topic: catEditTopicSelect ? catEditTopicSelect.value || undefined : undefined,
+        tags: catEditTags && catEditTags.value.trim() ? catEditTags.value.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
+        coverImage: catEditCoverImage && catEditCoverImage.value.trim() ? catEditCoverImage.value.trim() : undefined,
+        status: catEditStatus ? catEditStatus.value || 'published' : 'published',
+        scheduledAt: scheduledVal,
         criteria: criteria.length > 0 ? criteria : undefined,
         faqs: faqs.length > 0 ? faqs : undefined
       };
@@ -6028,10 +6201,360 @@
         if (data.state) appState = data.state;
         closeCategoryEditorModal();
         renderAdminPanel();
-        showToast(isUpdate ? `Directory "${payload.title}" updated!` : `New Directory "${payload.title}" created!`);
+        const statusMsg = payload.status === 'scheduled' ? `Scheduled "${payload.title}"!` : (isUpdate ? `Updated "${payload.title}"!` : `New Directory "${payload.title}" created!`);
+        showToast(statusMsg);
       } catch (err) {
         alert(err.message);
       }
+    });
+  }
+
+  // A2. Editorial Tab Controller (Articles Queue, Authors, Taxonomy Categories & Tags, Publishing API)
+  let editorialStatusFilterVal = 'all';
+
+  async function renderAdminEditorialTab() {
+    const tbody = document.getElementById('adminEditorialTableBody');
+    if (!tbody || !appState) return;
+
+    let allArts = Array.isArray(appState.editorialArticles) && appState.editorialArticles.length > 0
+      ? appState.editorialArticles
+      : (appState.categories || []);
+    const authors = appState.authors || [];
+    const topics = appState.topicCategories || [];
+    const tags = appState.tags || [];
+
+    const pubCount = allArts.filter((a) => (a.status || 'published') === 'published').length;
+    const schedCount = allArts.filter((a) => a.status === 'scheduled').length;
+    const draftCount = allArts.filter((a) => a.status === 'draft').length;
+
+    const elPub = document.getElementById('edStatPublished');
+    const elSched = document.getElementById('edStatScheduled');
+    const elDraft = document.getElementById('edStatDrafts');
+    const elAuth = document.getElementById('edStatAuthors');
+    const elTax = document.getElementById('edStatTaxonomy');
+    if (elPub) elPub.textContent = String(pubCount);
+    if (elSched) elSched.textContent = String(schedCount);
+    if (elDraft) elDraft.textContent = String(draftCount);
+    if (elAuth) elAuth.textContent = String(authors.length);
+    if (elTax) elTax.textContent = `${topics.length} / ${tags.length}`;
+
+    const q = (document.getElementById('adminEditorialSearchInput')?.value || '').toLowerCase().trim();
+    let filtered = allArts.filter((a) => editorialStatusFilterVal === 'all' || (a.status || 'published') === editorialStatusFilterVal);
+    if (q) {
+      filtered = filtered.filter((a) => {
+        const hay = `${a.title} ${a.editorialTitle || ''} ${a.slug} ${a.authorName || ''} ${a.topic || ''} ${(a.tags || []).join(' ')}`.toLowerCase();
+        return hay.includes(q);
+      });
+    }
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">No articles match this filter.</td></tr>`;
+    } else {
+      tbody.innerHTML = filtered
+        .map((c) => {
+          const meta = getCategoryFeatureMeta(c);
+          const st = c.status || 'published';
+          const clicks = [...(c.top10 || []), ...(c.pushedOut || [])].reduce((s, p) => s + Number(p.clicks || 0), 0);
+          const views = Number(c.monthlyViews || 0);
+          const ctr = views > 0 ? ((clicks / views) * 100).toFixed(1) + '%' : '0.0%';
+          const whenLabel = st === 'scheduled' && c.scheduledAt
+            ? `Goes live ${new Date(c.scheduledAt).toLocaleString()}`
+            : meta.dateText;
+          const tagsHtml = (c.tags || []).slice(0, 3).map((t) => `<span class="tag-pill-chip">#${escapeHtml(t)}</span>`).join(' ');
+          return `
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <img src="${escapeHtml(meta.coverImage)}" alt="" style="width:44px;height:32px;border-radius:6px;object-fit:cover;flex-shrink:0;" />
+                <div>
+                  <div style="font-weight:700;font-size:13px;">${escapeHtml(meta.editorialTitle || c.title)}</div>
+                  <code style="font-size:11px;color:var(--text-muted);">/list/${escapeHtml(c.slug)}</code>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <img src="${escapeHtml(meta.authorAvatar)}" alt="${escapeHtml(meta.authorName)}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;" />
+                <div>
+                  <div style="font-size:12.5px;font-weight:650;">${escapeHtml(meta.authorName)}</div>
+                  <div style="font-size:10.5px;color:var(--text-muted);">${escapeHtml(meta.authorRole)}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div><span class="taxonomy-chip" style="padding:2px 8px;font-size:11px;">${escapeHtml(c.topic || 'software')}</span></div>
+              <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;">${tagsHtml || '<span style="font-size:11px;color:var(--text-muted);">No tags</span>'}</div>
+            </td>
+            <td>
+              <span class="ed-status-badge ${escapeHtml(st)}">${escapeHtml(st)}</span>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${escapeHtml(whenLabel)}</div>
+            </td>
+            <td>
+              <div style="font-weight:700;font-size:12.5px;">${views.toLocaleString()} views</div>
+              <div style="font-size:11px;color:var(--text-muted);">${clicks.toLocaleString()} clicks · ${ctr}</div>
+            </td>
+            <td>
+              <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                ${st !== 'published' ? `<button type="button" class="admin-btn-action ed-pub-now-btn" data-ed-pubnow="${escapeHtml(c.slug)}">Publish</button>` : ''}
+                <button type="button" class="admin-btn-action ed-edit-btn" data-ed-edit="${escapeHtml(c.slug)}">✏️ Edit</button>
+                ${st === 'published' ? `<button type="button" class="admin-btn-action ed-view-btn" data-ed-view="${escapeHtml(c.slug)}">View →</button>` : ''}
+              </div>
+            </td>
+          </tr>`;
+        })
+        .join('');
+
+      tbody.querySelectorAll('.ed-pub-now-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const slug = btn.getAttribute('data-ed-pubnow');
+          const r = await fetch(`/api/publish/article/${slug}/publish-now`, { method: 'POST' });
+          const resData = await r.json();
+          if (resData.state) appState = resData.state;
+          renderAdminPanel();
+          showToast(`Published "${slug}" live!`);
+        });
+      });
+      tbody.querySelectorAll('.ed-edit-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const slug = btn.getAttribute('data-ed-edit');
+          const found = allArts.find((a) => a.slug === slug);
+          if (found) openCategoryEditorModal(found);
+        });
+      });
+      tbody.querySelectorAll('.ed-view-btn').forEach((btn) => {
+        btn.addEventListener('click', () => navigateToCategory(btn.getAttribute('data-ed-view')));
+      });
+    }
+
+    // Render Topic Categories Chips
+    const topicsWrap = document.getElementById('adminTopicsChips');
+    if (topicsWrap) {
+      topicsWrap.innerHTML = topics
+        .map((tc) => `<span class="taxonomy-chip">${escapeHtml(tc.icon || '📂')} ${escapeHtml(tc.name)} <code style="font-size:10px;opacity:0.65;">(${escapeHtml(tc.slug)})</code></span>`)
+        .join('');
+    }
+
+    // Render Tags Chips
+    const tagsWrap = document.getElementById('adminTagsChips');
+    if (tagsWrap) {
+      tagsWrap.innerHTML = tags.length === 0
+        ? '<span style="font-size:12px;color:var(--text-muted);">No tags created yet.</span>'
+        : tags
+            .map((t) => `<span class="tag-pill-chip">#${escapeHtml(t.slug)} (${t.count || 0}) <button type="button" class="tag-pill-remove" data-del-tag="${escapeHtml(t.slug)}" title="Remove tag">&times;</button></span>`)
+            .join('');
+      tagsWrap.querySelectorAll('[data-del-tag]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const slug = btn.getAttribute('data-del-tag');
+          const r = await fetch(`/api/admin/tags/${encodeURIComponent(slug)}`, { method: 'DELETE' });
+          const d = await r.json();
+          if (d.state) appState = d.state;
+          renderAdminEditorialTab();
+        });
+      });
+    }
+
+    // Render Human Authors Grid
+    const authorsGrid = document.getElementById('adminAuthorsGrid');
+    if (authorsGrid) {
+      authorsGrid.innerHTML = authors
+        .map((a) => {
+          const count = allArts.filter((art) => getCategoryFeatureMeta(art).authorName === a.name).length;
+          const expHtml = (a.expertise || []).slice(0, 3).map((e) => `<span class="tag-pill-chip">${escapeHtml(e)}</span>`).join('');
+          return `
+          <div class="author-roster-card">
+            <div class="author-roster-top">
+              <img src="${escapeHtml(a.avatar)}" alt="${escapeHtml(a.name)}" class="author-roster-avatar" />
+              <div class="author-roster-meta">
+                <div class="author-roster-name">${escapeHtml(a.name)}</div>
+                <div class="author-roster-role">${escapeHtml(a.role)}</div>
+              </div>
+              <span class="ed-status-badge published" style="font-size:10px;">${count} guides</span>
+            </div>
+            <p class="author-roster-bio">${escapeHtml(a.bio || '')}</p>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;justify-content:space-between;">
+              <div style="display:flex;flex-wrap:wrap;gap:4px;">${expHtml}</div>
+              <span style="font-size:11px;color:var(--text-muted);">${escapeHtml(a.location || 'Remote')}</span>
+            </div>
+          </div>`;
+        })
+        .join('');
+    }
+
+    // Fetch Publishing API Key
+    const apiKeyDisplay = document.getElementById('adminApiKeyDisplay');
+    if (apiKeyDisplay && apiKeyDisplay.value === 'Loading...') {
+      try {
+        const kr = await fetch('/api/admin/api-keys');
+        if (kr.ok) {
+          const kd = await kr.json();
+          const keyVal = kd.apiKeys?.[0]?.key || '';
+          apiKeyDisplay.value = keyVal || 'Not configured';
+        }
+      } catch {}
+    }
+  }
+
+  // Editorial Controls & Author Modal Listeners
+  document.querySelectorAll('#adminEditorialStatusFilter [data-ed-filter]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      editorialStatusFilterVal = btn.getAttribute('data-ed-filter') || 'all';
+      document.querySelectorAll('#adminEditorialStatusFilter [data-ed-filter]').forEach((b) => b.classList.toggle('active', b === btn));
+      renderAdminEditorialTab();
+    });
+  });
+
+  const adminEditorialSearchInput = document.getElementById('adminEditorialSearchInput');
+  if (adminEditorialSearchInput) adminEditorialSearchInput.addEventListener('input', renderAdminEditorialTab);
+
+  const openPublisherModalBtn = document.getElementById('openPublisherModalBtn');
+  if (openPublisherModalBtn) openPublisherModalBtn.addEventListener('click', () => openCategoryEditorModal());
+
+  const runSchedulerNowBtn = document.getElementById('runSchedulerNowBtn');
+  if (runSchedulerNowBtn) {
+    runSchedulerNowBtn.addEventListener('click', async () => {
+      const r = await fetch('/api/admin/scheduler/run', { method: 'POST' });
+      const d = await r.json();
+      if (d.state) appState = d.state;
+      renderAdminPanel();
+      showToast(d.promotedCount > 0 ? `Published ${d.promotedCount} scheduled article(s)!` : 'Scheduler up to date — no due articles right now.');
+    });
+  }
+
+  const addTopicCategoryBtn = document.getElementById('addTopicCategoryBtn');
+  if (addTopicCategoryBtn) {
+    addTopicCategoryBtn.addEventListener('click', async () => {
+      const nameInput = document.getElementById('newTopicNameInput');
+      const iconInput = document.getElementById('newTopicIconInput');
+      const name = (nameInput?.value || '').trim();
+      if (!name) return showToast('Enter a category name');
+      const r = await fetch('/api/admin/taxonomy/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, icon: (iconInput?.value || '📂').trim() })
+      });
+      const d = await r.json();
+      if (!r.ok) return alert(d.error || 'Failed to add category');
+      if (d.state) appState = d.state;
+      if (nameInput) nameInput.value = '';
+      renderAdminEditorialTab();
+      showToast(`Category "${name}" added!`);
+    });
+  }
+
+  const addTagBtn = document.getElementById('addTagBtn');
+  if (addTagBtn) {
+    addTagBtn.addEventListener('click', async () => {
+      const tagInput = document.getElementById('newTagInput');
+      const raw = (tagInput?.value || '').trim();
+      if (!raw) return showToast('Enter at least one tag');
+      const r = await fetch('/api/admin/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tags: raw })
+      });
+      const d = await r.json();
+      if (!r.ok) return alert(d.error || 'Failed to add tags');
+      if (d.state) appState = d.state;
+      if (tagInput) tagInput.value = '';
+      renderAdminEditorialTab();
+      showToast(`Added tag(s): ${(d.added || []).join(', ')}`);
+    });
+  }
+
+  const copyApiKeyBtn = document.getElementById('copyApiKeyBtn');
+  if (copyApiKeyBtn) {
+    copyApiKeyBtn.addEventListener('click', async () => {
+      const el = document.getElementById('adminApiKeyDisplay');
+      if (el && el.value) {
+        await copyTextWithFallback(el.value, el);
+        showToast('Publishing X-API-Key copied!');
+      }
+    });
+  }
+
+  const rotateApiKeyBtn = document.getElementById('rotateApiKeyBtn');
+  if (rotateApiKeyBtn) {
+    rotateApiKeyBtn.addEventListener('click', async () => {
+      if (!confirm('Generate a new Publishing API Key? The old key will immediately stop working.')) return;
+      const r = await fetch('/api/admin/api-keys/rotate', { method: 'POST' });
+      const d = await r.json();
+      if (r.ok && d.apiKey) {
+        const el = document.getElementById('adminApiKeyDisplay');
+        if (el) el.value = d.apiKey.key;
+        showToast('API Key rotated!');
+      }
+    });
+  }
+
+  const copyPublishCurlBtn = document.getElementById('copyPublishCurlBtn');
+  if (copyPublishCurlBtn) {
+    copyPublishCurlBtn.addEventListener('click', async () => {
+      const key = document.getElementById('adminApiKeyDisplay')?.value || '<YOUR_KEY>';
+      const curl = `curl -X POST "${window.location.origin}/api/publish/article" \\\n  -H "Content-Type: application/json" \\\n  -H "X-API-Key: ${key}" \\\n  -d '{"title":"Top 10 Cloud Security Tools","authorId":"auth_priya_nair","topic":"software","tags":["security","cloud"],"status":"published","description":"Comprehensive benchmark of cloud security platforms.","products":["Wiz","Orca Security","Lacework"]}'`;
+      await copyTextWithFallback(curl);
+      showToast('cURL Publishing command copied!');
+    });
+  }
+
+  // Human Author Creator Modal
+  const authorEditorModalBackdrop = document.getElementById('authorEditorModalBackdrop');
+  const authorEditorForm = document.getElementById('authorEditorForm');
+  const authorEditAvatar = document.getElementById('authorEditAvatar');
+  const authorEditName = document.getElementById('authorEditName');
+  const authorEditRole = document.getElementById('authorEditRole');
+  const authorEditPreviewImg = document.getElementById('authorEditPreviewImg');
+  const authorEditPreviewName = document.getElementById('authorEditPreviewName');
+  const authorEditPreviewRole = document.getElementById('authorEditPreviewRole');
+
+  function openAuthorModal() {
+    if (!authorEditorModalBackdrop) return;
+    if (authorEditorForm) authorEditorForm.reset();
+    if (authorEditAvatar) authorEditAvatar.value = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=240&q=80';
+    if (authorEditPreviewImg) authorEditPreviewImg.src = authorEditAvatar.value;
+    if (authorEditPreviewName) authorEditPreviewName.textContent = 'New Contributor';
+    if (authorEditPreviewRole) authorEditPreviewRole.textContent = 'Senior Industry Analyst';
+    authorEditorModalBackdrop.classList.remove('hidden');
+  }
+
+  ['openAuthorModalBtn', 'openAuthorModalBtn2'].forEach((id) => {
+    const btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', openAuthorModal);
+  });
+  ['closeAuthorEditorModalBtn', 'cancelAuthorEditorBtn'].forEach((id) => {
+    const btn = document.getElementById(id);
+    if (btn && authorEditorModalBackdrop) btn.addEventListener('click', () => authorEditorModalBackdrop.classList.add('hidden'));
+  });
+  if (authorEditAvatar && authorEditPreviewImg) {
+    authorEditAvatar.addEventListener('input', () => { if (authorEditAvatar.value.trim()) authorEditPreviewImg.src = authorEditAvatar.value.trim(); });
+  }
+  if (authorEditName && authorEditPreviewName) {
+    authorEditName.addEventListener('input', () => { authorEditPreviewName.textContent = authorEditName.value.trim() || 'New Contributor'; });
+  }
+  if (authorEditRole && authorEditPreviewRole) {
+    authorEditRole.addEventListener('input', () => { authorEditPreviewRole.textContent = authorEditRole.value.trim() || 'Senior Industry Analyst'; });
+  }
+  if (authorEditorForm) {
+    authorEditorForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        name: authorEditName?.value.trim() || '',
+        role: authorEditRole?.value.trim() || 'Senior Contributor',
+        avatar: authorEditAvatar?.value.trim() || '',
+        location: document.getElementById('authorEditLocation')?.value.trim() || 'Remote',
+        expertise: (document.getElementById('authorEditExpertise')?.value || '').split(',').map((s) => s.trim()).filter(Boolean),
+        bio: document.getElementById('authorEditBio')?.value.trim() || ''
+      };
+      const r = await fetch('/api/admin/authors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const d = await r.json();
+      if (!r.ok) return alert(d.error || 'Failed to save author');
+      if (d.state) appState = d.state;
+      if (authorEditorModalBackdrop) authorEditorModalBackdrop.classList.add('hidden');
+      renderAdminPanel();
+      showToast(`Author "${payload.name}" added to editorial team!`);
     });
   }
 

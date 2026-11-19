@@ -5,6 +5,8 @@
 // and /llms.txt support for AI search engines (ChatGPT, Perplexity, Claude, Google).
 // ============================================================================
 
+const { EDITORIAL_AUTHORS, resolveAuthor } = require('./authors-data');
+
 const EXTRA_CATEGORY_PRODUCTS = {
   'billing-software': [
     {
@@ -1970,7 +1972,7 @@ function ensureTenRealProducts(cat) {
   return existing;
 }
 
-function enrichCategoryEditorial(enrichedCat) {
+function enrichCategoryEditorial(enrichedCat, customAuthors = []) {
   const slug = enrichedCat.slug;
   const shortName = enrichedCat.shortName || enrichedCat.title.replace(/^Top\s+10\s+/i, '');
   const guide = CATEGORY_EDITORIAL_GUIDES[slug];
@@ -2028,8 +2030,22 @@ function enrichCategoryEditorial(enrichedCat) {
     }
   ];
 
+  const featureMeta = getCategoryFeatureMeta(enrichedCat, customAuthors);
+
   return {
     ...enrichedCat,
+    status: enrichedCat.status || 'published',
+    scheduledAt: enrichedCat.scheduledAt || null,
+    publishedAt: enrichedCat.publishedAt || featureMeta.isoDate || null,
+    topic: featureMeta.topic,
+    tags: featureMeta.tags,
+    coverImage: featureMeta.coverImage,
+    editorialTitle: featureMeta.editorialTitle,
+    authorId: featureMeta.authorId,
+    authorName: featureMeta.authorName,
+    authorRole: featureMeta.authorRole,
+    authorAvatar: featureMeta.authorAvatar,
+    authorBio: featureMeta.authorBio,
     subtitle: `${enrichedCat.shortName || enrichedCat.title} · 2026 Buying Guide, Comparison Table & In-Depth Reviews`,
     top10: top10WithEditorial,
     pushedOut: pushedOutWithEditorial,
@@ -2040,16 +2056,19 @@ function enrichCategoryEditorial(enrichedCat) {
     },
     editorialGuide: {
       intro:
+        enrichedCat.editorialIntro ||
+        enrichedCat.description ||
         guide?.editorialIntro ||
         `We researched, tested, and compared ${totalListingsCount} ${shortName} options for 2026 across real-world performance, pricing transparency, key features, and verified user feedback.`,
       methodology:
+        enrichedCat.methodology ||
         guide?.methodology ||
         `Every product in ${enrichedCat.title} is evaluated across ease of setup, core feature depth, pricing value, and community sentiment.`,
       avgEditorialScore: `${avgScore}/10`,
       totalVerifiedReviews: totalReviews.toLocaleString(),
-      lastUpdatedDate: 'October 2026',
+      lastUpdatedDate: featureMeta.dateText || 'October 2026',
       tldr: guide?.tldr || defaultTldr,
-      faqs: guide?.faqs || defaultFaqs
+      faqs: Array.isArray(enrichedCat.faqs) && enrichedCat.faqs.length > 0 ? enrichedCat.faqs : (guide?.faqs || defaultFaqs)
     }
   };
 }
@@ -2064,9 +2083,9 @@ const CATEGORY_FEATURE_META = {
     isoDate: '2026-10-18T00:00:00Z',
     editorialTitle: 'Our Guide to the Top 10 Audiobook Apps for Every Listener',
     description: 'Learn how to choose the best audiobook app with our step-by-step guide, catalog comparisons, monthly credit value, and offline listening tips.',
-    authorName: 'Bill Roberts',
-    authorRole: 'Founder',
-    authorAvatar: DEFAULT_FOUNDER_AVATAR
+    topic: 'lifestyle',
+    tags: ['audiobooks', 'mobile-apps', 'reading', 'consumer-tech'],
+    authorId: 'auth_bill_roberts'
   },
   'devops-observability-engines': {
     coverImage: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80',
@@ -2074,9 +2093,9 @@ const CATEGORY_FEATURE_META = {
     isoDate: '2026-10-15T00:00:00Z',
     editorialTitle: 'We Breakdown the Top 10 DevOps Observability & APM Engines',
     description: 'Compare distributed tracing, OpenTelemetry ingestion, and real-time incident alerting with expert advice to scale your production reliability.',
-    authorName: 'Bill Roberts',
-    authorRole: 'Founder',
-    authorAvatar: DEFAULT_FOUNDER_AVATAR
+    topic: 'software',
+    tags: ['devops', 'observability', 'opentelemetry', 'apm'],
+    authorId: 'auth_priya_nair'
   },
   'billing-software': {
     coverImage: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1200&q=80',
@@ -2084,9 +2103,9 @@ const CATEGORY_FEATURE_META = {
     isoDate: '2026-10-12T00:00:00Z',
     editorialTitle: 'How to Choose the Best SaaS Billing & Subscription Platform',
     description: 'Learn how to automate global VAT compliance, usage-based metering, and recurring revenue orchestration with our complete 2026 breakdown.',
-    authorName: 'Bill Roberts',
-    authorRole: 'Founder',
-    authorAvatar: DEFAULT_FOUNDER_AVATAR
+    topic: 'software',
+    tags: ['saas', 'billing', 'fintech', 'merchant-of-record'],
+    authorId: 'auth_marcus_vance'
   },
   'studio-speakers': {
     coverImage: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1200&q=80',
@@ -2094,9 +2113,9 @@ const CATEGORY_FEATURE_META = {
     isoDate: '2026-10-10T00:00:00Z',
     editorialTitle: 'Top 10 Studio Reference Monitors: A Step-by-Step Buying Guide',
     description: 'Discover the most accurate nearfield studio monitors, DSP room calibration systems, and acoustic strategies for mixing and mastering.',
-    authorName: 'Bill Roberts',
-    authorRole: 'Founder',
-    authorAvatar: DEFAULT_FOUNDER_AVATAR
+    topic: 'hardware',
+    tags: ['studio-monitors', 'pro-audio', 'acoustics', 'hardware'],
+    authorId: 'auth_daniel_morales'
   },
   'ai-coding-tools': {
     coverImage: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
@@ -2104,9 +2123,9 @@ const CATEGORY_FEATURE_META = {
     isoDate: '2026-10-08T00:00:00Z',
     editorialTitle: 'What Are the Best AI Coding Assistants? Everything You Need to Know',
     description: 'Explore how multi-file codebase indexing, autonomous refactoring agents, and inline autocomplete accelerate engineering teams.',
-    authorName: 'Bill Roberts',
-    authorRole: 'Founder',
-    authorAvatar: DEFAULT_FOUNDER_AVATAR
+    topic: 'software',
+    tags: ['ai-coding', 'developer-tools', 'llm', 'ide'],
+    authorId: 'auth_kenji_takahashi'
   },
   'crm-platforms': {
     coverImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
@@ -2114,9 +2133,9 @@ const CATEGORY_FEATURE_META = {
     isoDate: '2026-10-05T00:00:00Z',
     editorialTitle: 'Our Complete Guide to the Top 10 CRM & Revenue Platforms',
     description: 'Compare pipeline automation, AI contact enrichment, and multi-channel outbound sequences to help your revenue team close faster.',
-    authorName: 'Bill Roberts',
-    authorRole: 'Founder',
-    authorAvatar: DEFAULT_FOUNDER_AVATAR
+    topic: 'software',
+    tags: ['crm', 'revops', 'b2b-sales', 'saas'],
+    authorId: 'auth_rachel_lin'
   },
   'cloud-hosting': {
     coverImage: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
@@ -2124,9 +2143,9 @@ const CATEGORY_FEATURE_META = {
     isoDate: '2026-10-02T00:00:00Z',
     editorialTitle: 'How to Pick the Right Cloud Hosting & Edge Compute Provider',
     description: 'We evaluate global deployment speed, managed Kubernetes clusters, and predictable bandwidth pricing for modern web applications.',
-    authorName: 'Bill Roberts',
-    authorRole: 'Founder',
-    authorAvatar: DEFAULT_FOUNDER_AVATAR
+    topic: 'software',
+    tags: ['cloud-hosting', 'edge-compute', 'kubernetes', 'infrastructure'],
+    authorId: 'auth_priya_nair'
   },
   'project-management': {
     coverImage: 'https://images.unsplash.com/photo-1507925921958-8a62f3d1a50d?auto=format&fit=crop&w=1200&q=80',
@@ -2134,9 +2153,9 @@ const CATEGORY_FEATURE_META = {
     isoDate: '2026-09-28T00:00:00Z',
     editorialTitle: 'Top 10 Project Management Tools for High-Velocity Product Teams',
     description: 'Streamline sprint planning, issue tracking, and cross-functional roadmaps with our hands-on review of the best workspace platforms.',
-    authorName: 'Bill Roberts',
-    authorRole: 'Founder',
-    authorAvatar: DEFAULT_FOUNDER_AVATAR
+    topic: 'software',
+    tags: ['project-management', 'productivity', 'agile', 'roadmaps'],
+    authorId: 'auth_hannah_oconnor'
   },
   'email-marketing': {
     coverImage: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1200&q=80',
@@ -2144,9 +2163,9 @@ const CATEGORY_FEATURE_META = {
     isoDate: '2026-09-24T00:00:00Z',
     editorialTitle: 'How to Scale Lifecycle Email Marketing: Top 10 Platforms Compared',
     description: 'Boost inbox deliverability and subscriber conversion rates with behavioral segmentation, transactional APIs, and visual automation.',
-    authorName: 'Bill Roberts',
-    authorRole: 'Founder',
-    authorAvatar: DEFAULT_FOUNDER_AVATAR
+    topic: 'software',
+    tags: ['email-marketing', 'deliverability', 'automation', 'martech'],
+    authorId: 'auth_sofia_patel'
   },
   'ai-video-generators': {
     coverImage: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?auto=format&fit=crop&w=1200&q=80',
@@ -2154,9 +2173,9 @@ const CATEGORY_FEATURE_META = {
     isoDate: '2026-09-20T00:00:00Z',
     editorialTitle: 'We Breakdown the Top 10 AI Video Generators & Motion Models',
     description: 'Compare cinematic realism, temporal consistency, camera motion control, and commercial licensing across leading generative video tools.',
-    authorName: 'Bill Roberts',
-    authorRole: 'Founder',
-    authorAvatar: DEFAULT_FOUNDER_AVATAR
+    topic: 'software',
+    tags: ['ai-video', 'generative-ai', 'creative-tools', 'video'],
+    authorId: 'auth_lucas_weber'
   },
   'ovens': {
     coverImage: 'https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=1200&q=80',
@@ -2164,9 +2183,9 @@ const CATEGORY_FEATURE_META = {
     isoDate: '2026-09-16T00:00:00Z',
     editorialTitle: 'Our Guide to the Top 10 Smart Ovens & Convection Ranges',
     description: 'From countertop precision ovens to commercial-style induction ranges, discover our tested picks for even baking and smart temperature probes.',
-    authorName: 'Bill Roberts',
-    authorRole: 'Founder',
-    authorAvatar: DEFAULT_FOUNDER_AVATAR
+    topic: 'hardware',
+    tags: ['smart-ovens', 'kitchen-tech', 'appliances', 'hardware'],
+    authorId: 'auth_claire_bennett'
   },
   'smart-tvs': {
     coverImage: 'https://images.unsplash.com/photo-1461151304267-38535e780c79?auto=format&fit=crop&w=1200&q=80',
@@ -2174,9 +2193,9 @@ const CATEGORY_FEATURE_META = {
     isoDate: '2026-09-13T00:00:00Z',
     editorialTitle: 'Top 10 Smart TVs: OLED, QD-OLED & Mini-LED Display Breakdown',
     description: 'We tested peak HDR brightness, black-level uniformity, 144Hz gaming input lag, and anti-reflective coatings across flagship displays.',
-    authorName: 'Bill Roberts',
-    authorRole: 'Founder',
-    authorAvatar: DEFAULT_FOUNDER_AVATAR
+    topic: 'hardware',
+    tags: ['smart-tvs', 'oled', 'home-theater', 'hardware'],
+    authorId: 'auth_david_mercer'
   },
   'phone-covers': {
     coverImage: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1200&q=80',
@@ -2184,9 +2203,9 @@ const CATEGORY_FEATURE_META = {
     isoDate: '2026-09-10T00:00:00Z',
     editorialTitle: 'How to Protect Your Phone: Top 10 Drop-Tested Cases & Covers',
     description: 'Compare aramid fiber, full-grain leather, and military-grade shockproof MagSafe cases designed to protect without adding bulk.',
-    authorName: 'Bill Roberts',
-    authorRole: 'Founder',
-    authorAvatar: DEFAULT_FOUNDER_AVATAR
+    topic: 'hardware',
+    tags: ['phone-cases', 'magsafe', 'accessories', 'hardware'],
+    authorId: 'auth_alex_thorne'
   },
   'gambling-platforms': {
     coverImage: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1200&q=80',
@@ -2194,9 +2213,9 @@ const CATEGORY_FEATURE_META = {
     isoDate: '2026-09-06T00:00:00Z',
     editorialTitle: 'Top 10 Regulated Sportsbooks & Gaming Apps: Complete Breakdown',
     description: 'Compare licensed sportsbooks across live in-play odds, instant withdrawal speeds, parlay builders, and mobile app reliability.',
-    authorName: 'Bill Roberts',
-    authorRole: 'Founder',
-    authorAvatar: DEFAULT_FOUNDER_AVATAR
+    topic: 'lifestyle',
+    tags: ['sportsbooks', 'gaming', 'prediction-markets', 'lifestyle'],
+    authorId: 'auth_ryan_callahan'
   },
   'mobile-games': {
     coverImage: 'https://images.unsplash.com/photo-1552820728-8b83bb6b773f?auto=format&fit=crop&w=1200&q=80',
@@ -2204,36 +2223,64 @@ const CATEGORY_FEATURE_META = {
     isoDate: '2026-09-02T00:00:00Z',
     editorialTitle: 'Top 10 Mobile Games: Here Is Everything You Need to Play in 2026',
     description: 'Explore the best iOS and Android games featuring 120fps console-grade graphics, controller support, and fair competitive progression.',
-    authorName: 'Bill Roberts',
-    authorRole: 'Founder',
-    authorAvatar: DEFAULT_FOUNDER_AVATAR
+    topic: 'lifestyle',
+    tags: ['mobile-games', 'ios', 'android', 'esports'],
+    authorId: 'auth_maya_lin'
   }
 };
 
-function getCategoryFeatureMeta(c) {
+function formatShortEditorialDate(isoStr) {
+  if (!isoStr) return '18 Oct 2026';
+  const d = new Date(isoStr);
+  if (Number.isNaN(d.getTime())) return '18 Oct 2026';
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+
+function getCategoryFeatureMeta(c, customAuthors = []) {
   if (!c) {
+    const defAuth = resolveAuthor(customAuthors, { authorId: 'auth_bill_roberts' });
     return {
       coverImage: DEFAULT_SITE_OG_IMAGE,
       dateText: '18 Oct 2026',
       isoDate: '2026-10-18T00:00:00Z',
       editorialTitle: 'Top 10 Buying Guides & Curated Rankings (2026)',
       description: 'Independent Top 10 product guides covering software, hardware, and lifestyle tools.',
-      authorName: 'Bill Roberts',
-      authorRole: 'Founder',
-      authorAvatar: DEFAULT_FOUNDER_AVATAR
+      topic: 'software',
+      tags: [],
+      authorId: defAuth.id,
+      authorName: defAuth.name,
+      authorRole: defAuth.role,
+      authorAvatar: defAuth.avatar,
+      authorBio: defAuth.bio
     };
   }
-  const preset = CATEGORY_FEATURE_META[c.slug];
+  const preset = CATEGORY_FEATURE_META[c.slug] || {};
   const firstProdImg = c.top10 && c.top10[0] && c.top10[0].media && c.top10[0].media.heroImage;
+  const resolvedAuthor = resolveAuthor(customAuthors, {
+    authorId: c.authorId || preset.authorId,
+    authorName: c.authorName,
+    authorRole: c.authorRole,
+    authorAvatar: c.authorAvatar,
+    authorBio: c.authorBio
+  });
+  const isoDate = c.publishedAt || c.scheduledAt || preset.isoDate || c.updatedAt || c.createdAt || '2026-10-15T00:00:00Z';
+  const dateText = c.publishedAt
+    ? formatShortEditorialDate(c.publishedAt)
+    : preset.dateText || (c.editorialGuide && c.editorialGuide.lastUpdatedDate) || formatShortEditorialDate(isoDate);
+
   return {
-    coverImage: (preset && preset.coverImage) || c.coverImage || firstProdImg || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
-    dateText: (preset && preset.dateText) || (c.editorialGuide && c.editorialGuide.lastUpdatedDate) || '15 Oct 2026',
-    isoDate: (preset && preset.isoDate) || (c.updatedAt ? new Date(c.updatedAt).toISOString() : '2026-10-15T00:00:00Z'),
-    editorialTitle: (preset && preset.editorialTitle) || c.title,
-    description: (preset && preset.description) || (c.editorialGuide && c.editorialGuide.intro) || c.description || `Explore the top 10 picks in ${c.title} with editorial summaries and official links.`,
-    authorName: (preset && preset.authorName) || 'Bill Roberts',
-    authorRole: (preset && preset.authorRole) || 'Founder',
-    authorAvatar: (preset && preset.authorAvatar) || DEFAULT_FOUNDER_AVATAR
+    coverImage: c.coverImage || preset.coverImage || firstProdImg || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+    dateText,
+    isoDate,
+    editorialTitle: c.editorialTitle || preset.editorialTitle || c.title,
+    description: c.description || preset.description || (c.editorialGuide && c.editorialGuide.intro) || `Explore the top 10 picks in ${c.title} with editorial summaries and official links.`,
+    topic: c.topic || preset.topic || 'software',
+    tags: Array.isArray(c.tags) && c.tags.length > 0 ? c.tags : (preset.tags || []),
+    authorId: resolvedAuthor.id,
+    authorName: c.authorName || resolvedAuthor.name,
+    authorRole: c.authorRole || resolvedAuthor.role,
+    authorAvatar: c.authorAvatar || resolvedAuthor.avatar,
+    authorBio: c.authorBio || resolvedAuthor.bio
   };
 }
 
@@ -2378,15 +2425,18 @@ function buildSeoJsonLd(cat, allCategories, baseUrl, comparePair = null) {
           '@id': `${listUrl}#article`,
           inLanguage: 'en',
           mainEntityOfPage: { '@type': 'WebPage', '@id': listUrl },
-          headline: `${cat.title} (2026) — Best Picks & Buying Guide`,
-          description: meta.description,
+          headline: (cat.seo && cat.seo.metaTitle) || `${cat.title} (2026) — Best Picks & Buying Guide`,
+          description: (cat.seo && cat.seo.metaDescription) || meta.description,
           image: [meta.coverImage],
+          keywords: meta.tags && meta.tags.length > 0 ? meta.tags.join(', ') : undefined,
           datePublished: meta.isoDate,
           dateModified: cat.updatedAt ? new Date(cat.updatedAt).toISOString() : meta.isoDate,
           author: {
             '@type': 'Person',
             name: meta.authorName,
             jobTitle: meta.authorRole,
+            image: meta.authorAvatar,
+            description: meta.authorBio || undefined,
             url: `${baseUrl}/`
           },
           publisher: { '@id': `${baseUrl}/#organization` },

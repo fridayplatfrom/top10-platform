@@ -13,6 +13,7 @@ const {
   buildLlmsTxt
 } = require('./editorial-enrichment');
 const { BLOG_ARTICLES } = require('./blog-data');
+const { EDITORIAL_AUTHORS, DEFAULT_TOPIC_CATEGORIES, getAuthorsPool, resolveAuthor } = require('./authors-data');
 const { initMongo, getDbState, saveDbState, isMongoConnected, getDbStatus } = require('./db');
 
 const PORT = process.env.PORT || 3456;
@@ -92,6 +93,35 @@ function requireAdmin(req, res) {
   return session;
 }
 
+function getValidApiKey(req, db) {
+  if (!req) return null;
+  const xKey = (req.headers['x-api-key'] || '').trim();
+  const auth = (req.headers['authorization'] || '').trim();
+  const bearerKey = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  const candidate = xKey || bearerKey;
+  if (!candidate) return null;
+
+  if (process.env.PUBLISH_API_KEY && candidate === process.env.PUBLISH_API_KEY) {
+    return { id: 'env_key', name: 'Environment Publishing Key', key: candidate };
+  }
+  const activeKeys = Array.isArray(db?.apiKeys) ? db.apiKeys : [];
+  return activeKeys.find((k) => k.active !== false && k.key === candidate) || null;
+}
+
+function requirePublisherOrAdmin(req, res) {
+  const session = getSession(req);
+  if (session && session.role === 'admin') {
+    return { type: 'admin_session', session };
+  }
+  const db = readDb();
+  const apiKeyObj = getValidApiKey(req, db);
+  if (apiKeyObj) {
+    return { type: 'api_key', apiKey: apiKeyObj };
+  }
+  sendJson(res, 401, { error: 'Admin session or valid X-API-Key header required' }, req);
+  return null;
+}
+
 function requireAuth(req, res) {
   const session = getSession(req);
   if (!session) {
@@ -148,13 +178,143 @@ function ensureUserPasswords() {
   }
 }
 
+function normalizeTagsInput(tagsInput) {
+  let list = [];
+  if (Array.isArray(tagsInput)) {
+    list = tagsInput;
+  } else if (typeof tagsInput === 'string') {
+    list = tagsInput.split(',');
+  }
+  const seen = new Set();
+  const out = [];
+  for (const raw of list) {
+    const clean = String(raw || '').trim().toLowerCase().replace(/^#/, '');
+    if (clean && !seen.has(clean)) {
+      seen.add(clean);
+      out.push(clean);
+    }
+  }
+  return out;
+}
+
+function normalizeTopicCategories(existingTopics) {
+  const map = new Map();
+  for (const def of DEFAULT_TOPIC_CATEGORIES) {
+    map.set(def.slug, { ...def });
+  }
+  if (Array.isArray(existingTopics)) {
+    for (const tc of existingTopics) {
+      if (tc && (tc.slug || tc.name)) {
+        const slug = String(tc.slug || tc.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        if (slug) {
+          map.set(slug, { ...(map.get(slug) || {}), ...tc, slug, name: tc.name || tc.title || slug });
+        }
+      }
+    }
+  }
+  return Array.from(map.values());
+}
+
+function generateDefaultApiKey() {
+  return 't10_pub_' + crypto.randomBytes(20).toString('hex');
+}
+
+function ensureEditorialStore(parsed) {
+  let dirty = false;
+  if (!Array.isArray(parsed.authors) || parsed.authors.length < EDITORIAL_AUTHORS.length) {
+    parsed.authors = getAuthorsPool(parsed.authors);
+    dirty = true;
+  }
+  if (!Array.isArray(parsed.topicCategories) || parsed.topicCategories.length === 0) {
+    parsed.topicCategories = normalizeTopicCategories([]);
+    dirty = true;
+  } else {
+    parsed.topicCategories = normalizeTopicCategories(parsed.topicCategories);
+  }
+  if (!Array.isArray(parsed.tags)) {
+    parsed.tags = [];
+    dirty = true;
+  }
+  if (!Array.isArray(parsed.apiKeys) || parsed.apiKeys.length === 0) {
+    parsed.apiKeys = [
+      {
+        id: 'key_default',
+        name: 'Primary Headless Publishing Key',
+        key: process.env.PUBLISH_API_KEY || generateDefaultApiKey(),
+        createdAt: new Date().toISOString(),
+        active: true
+      }
+    ];
+    dirty = true;
+  }
+  return dirty;
+}
+
+function isPubliclyPublished(cat) {
+  if (!cat) return false;
+  const st = cat.status || 'published';
+  if (st === 'published') return true;
+  if (st === 'scheduled' && cat.scheduledAt) {
+    const ts = Date.parse(cat.scheduledAt);
+    return !Number.isNaN(ts) && ts <= Date.now();
+  }
+  return false;
+}
+
+function promoteDueScheduledCategories(db) {
+  if (!db || !Array.isArray(db.categories)) return [];
+  const now = Date.now();
+  const promoted = [];
+  for (const cat of db.categories) {
+    if (cat.status === 'scheduled' && cat.scheduledAt) {
+      const dueTs = Date.parse(cat.scheduledAt);
+      if (!Number.isNaN(dueTs) && dueTs <= now) {
+        cat.status = 'published';
+        cat.publishedAt = cat.scheduledAt;
+        cat.updatedAt = new Date().toISOString();
+        promoted.push(cat);
+      }
+    }
+  }
+  return promoted;
+}
+
+function runScheduledPublisher() {
+  try {
+    const db = getDbState();
+    db.categories = ensureDefaultEightCategories(db.categories);
+    const promoted = promoteDueScheduledCategories(db);
+    if (promoted.length > 0) {
+      saveDbState(db);
+      for (const cat of promoted) {
+        console.log(`[Scheduler] Auto-published scheduled article: ${cat.title} (/list/${cat.slug})`);
+        broadcastSse('article_published', {
+          slug: cat.slug,
+          title: cat.title,
+          publishedAt: cat.publishedAt,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+    return promoted;
+  } catch (err) {
+    console.error('[Scheduler Error]', err.message);
+    return [];
+  }
+}
+
 function readDb() {
   const parsed = getDbState();
   parsed.categories = ensureDefaultEightCategories(parsed.categories);
   if (!parsed.subscriptions) parsed.subscriptions = [];
   if (!parsed.reviews) parsed.reviews = [];
   if (!parsed.claims) parsed.claims = [];
+  const dirtyStore = ensureEditorialStore(parsed);
+  const promoted = promoteDueScheduledCategories(parsed);
   parsed.articles = [];
+  if (dirtyStore || promoted.length > 0) {
+    saveDbState(parsed);
+  }
   return parsed;
 }
 
@@ -187,7 +347,7 @@ function findProductInCat(cat, idOrName) {
   );
 }
 
-function enrichCategory(cat, platformStats) {
+function enrichCategory(cat, platformStats, customAuthors = []) {
   const minEntry = Number(platformStats.minEntryBid || 49);
   const minInc = Number(platformStats.minOutbidIncrement || 25);
 
@@ -257,14 +417,33 @@ function enrichCategory(cat, platformStats) {
     }
   };
 
-  return enrichCategoryEditorial(baseEnriched);
+  return enrichCategoryEditorial(baseEnriched, customAuthors);
+}
+
+function buildTagSummary(categories = [], registeredTags = []) {
+  const counts = new Map();
+  for (const t of registeredTags) {
+    const clean = typeof t === 'string' ? t : t?.slug || t?.name;
+    if (clean) counts.set(clean, 0);
+  }
+  for (const c of categories) {
+    const tags = Array.isArray(c.tags) ? c.tags : [];
+    for (const t of tags) {
+      const clean = String(t || '').trim().toLowerCase();
+      if (clean) counts.set(clean, (counts.get(clean) || 0) + 1);
+    }
+  }
+  return Array.from(counts.entries())
+    .map(([slug, count]) => ({ slug, name: slug, count }))
+    .sort((a, b) => b.count - a.count || a.slug.localeCompare(b.slug));
 }
 
 function getPublicState(user) {
   const db = readDb();
   const isAdmin = user && user.role === 'admin';
-  const categories = (db.categories || []).map((c) => {
-    const enriched = enrichCategory(c, db.platformStats);
+  const authors = db.authors || EDITORIAL_AUTHORS;
+  const allEnriched = (db.categories || []).map((c) => {
+    const enriched = enrichCategory(c, db.platformStats, authors);
     const comments = (enriched.comments || []).filter((cmt) => {
       if (isAdmin) return true;
       return cmt.status === 'approved' || !cmt.status || cmt.type === 'system_event';
@@ -273,6 +452,13 @@ function getPublicState(user) {
       ...enriched,
       comments
     };
+  });
+
+  const categories = allEnriched.filter(isPubliclyPublished);
+  const publicAuthors = authors.map((a) => {
+    if (isAdmin) return a;
+    const { email, ...safe } = a;
+    return safe;
   });
 
   const totalRevenue = categories.reduce((sum, c) => sum + c.computedStats.poolTotal, 0);
@@ -293,6 +479,10 @@ function getPublicState(user) {
       takeaways: a.takeaways || a.keyTakeaways || []
     })),
     categories,
+    editorialArticles: isAdmin ? allEnriched : [],
+    authors: publicAuthors,
+    topicCategories: db.topicCategories || DEFAULT_TOPIC_CATEGORIES,
+    tags: buildTagSummary(categories, db.tags || []),
     currentUser: sanitizeUser(user),
     buyerLeads: isAdmin ? (db.buyerLeads || []) : [],
     transactions: isAdmin ? (db.transactions || []) : [],
@@ -305,7 +495,9 @@ function getPublicState(user) {
 
 function getFullState() {
   const db = readDb();
-  const categories = db.categories.map((c) => enrichCategory(c, db.platformStats));
+  const authors = db.authors || EDITORIAL_AUTHORS;
+  const allEnriched = db.categories.map((c) => enrichCategory(c, db.platformStats, authors));
+  const categories = allEnriched.filter(isPubliclyPublished);
   const totalRevenue = categories.reduce((sum, c) => sum + c.computedStats.poolTotal, 0);
   const totalPaidListings = categories.reduce((sum, c) => sum + c.computedStats.paidSlotsCount, 0);
 
@@ -316,6 +508,10 @@ function getFullState() {
       totalPaidListings
     },
     users: (db.users || []).map(sanitizeUser),
+    authors,
+    topicCategories: db.topicCategories || DEFAULT_TOPIC_CATEGORIES,
+    tags: buildTagSummary(categories, db.tags || []),
+    editorialArticles: allEnriched,
     transactions: db.transactions || [],
     categoryRequests: db.categoryRequests || [],
     outbidAlerts: db.outbidAlerts || [],
@@ -665,6 +861,74 @@ const server = http.createServer(async (req, res) => {
 
       const ctr = totalDirectoryViews > 0 ? ((totalClicks / totalDirectoryViews) * 100).toFixed(2) : '3.85';
 
+      const authorsPool = db.authors || EDITORIAL_AUTHORS;
+      const enrichedCats = cats.map((c) => enrichCategory(c, db.platformStats, authorsPool));
+      const publishedArts = enrichedCats.filter((c) => (c.status || 'published') === 'published');
+      const scheduledArts = enrichedCats
+        .filter((c) => c.status === 'scheduled')
+        .sort((a, b) => new Date(a.scheduledAt || 0).getTime() - new Date(b.scheduledAt || 0).getTime());
+      const draftArts = enrichedCats.filter((c) => c.status === 'draft');
+
+      const authorStatsMap = new Map();
+      for (const a of authorsPool) {
+        authorStatsMap.set(a.id, {
+          id: a.id,
+          name: a.name,
+          role: a.role,
+          avatar: a.avatar,
+          articlesCount: 0,
+          scheduledCount: 0,
+          totalViews: 0,
+          totalClicks: 0
+        });
+      }
+      const articleMetrics = [];
+      for (const ec of enrichedCats) {
+        const meta = getCategoryFeatureMeta(ec, authorsPool);
+        const views = Number(ec.monthlyViews || 0);
+        const clicks = [...(ec.top10 || []), ...(ec.pushedOut || [])].reduce((s, p) => s + Number(p.clicks || 0), 0);
+        const aEntry = authorStatsMap.get(meta.authorId) || {
+          id: meta.authorId,
+          name: meta.authorName,
+          role: meta.authorRole,
+          avatar: meta.authorAvatar,
+          articlesCount: 0,
+          scheduledCount: 0,
+          totalViews: 0,
+          totalClicks: 0
+        };
+        if ((ec.status || 'published') === 'scheduled') aEntry.scheduledCount += 1;
+        else if ((ec.status || 'published') === 'published') aEntry.articlesCount += 1;
+        aEntry.totalViews += views;
+        aEntry.totalClicks += clicks;
+        authorStatsMap.set(aEntry.id, aEntry);
+
+        articleMetrics.push({
+          slug: ec.slug,
+          title: ec.title,
+          editorialTitle: meta.editorialTitle,
+          status: ec.status || 'published',
+          scheduledAt: ec.scheduledAt || null,
+          publishedAt: ec.publishedAt || meta.isoDate,
+          topic: meta.topic,
+          tags: meta.tags,
+          authorId: meta.authorId,
+          authorName: meta.authorName,
+          authorRole: meta.authorRole,
+          authorAvatar: meta.authorAvatar,
+          views,
+          clicks,
+          ctr: views > 0 ? ((clicks / views) * 100).toFixed(1) + '%' : '0.0%'
+        });
+      }
+
+      const tagStats = buildTagSummary(enrichedCats, db.tags || []);
+      const topicCategories = db.topicCategories || DEFAULT_TOPIC_CATEGORIES;
+      const topicStats = topicCategories.map((tc) => ({
+        ...tc,
+        count: enrichedCats.filter((ec) => (ec.topic || 'software') === tc.slug).length
+      }));
+
       return sendJson(res, 200, {
         overview: {
           totalRevenue,
@@ -675,7 +939,13 @@ const server = http.createServer(async (req, res) => {
           ctr: `${ctr}%`,
           totalCategories: cats.length,
           totalProducts,
-          totalArticles: articles.length,
+          totalArticles: publishedArts.length,
+          publishedArticlesCount: publishedArts.length,
+          scheduledArticlesCount: scheduledArts.length,
+          draftArticlesCount: draftArts.length,
+          totalAuthors: authorsPool.length,
+          totalTags: tagStats.length,
+          totalTopicCategories: topicCategories.length,
           totalLeads: leads.length,
           unlockedLeadsCount: leads.filter((l) => l.isUnlocked).length,
           totalReviews: reviews.length,
@@ -688,10 +958,525 @@ const server = http.createServer(async (req, res) => {
           subscriptions: { total: subscriptionRevenue, count: activeSubs.length, label: 'PayPal MRR Retainers' },
           leadUnlocks: { total: leadUnlockRevenue, count: txs.filter((t) => t.type === 'lead_unlock').length, label: 'Enterprise Lead Unlocks ($49)' }
         },
+        editorialAnalytics: {
+          scheduledQueue: scheduledArts.map((c) => {
+            const m = getCategoryFeatureMeta(c, authorsPool);
+            return {
+              slug: c.slug,
+              title: c.title,
+              editorialTitle: m.editorialTitle,
+              scheduledAt: c.scheduledAt,
+              authorName: m.authorName,
+              authorAvatar: m.authorAvatar,
+              topic: m.topic,
+              tags: m.tags
+            };
+          }),
+          articleMetrics: articleMetrics.sort((a, b) => b.views - a.views),
+          authorStats: Array.from(authorStatsMap.values()).sort((a, b) => b.totalViews - a.totalViews),
+          tagStats,
+          topicStats
+        },
         categoryBreakdown,
         recentTransactions: txs.slice(0, 15),
         activeSubscriptions: activeSubs
       });
+    }
+
+    // ------------------------------------------------------------------------
+    // 1-pub. DIRECT ARTICLE PUBLISHING, AUTHORS, TAGS, CATEGORIES & SCHEDULING API
+    // Supports BOTH Admin Session Cookie/Bearer AND X-API-Key Header
+    // ------------------------------------------------------------------------
+
+    function buildStructuredProductItem(item, index, slug, catTitle) {
+      const palette = ['#2563EB', '#059669', '#7C3AED', '#EA580C', '#0284C7', '#4F46E5', '#0D9488', '#DC2626', '#334155', '#9333EA'];
+      if (typeof item === 'string') {
+        const clean = item.trim();
+        return {
+          id: `prod_${slug}_${Date.now()}_${index}`,
+          name: clean,
+          companyName: clean,
+          tagline: `Verified contender in ${catTitle}.`,
+          website: 'https://example.com',
+          pricingTag: 'Flexible Pricing',
+          highlightTag: '@Editor Pick',
+          logoText: clean.slice(0, 2).toUpperCase(),
+          logoBg: palette[index % palette.length],
+          logoColor: '#FFFFFF',
+          amountPaid: 0,
+          isOrganic: true,
+          ownerEmail: '',
+          clicks: Math.max(120, 850 - index * 70),
+          upvotes: Math.max(18, 95 - index * 7),
+          updatedAt: new Date().toISOString()
+        };
+      }
+      const pName = (item.name || item.title || `Pick #${index + 1}`).trim();
+      const pid = item.id || `prod_${slug}_${pName.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${index}`;
+      return {
+        id: pid,
+        name: pName,
+        companyName: (item.companyName || item.company || pName).trim(),
+        tagline: (item.tagline || item.summary || `Featured top choice in ${catTitle}.`).trim(),
+        website: (item.website || item.url || 'https://example.com').trim(),
+        pricingTag: (item.pricingTag || item.pricing || item.startingPrice || 'Custom / Free Tier').trim(),
+        highlightTag: (item.highlightTag || item.badge || `@Rank #${index + 1} Pick`).trim(),
+        editorialSummary: item.editorialSummary || item.description || undefined,
+        pros: Array.isArray(item.pros) ? item.pros : undefined,
+        cons: Array.isArray(item.cons) ? item.cons : undefined,
+        specs: item.specs && typeof item.specs === 'object' ? item.specs : undefined,
+        media: item.media || (item.image || item.heroImage ? { heroImage: item.image || item.heroImage } : undefined),
+        logoText: (item.logoText || pName.slice(0, 2)).toUpperCase(),
+        logoBg: item.logoBg || palette[index % palette.length],
+        logoColor: item.logoColor || '#FFFFFF',
+        amountPaid: Number(item.amountPaid || 0),
+        isOrganic: Number(item.amountPaid || 0) === 0,
+        ownerEmail: item.ownerEmail || '',
+        clicks: Number(item.clicks ?? Math.max(120, 850 - index * 70)),
+        upvotes: Number(item.upvotes ?? Math.max(18, 95 - index * 7)),
+        updatedAt: new Date().toISOString()
+      };
+    }
+
+    function applyEditorialFieldsToCategory(cat, body, db) {
+      if (body.authorId || body.authorName || body.author) {
+        const resolved = resolveAuthor(db.authors, {
+          authorId: body.authorId,
+          authorName: body.authorName || (typeof body.author === 'string' ? body.author : body.author?.name),
+          authorRole: body.authorRole || body.author?.role,
+          authorAvatar: body.authorAvatar || body.author?.avatar,
+          authorBio: body.authorBio || body.author?.bio
+        });
+        cat.authorId = resolved.id;
+        cat.authorName = resolved.name;
+        cat.authorRole = body.authorRole || resolved.role;
+        cat.authorAvatar = body.authorAvatar || resolved.avatar;
+        cat.authorBio = body.authorBio || resolved.bio;
+      }
+      if (body.editorialTitle !== undefined) cat.editorialTitle = String(body.editorialTitle).trim();
+      if (body.editorialIntro !== undefined) cat.editorialIntro = String(body.editorialIntro).trim();
+      if (body.methodology !== undefined) cat.methodology = String(body.methodology).trim();
+      if (body.coverImage !== undefined && String(body.coverImage).trim()) {
+        cat.coverImage = String(body.coverImage).trim();
+      }
+      if (body.topic !== undefined || body.categoryGroup !== undefined) {
+        const rawTopic = String(body.topic || body.categoryGroup || 'software').trim();
+        const topicSlug = rawTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'software';
+        cat.topic = topicSlug;
+        db.topicCategories = normalizeTopicCategories(db.topicCategories);
+        if (!db.topicCategories.some((tc) => tc.slug === topicSlug)) {
+          db.topicCategories.push({
+            slug: topicSlug,
+            name: body.topicName || body.categoryName || rawTopic,
+            icon: body.topicIcon || '📂',
+            description: body.topicDescription || `${rawTopic} guides and rankings.`
+          });
+        }
+      }
+      if (body.tags !== undefined) {
+        const normTags = normalizeTagsInput(body.tags);
+        cat.tags = normTags;
+        db.tags = Array.isArray(db.tags) ? db.tags : [];
+        for (const t of normTags) {
+          if (!db.tags.includes(t)) db.tags.push(t);
+        }
+      }
+      if (body.seo && typeof body.seo === 'object') {
+        cat.seo = {
+          metaTitle: body.seo.metaTitle || cat.seo?.metaTitle || '',
+          metaDescription: body.seo.metaDescription || cat.seo?.metaDescription || '',
+          focusKeyword: body.seo.focusKeyword || cat.seo?.focusKeyword || ''
+        };
+      }
+      // Publication Status & Scheduling
+      const reqStatus = body.status ? String(body.status).toLowerCase() : null;
+      const reqSched = body.scheduledAt ? String(body.scheduledAt).trim() : null;
+      if (reqSched) {
+        const ts = Date.parse(reqSched);
+        if (Number.isNaN(ts)) {
+          const err = new Error('Invalid scheduledAt ISO date-time string');
+          err.statusCode = 400;
+          throw err;
+        }
+        cat.scheduledAt = new Date(ts).toISOString();
+        if (reqStatus === 'draft') {
+          cat.status = 'draft';
+        } else if (ts > Date.now()) {
+          cat.status = 'scheduled';
+        } else {
+          cat.status = 'published';
+          cat.publishedAt = cat.scheduledAt;
+        }
+      } else if (reqStatus) {
+        if (!['published', 'scheduled', 'draft'].includes(reqStatus)) {
+          const err = new Error('status must be published, scheduled, or draft');
+          err.statusCode = 400;
+          throw err;
+        }
+        if (reqStatus === 'scheduled' && !cat.scheduledAt) {
+          const err = new Error('scheduledAt ISO timestamp is required when status is scheduled');
+          err.statusCode = 400;
+          throw err;
+        }
+        cat.status = reqStatus;
+        if (reqStatus === 'published' && !cat.publishedAt) {
+          cat.publishedAt = new Date().toISOString();
+        }
+      } else if (!cat.status) {
+        cat.status = 'published';
+        if (!cat.publishedAt) cat.publishedAt = new Date().toISOString();
+      }
+    }
+
+    // 1-pub-a. GET /api/authors (Human Editorial Author Directory)
+    if (req.method === 'GET' && pathname === '/api/authors') {
+      const db = readDb();
+      const session = getSession(req);
+      const isAuthorized = (session && session.role === 'admin') || Boolean(getValidApiKey(req, db));
+      const authors = (db.authors || EDITORIAL_AUTHORS).map((a) => {
+        const count = (db.categories || []).filter((c) => {
+          const m = getCategoryFeatureMeta(c, db.authors);
+          return m.authorId === a.id && (isAuthorized || isPubliclyPublished(c));
+        }).length;
+        if (isAuthorized) return { ...a, articlesCount: count };
+        const { email, ...safe } = a;
+        return { ...safe, articlesCount: count };
+      });
+      return sendJson(res, 200, { authors }, req);
+    }
+
+    // 1-pub-b. POST /api/admin/authors | /api/publish/authors (Create/Update Author)
+    if (req.method === 'POST' && (pathname === '/api/admin/authors' || pathname === '/api/publish/authors')) {
+      if (!requirePublisherOrAdmin(req, res)) return;
+      const body = await parseBody(req);
+      const name = (body.name || '').trim();
+      if (!name) return sendJson(res, 400, { error: 'Author name is required' }, req);
+      const db = readDb();
+      const id = body.id || `auth_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${Date.now().toString().slice(-4)}`;
+      const newAuthor = {
+        id,
+        name,
+        role: (body.role || body.jobTitle || 'Senior Contributor').trim(),
+        avatar: (body.avatar || body.image || EDITORIAL_AUTHORS[db.authors.length % EDITORIAL_AUTHORS.length].avatar).trim(),
+        bio: (body.bio || `${name} researches and reviews software, hardware, and digital products for Top 10.`).trim(),
+        location: (body.location || 'Remote').trim(),
+        email: (body.email || `${name.toLowerCase().replace(/[^a-z0-9]+/g, '.')}@top10.io`).trim(),
+        expertise: Array.isArray(body.expertise)
+          ? body.expertise
+          : normalizeTagsInput(body.expertise || ''),
+        twitter: (body.twitter || '').trim(),
+        linkedin: (body.linkedin || '').trim(),
+        verified: body.verified !== false,
+        custom: true,
+        createdAt: new Date().toISOString()
+      };
+      const existingIdx = db.authors.findIndex((a) => a.id === id);
+      if (existingIdx !== -1) db.authors[existingIdx] = { ...db.authors[existingIdx], ...newAuthor };
+      else db.authors.push(newAuthor);
+      writeDb(db);
+      return sendJson(res, 201, { success: true, author: newAuthor, state: getPublicState(getSession(req)) }, req);
+    }
+
+    // 1-pub-c. DELETE /api/admin/authors/:id
+    const authorIdMatch = pathname.match(/^\/api\/admin\/authors\/([^/]+)$/);
+    if (req.method === 'DELETE' && authorIdMatch) {
+      if (!requirePublisherOrAdmin(req, res)) return;
+      const aId = authorIdMatch[1];
+      const db = readDb();
+      const idx = (db.authors || []).findIndex((a) => a.id === aId);
+      if (idx === -1) return sendJson(res, 404, { error: 'Author not found' }, req);
+      db.authors.splice(idx, 1);
+      writeDb(db);
+      return sendJson(res, 200, { success: true, state: getPublicState(getSession(req)) }, req);
+    }
+
+    // 1-pub-d. GET /api/taxonomy/categories & POST /api/admin/taxonomy/categories | /api/publish/categories
+    if (req.method === 'GET' && pathname === '/api/taxonomy/categories') {
+      const db = readDb();
+      const visibleCats = (db.categories || []).filter(isPubliclyPublished);
+      const topics = (db.topicCategories || DEFAULT_TOPIC_CATEGORIES).map((tc) => {
+        const mCount = visibleCats.filter((c) => getCategoryFeatureMeta(c, db.authors).topic === tc.slug).length;
+        return { ...tc, articlesCount: mCount };
+      });
+      return sendJson(res, 200, { categories: topics }, req);
+    }
+
+    if (req.method === 'POST' && (pathname === '/api/admin/taxonomy/categories' || pathname === '/api/publish/categories')) {
+      if (!requirePublisherOrAdmin(req, res)) return;
+      const body = await parseBody(req);
+      const name = (body.name || body.title || '').trim();
+      if (!name) return sendJson(res, 400, { error: 'Category name is required' }, req);
+      const slug = (body.slug || name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      if (!slug) return sendJson(res, 400, { error: 'Valid category slug required' }, req);
+      const db = readDb();
+      const existing = db.topicCategories.find((tc) => tc.slug === slug);
+      if (existing && !body.upsert) {
+        return sendJson(res, 409, { error: `Topic category "${slug}" already exists` }, req);
+      }
+      const topicObj = {
+        slug,
+        name,
+        icon: (body.icon || '📂').trim(),
+        description: (body.description || `${name} guides and benchmark comparisons.`).trim()
+      };
+      if (existing) Object.assign(existing, topicObj);
+      else db.topicCategories.push(topicObj);
+      writeDb(db);
+      return sendJson(res, 201, { success: true, category: topicObj, state: getPublicState(getSession(req)) }, req);
+    }
+
+    const delTopicMatch = pathname.match(/^\/api\/admin\/taxonomy\/categories\/([^/]+)$/);
+    if (req.method === 'DELETE' && delTopicMatch) {
+      if (!requirePublisherOrAdmin(req, res)) return;
+      const slug = delTopicMatch[1];
+      const db = readDb();
+      const idx = (db.topicCategories || []).findIndex((tc) => tc.slug === slug);
+      if (idx === -1) return sendJson(res, 404, { error: 'Topic category not found' }, req);
+      db.topicCategories.splice(idx, 1);
+      writeDb(db);
+      return sendJson(res, 200, { success: true, state: getPublicState(getSession(req)) }, req);
+    }
+
+    // 1-pub-e. GET /api/tags & POST /api/admin/tags | /api/publish/tags & DELETE /api/admin/tags/:slug
+    if (req.method === 'GET' && pathname === '/api/tags') {
+      const db = readDb();
+      const visibleCats = (db.categories || []).filter(isPubliclyPublished);
+      return sendJson(res, 200, { tags: buildTagSummary(visibleCats, db.tags || []) }, req);
+    }
+
+    if (req.method === 'POST' && (pathname === '/api/admin/tags' || pathname === '/api/publish/tags')) {
+      if (!requirePublisherOrAdmin(req, res)) return;
+      const body = await parseBody(req);
+      const incoming = normalizeTagsInput(body.tags || body.tag || body.name || '');
+      if (incoming.length === 0) return sendJson(res, 400, { error: 'At least one tag name is required' }, req);
+      const db = readDb();
+      for (const t of incoming) {
+        if (!db.tags.includes(t)) db.tags.push(t);
+      }
+      writeDb(db);
+      return sendJson(res, 201, { success: true, added: incoming, tags: buildTagSummary(db.categories, db.tags), state: getPublicState(getSession(req)) }, req);
+    }
+
+    const delTagMatch = pathname.match(/^\/api\/admin\/tags\/([^/]+)$/);
+    if (req.method === 'DELETE' && delTagMatch) {
+      if (!requirePublisherOrAdmin(req, res)) return;
+      const tagSlug = decodeURIComponent(delTagMatch[1]).toLowerCase();
+      const db = readDb();
+      db.tags = (db.tags || []).filter((t) => t !== tagSlug);
+      for (const c of (db.categories || [])) {
+        if (Array.isArray(c.tags)) {
+          c.tags = c.tags.filter((t) => t !== tagSlug);
+        }
+      }
+      writeDb(db);
+      return sendJson(res, 200, { success: true, state: getPublicState(getSession(req)) }, req);
+    }
+
+    // 1-pub-f. GET /api/publish/articles | /api/admin/articles
+    if (req.method === 'GET' && (pathname === '/api/publish/articles' || pathname === '/api/admin/articles')) {
+      if (!requirePublisherOrAdmin(req, res)) return;
+      const db = readDb();
+      const statusFilter = parsedUrl.searchParams.get('status');
+      const topicFilter = parsedUrl.searchParams.get('topic');
+      const authorFilter = parsedUrl.searchParams.get('authorId');
+      const tagFilter = parsedUrl.searchParams.get('tag');
+      let list = (db.categories || []).map((c) => enrichCategory(c, db.platformStats, db.authors));
+      if (statusFilter) list = list.filter((a) => (a.status || 'published') === statusFilter);
+      if (topicFilter) list = list.filter((a) => a.topic === topicFilter);
+      if (authorFilter) list = list.filter((a) => a.authorId === authorFilter);
+      if (tagFilter) list = list.filter((a) => Array.isArray(a.tags) && a.tags.includes(tagFilter.toLowerCase()));
+      return sendJson(res, 200, { count: list.length, articles: list }, req);
+    }
+
+    // 1-pub-g. POST /api/publish/article | /api/admin/publish/article | /api/articles (Direct Full Article Publishing & Scheduling API)
+    if (
+      req.method === 'POST' &&
+      (pathname === '/api/publish/article' || pathname === '/api/admin/publish/article' || pathname === '/api/articles')
+    ) {
+      if (!requirePublisherOrAdmin(req, res)) return;
+      const body = await parseBody(req);
+      const rawTitle = (body.title || body.editorialTitle || '').trim();
+      if (!rawTitle) return sendJson(res, 400, { error: 'Article title is required' }, req);
+
+      const db = readDb();
+      const slug = (body.slug || rawTitle)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || `guide-${Date.now()}`;
+
+      const existingIdx = db.categories.findIndex((c) => c.slug === slug);
+      if (existingIdx !== -1 && !body.upsert) {
+        return sendJson(res, 409, { error: `An article with slug "${slug}" already exists. Pass upsert: true to update.` }, req);
+      }
+
+      const shortName = rawTitle.replace(/^Top\s+10\s+/i, '').trim() || rawTitle;
+      const title = rawTitle.toLowerCase().startsWith('top 10') ? rawTitle : `Top 10 ${rawTitle}`;
+      const existingCat = existingIdx !== -1 ? db.categories[existingIdx] : null;
+
+      const rawProducts = Array.isArray(body.products) ? body.products : (Array.isArray(body.items) ? body.items : []);
+      const mappedProducts = rawProducts.length > 0
+        ? rawProducts.map((p, idx) => buildStructuredProductItem(p, idx, slug, title))
+        : (existingCat?.products || []);
+
+      const targetCat = existingCat || {
+        id: slug,
+        slug,
+        title,
+        shortName,
+        subtitle: body.subtitle || `${shortName} · 2026 Buying Guide & Live Rankings`,
+        tagline: body.tagline || body.subtitle || body.description || `Curated Top 10 buying guide for ${shortName}.`,
+        description: body.description || body.editorialIntro || `Comprehensive comparison and verified benchmark directory for ${title}.`,
+        icon: body.icon || '📝',
+        iconText: (body.iconText || shortName.slice(0, 2)).toUpperCase(),
+        iconBg: body.iconBg || '#111827',
+        iconColor: body.iconColor || '#B8FF01',
+        updatedAgo: 'just now',
+        monthlyViews: Number(body.monthlyViews || 1500),
+        criteria: Array.isArray(body.criteria) && body.criteria.length > 0 ? body.criteria : [
+          'Core capabilities and benchmark reliability',
+          'Pricing transparency and value at scale',
+          'Verified user adoption and editorial score'
+        ],
+        faqs: Array.isArray(body.faqs) ? body.faqs : [],
+        metrics: {
+          monthlyViews: String(body.monthlyViews || '1.5k'),
+          buyerClicks: '420',
+          poolRevenue: '$0',
+          topBid: '$0'
+        },
+        products: mappedProducts,
+        comments: [],
+        createdAt: new Date().toISOString()
+      };
+
+      if (existingCat) {
+        if (body.title) targetCat.title = title;
+        if (body.tagline !== undefined) targetCat.tagline = String(body.tagline).trim();
+        if (body.subtitle !== undefined) targetCat.subtitle = String(body.subtitle).trim();
+        if (body.description !== undefined) targetCat.description = String(body.description).trim();
+        if (body.icon !== undefined) targetCat.icon = String(body.icon).trim();
+        if (body.monthlyViews !== undefined) targetCat.monthlyViews = Number(body.monthlyViews) || targetCat.monthlyViews;
+        if (Array.isArray(body.criteria)) targetCat.criteria = body.criteria;
+        if (Array.isArray(body.faqs)) targetCat.faqs = body.faqs;
+        if (rawProducts.length > 0) targetCat.products = mappedProducts;
+      }
+
+      if (!body.editorialTitle && body.title) {
+        targetCat.editorialTitle = rawTitle;
+      }
+      applyEditorialFieldsToCategory(targetCat, body, db);
+      targetCat.updatedAt = new Date().toISOString();
+
+      if (existingIdx === -1) {
+        db.categories.push(targetCat);
+      }
+      writeDb(db);
+      const enriched = enrichCategory(targetCat, db.platformStats, db.authors);
+      if (targetCat.status === 'published') {
+        broadcastSse('new_directory', { categorySlug: targetCat.slug, title: targetCat.title });
+      }
+      return sendJson(
+        res,
+        existingIdx === -1 ? 201 : 200,
+        {
+          success: true,
+          url: `${base}/list/${targetCat.slug}`,
+          status: targetCat.status,
+          scheduledAt: targetCat.scheduledAt || null,
+          article: enriched,
+          state: getPublicState(getSession(req))
+        },
+        req
+      );
+    }
+
+    // 1-pub-h. PUT/PATCH/DELETE /api/publish/article/:slug & POST /api/publish/article/:slug/publish-now
+    const pubNowMatch = pathname.match(/^\/api\/(?:publish|admin)\/articles?\/([^/]+)\/publish-now$/);
+    if (req.method === 'POST' && pubNowMatch) {
+      if (!requirePublisherOrAdmin(req, res)) return;
+      const slug = pubNowMatch[1];
+      const db = readDb();
+      const cat = db.categories.find((c) => c.slug === slug);
+      if (!cat) return sendJson(res, 404, { error: 'Article not found' }, req);
+      cat.status = 'published';
+      cat.publishedAt = new Date().toISOString();
+      cat.scheduledAt = null;
+      cat.updatedAt = new Date().toISOString();
+      writeDb(db);
+      broadcastSse('article_published', { slug: cat.slug, title: cat.title, publishedAt: cat.publishedAt });
+      return sendJson(res, 200, { success: true, article: enrichCategory(cat, db.platformStats, db.authors), state: getPublicState(getSession(req)) }, req);
+    }
+
+    const pubArticleMatch = pathname.match(/^\/api\/(?:publish|admin)\/articles?\/([^/]+)$/);
+    if ((req.method === 'PUT' || req.method === 'PATCH') && pubArticleMatch) {
+      if (!requirePublisherOrAdmin(req, res)) return;
+      const slug = pubArticleMatch[1];
+      const body = await parseBody(req);
+      const db = readDb();
+      const cat = db.categories.find((c) => c.slug === slug);
+      if (!cat) return sendJson(res, 404, { error: 'Article not found' }, req);
+
+      if (body.title !== undefined) cat.title = String(body.title).trim();
+      if (body.tagline !== undefined) cat.tagline = String(body.tagline).trim();
+      if (body.subtitle !== undefined) cat.subtitle = String(body.subtitle).trim();
+      if (body.description !== undefined) cat.description = String(body.description).trim();
+      if (body.icon !== undefined) cat.icon = String(body.icon).trim();
+      if (body.monthlyViews !== undefined) cat.monthlyViews = Number(body.monthlyViews) || cat.monthlyViews;
+      if (Array.isArray(body.criteria)) cat.criteria = body.criteria;
+      if (Array.isArray(body.faqs)) cat.faqs = body.faqs;
+      if (Array.isArray(body.products) && body.products.length > 0) {
+        cat.products = body.products.map((p, idx) => buildStructuredProductItem(p, idx, slug, cat.title));
+      }
+      applyEditorialFieldsToCategory(cat, body, db);
+      cat.updatedAt = new Date().toISOString();
+      writeDb(db);
+      return sendJson(res, 200, { success: true, article: enrichCategory(cat, db.platformStats, db.authors), state: getPublicState(getSession(req)) }, req);
+    }
+
+    if (req.method === 'DELETE' && pubArticleMatch) {
+      if (!requirePublisherOrAdmin(req, res)) return;
+      const slug = pubArticleMatch[1];
+      const db = readDb();
+      const idx = db.categories.findIndex((c) => c.slug === slug);
+      if (idx === -1) return sendJson(res, 404, { error: 'Article not found' }, req);
+      db.categories.splice(idx, 1);
+      writeDb(db);
+      return sendJson(res, 200, { success: true, state: getPublicState(getSession(req)) }, req);
+    }
+
+    // 1-pub-i. POST /api/admin/scheduler/run & GET/POST /api/admin/api-keys
+    if (req.method === 'POST' && pathname === '/api/admin/scheduler/run') {
+      if (!requirePublisherOrAdmin(req, res)) return;
+      const promoted = runScheduledPublisher();
+      return sendJson(res, 200, {
+        success: true,
+        promotedCount: promoted.length,
+        promotedSlugs: promoted.map((c) => c.slug),
+        state: getPublicState(getSession(req))
+      }, req);
+    }
+
+    if (req.method === 'GET' && pathname === '/api/admin/api-keys') {
+      if (!requireAdmin(req, res)) return;
+      const db = readDb();
+      return sendJson(res, 200, { apiKeys: db.apiKeys || [] }, req);
+    }
+
+    if (req.method === 'POST' && pathname === '/api/admin/api-keys/rotate') {
+      if (!requireAdmin(req, res)) return;
+      const db = readDb();
+      const newKey = generateDefaultApiKey();
+      db.apiKeys = [
+        {
+          id: 'key_' + Date.now(),
+          name: 'Primary Headless Publishing Key',
+          key: newKey,
+          createdAt: new Date().toISOString(),
+          active: true
+        }
+      ];
+      writeDb(db);
+      return sendJson(res, 200, { success: true, apiKey: db.apiKeys[0] }, req);
     }
 
     // 1a. GET /api/blog (List of all editorial buying guides & teardowns)
@@ -1155,6 +1940,7 @@ const server = http.createServer(async (req, res) => {
       if (body.monthlyViews !== undefined) cat.monthlyViews = Number(body.monthlyViews) || cat.monthlyViews;
       if (body.criteria !== undefined && Array.isArray(body.criteria)) cat.criteria = body.criteria;
       if (body.faqs !== undefined && Array.isArray(body.faqs)) cat.faqs = body.faqs;
+      applyEditorialFieldsToCategory(cat, body, db);
       cat.updatedAt = new Date().toISOString();
 
       writeDb(db);
@@ -1622,6 +2408,7 @@ const server = http.createServer(async (req, res) => {
         ]
       };
 
+      applyEditorialFieldsToCategory(newCategory, body, db);
       db.categories.push(newCategory);
       writeDb(db);
       const state = getPublicState(getSession(req));
@@ -1723,7 +2510,8 @@ const server = http.createServer(async (req, res) => {
     // 13. GET /sitemap.xml (Dynamic SEO XML Sitemap for Google, Bing & AI Indexing)
     if (req.method === 'GET' && pathname === '/sitemap.xml') {
       const db = readDb();
-      const catUrls = (db.categories || [])
+      const visibleCats = (db.categories || []).filter(isPubliclyPublished);
+      const catUrls = visibleCats
         .map(
           (c) =>
             `  <url><loc>${base}/list/${escapeXml(c.slug)}</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`
@@ -1737,7 +2525,7 @@ const server = http.createServer(async (req, res) => {
         .join('\n');
 
       const compareUrls = [];
-      for (const c of (db.categories || [])) {
+      for (const c of visibleCats) {
         const prods = (c.products || []).slice(0, 3);
         if (prods.length >= 2) {
           compareUrls.push(`  <url><loc>${base}/compare/${escapeXml(c.slug)}/${escapeXml(prods[0].id)}-vs-${escapeXml(prods[1].id)}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`);
@@ -1800,9 +2588,10 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && pathname === '/feed.xml') {
       const db = readDb();
       const items = (db.categories || [])
+        .filter(isPubliclyPublished)
         .map((c) => {
-          const enriched = enrichCategory(c, db.platformStats);
-          const meta = getCategoryFeatureMeta(enriched);
+          const enriched = enrichCategory(c, db.platformStats, db.authors);
+          const meta = getCategoryFeatureMeta(enriched, db.authors);
           const top1Name = enriched.top10 && enriched.top10[0] ? enriched.top10[0].name : 'Top Rated Option';
           const desc = meta.description || enriched.editorialGuide?.intro || 'Curated Top 10 buying guide.';
           return `    <item>
@@ -3245,7 +4034,9 @@ ${items}
 
     // Read state for SEO injection & route verification
     const db = readDb();
-    const categories = (db.categories || []).map((c) => enrichCategory(c, db.platformStats));
+    const categories = (db.categories || [])
+      .filter(isPubliclyPublished)
+      .map((c) => enrichCategory(c, db.platformStats, db.authors));
 
     let activeCat = null;
     let comparePair = null;
@@ -3355,4 +4146,6 @@ server.listen(PORT, async () => {
   } catch (err) {
     console.error('[Database Notice]', err.message);
   }
+  runScheduledPublisher();
+  setInterval(runScheduledPublisher, 15000).unref();
 });

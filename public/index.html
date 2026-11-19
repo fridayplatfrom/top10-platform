@@ -618,6 +618,7 @@
             <button type="button" class="admin-tab" data-admin-tab="transactions">💰 Sales &amp; Revenue</button>
             <button type="button" class="admin-tab" data-admin-tab="reviews">⭐ Review Moderation <span class="admin-tab-badge" id="adminPendingReviewsBadge">0</span></button>
             <button type="button" class="admin-tab" data-admin-tab="leads">🎯 Buyer RFP Leads <span class="admin-tab-badge" id="adminLeadsCountBadge" style="background:#0284C7;">0</span></button>
+            <button type="button" class="admin-tab" data-admin-tab="editorial">✍️ Articles, Authors &amp; Schedule <span class="admin-tab-badge" id="adminScheduledCountBadge" style="background:#7C3AED;">0</span></button>
           </div>
 
           <!-- Tab 0: Platform Overview & Revenue Analytics -->
@@ -729,6 +730,44 @@
                   <span class="admin-status-pill"><span class="pulse-dot"></span> Live</span>
                 </div>
                 <div class="dash-widget-body" id="dashSalesFeedContainer" style="max-height:360px;overflow-y:auto;"></div>
+              </div>
+            </div>
+
+            <!-- Editorial Publishing, Scheduling & Author Performance Analytics -->
+            <div class="dash-two-col" style="margin-top:20px;">
+              <div class="dash-widget">
+                <div class="dash-widget-header">
+                  <div>
+                    <h4 class="dash-widget-title">Human Author Performance Leaderboard</h4>
+                    <p class="dash-widget-sub">Views, clicks, and published count per author</p>
+                  </div>
+                </div>
+                <div class="dash-widget-body">
+                  <div class="admin-table-wrap">
+                    <table class="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Author</th>
+                          <th>Published</th>
+                          <th>Scheduled</th>
+                          <th>Views</th>
+                          <th>Clicks</th>
+                        </tr>
+                      </thead>
+                      <tbody id="dashAuthorPerfTableBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div class="dash-widget">
+                <div class="dash-widget-header">
+                  <div>
+                    <h4 class="dash-widget-title">Scheduled Articles &amp; Publishing Queue</h4>
+                    <p class="dash-widget-sub" id="dashEditorialStatusSub">Upcoming automated publications &amp; taxonomy breakdown</p>
+                  </div>
+                </div>
+                <div class="dash-widget-body" id="dashScheduledQueueContainer" style="max-height:360px;overflow-y:auto;"></div>
               </div>
             </div>
           </div>
@@ -891,6 +930,135 @@
                 </thead>
                 <tbody id="adminLeadsTableBody"></tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- Tab 6: Editorial Publishing, Human Authors, Categories, Tags & Schedule -->
+          <div class="admin-tab-content hidden" id="adminTabEditorial">
+            <!-- Summary Strip -->
+            <div class="dash-perf-strip" style="margin-bottom:18px;">
+              <div class="perf-stat-item">
+                <span class="perf-label">Published Guides</span>
+                <strong class="perf-val" id="edStatPublished">0</strong>
+              </div>
+              <div class="perf-stat-item">
+                <span class="perf-label">Scheduled Queue</span>
+                <strong class="perf-val" id="edStatScheduled" style="color:#7C3AED;">0</strong>
+              </div>
+              <div class="perf-stat-item">
+                <span class="perf-label">Drafts</span>
+                <strong class="perf-val" id="edStatDrafts">0</strong>
+              </div>
+              <div class="perf-stat-item">
+                <span class="perf-label">Verified Authors</span>
+                <strong class="perf-val" id="edStatAuthors">14</strong>
+              </div>
+              <div class="perf-stat-item">
+                <span class="perf-label">Categories / Tags</span>
+                <strong class="perf-val" id="edStatTaxonomy">3 / 0</strong>
+              </div>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="admin-table-controls" style="flex-wrap:wrap;gap:10px;">
+              <input type="search" id="adminEditorialSearchInput" class="admin-search-box" placeholder="Search articles by title, author, topic, or tag..." />
+              <div class="admin-filter-pills" id="adminEditorialStatusFilter">
+                <button type="button" class="admin-filter-pill active" data-ed-filter="all">All</button>
+                <button type="button" class="admin-filter-pill" data-ed-filter="published">Published</button>
+                <button type="button" class="admin-filter-pill" data-ed-filter="scheduled">Scheduled</button>
+                <button type="button" class="admin-filter-pill" data-ed-filter="draft">Drafts</button>
+              </div>
+              <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn-secondary-compact" id="runSchedulerNowBtn">⏱ Run Scheduler Now</button>
+                <button type="button" class="btn-secondary-compact" id="openAuthorModalBtn">+ Add Human Author</button>
+                <button type="button" class="btn-primary-compact" id="openPublisherModalBtn">+ Publish / Schedule Article</button>
+              </div>
+            </div>
+
+            <!-- Editorial & Schedule Table -->
+            <div class="admin-table-wrap" style="margin-bottom:24px;">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Article / Guide</th>
+                    <th>Author</th>
+                    <th>Category &amp; Tags</th>
+                    <th>Status / Schedule</th>
+                    <th>Traffic &amp; CTR</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adminEditorialTableBody"></tbody>
+              </table>
+            </div>
+
+            <!-- Two Column Taxonomy (Categories & Tags) + Publishing API Credentials -->
+            <div class="dash-two-col" style="margin-bottom:24px;">
+              <div class="dash-widget">
+                <div class="dash-widget-header">
+                  <div>
+                    <h4 class="dash-widget-title">Categories &amp; Tags Manager</h4>
+                    <p class="dash-widget-sub">Create homepage topic categories and article tags via UI or API</p>
+                  </div>
+                </div>
+                <div class="dash-widget-body" style="padding:16px;">
+                  <div style="margin-bottom:16px;">
+                    <label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:var(--text-main);">Topic Categories</label>
+                    <div id="adminTopicsChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+                    <div style="display:flex;gap:8px;">
+                      <input type="text" id="newTopicIconInput" class="modal-input" style="width:54px;text-align:center;" value="🚀" placeholder="🚀" />
+                      <input type="text" id="newTopicNameInput" class="modal-input" style="flex:1;" placeholder="New category name (e.g. Cybersecurity)" />
+                      <button type="button" class="btn-primary-compact" id="addTopicCategoryBtn">+ Add Category</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:var(--text-main);">Article Tags</label>
+                    <div id="adminTagsChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;max-height:110px;overflow-y:auto;"></div>
+                    <div style="display:flex;gap:8px;">
+                      <input type="text" id="newTagInput" class="modal-input" style="flex:1;" placeholder="Add tags comma-separated (e.g. zero-trust, cloud, 2026)" />
+                      <button type="button" class="btn-secondary-compact" id="addTagBtn">+ Add Tag</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="dash-widget">
+                <div class="dash-widget-header">
+                  <div>
+                    <h4 class="dash-widget-title">Headless Publishing REST API</h4>
+                    <p class="dash-widget-sub">Publish, tag, categorize &amp; schedule articles directly via API</p>
+                  </div>
+                </div>
+                <div class="dash-widget-body" style="padding:16px;">
+                  <label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:var(--text-main);">X-API-Key Header</label>
+                  <div style="display:flex;gap:8px;margin-bottom:12px;">
+                    <input type="text" id="adminApiKeyDisplay" class="modal-input" readonly value="Loading..." style="font-family:monospace;font-size:12px;flex:1;" />
+                    <button type="button" class="btn-secondary-compact" id="copyApiKeyBtn">Copy Key</button>
+                    <button type="button" class="btn-secondary-compact" id="rotateApiKeyBtn">Rotate</button>
+                  </div>
+                  <label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:var(--text-main);">Quick Publish &amp; Schedule Endpoint</label>
+                  <pre id="publishApiSnippetPre" style="margin:0;padding:10px;border-radius:8px;background:var(--bg-subtle);border:1px solid var(--border-card);font-size:11px;overflow-x:auto;color:var(--text-main);line-height:1.45;">POST /api/publish/article
+Headers: X-API-Key: &lt;YOUR_KEY&gt;
+Body: { "title", "authorId", "topic", "tags": [...], "status": "scheduled", "scheduledAt", "coverImage", "description", "products": [...] }</pre>
+                  <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+                    <button type="button" class="btn-secondary-compact" id="copyPublishCurlBtn">Copy cURL Example</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Human Authors Roster -->
+            <div class="dash-widget">
+              <div class="dash-widget-header">
+                <div>
+                  <h4 class="dash-widget-title">Editorial Team &amp; Human Authors</h4>
+                  <p class="dash-widget-sub">Matched portraits, bios, and domains ready for article assignment</p>
+                </div>
+                <button type="button" class="btn-primary-compact" id="openAuthorModalBtn2">+ New Author</button>
+              </div>
+              <div class="dash-widget-body" style="padding:16px;">
+                <div id="adminAuthorsGrid" class="authors-roster-grid"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -1847,6 +2015,50 @@
           </div>
         </div>
 
+        <div class="form-row-2" style="margin-top:10px;">
+          <div class="form-field">
+            <label for="catEditAuthorSelect">Assigned Human Author</label>
+            <select id="catEditAuthorSelect" class="modal-input"></select>
+          </div>
+          <div class="form-field">
+            <label for="catEditTopicSelect">Topic Category</label>
+            <select id="catEditTopicSelect" class="modal-input"></select>
+          </div>
+        </div>
+
+        <div id="catEditAuthorPreview" class="author-preview-pill" style="margin-top:8px;"></div>
+
+        <div class="form-row-2" style="margin-top:10px;">
+          <div class="form-field">
+            <label for="catEditStatus">Publication Status</label>
+            <select id="catEditStatus" class="modal-input">
+              <option value="published">Published (Live Now)</option>
+              <option value="scheduled">Scheduled (Auto-Publish)</option>
+              <option value="draft">Draft (Hidden)</option>
+            </select>
+          </div>
+          <div class="form-field" id="catEditScheduleWrap">
+            <label for="catEditScheduledAt">Schedule Date &amp; Time</label>
+            <input type="datetime-local" id="catEditScheduledAt" class="modal-input" />
+          </div>
+        </div>
+
+        <div class="form-row-2" style="margin-top:10px;">
+          <div class="form-field">
+            <label for="catEditTags">Article Tags (comma-separated)</label>
+            <input type="text" id="catEditTags" class="modal-input" placeholder="saas, ai, enterprise, 2026" />
+          </div>
+          <div class="form-field">
+            <label for="catEditCoverImage">Cover Image URL</label>
+            <input type="url" id="catEditCoverImage" class="modal-input" placeholder="https://images.unsplash.com/..." />
+          </div>
+        </div>
+
+        <div class="form-field" style="margin-top:10px;">
+          <label for="catEditEditorialTitle">Editorial Card Headline (Optional)</label>
+          <input type="text" id="catEditEditorialTitle" class="modal-input" placeholder="e.g. How to Choose the Best Vector Database in 2026" />
+        </div>
+
         <div class="form-field" style="margin-top:10px;">
           <label for="catEditTagline">Short Tagline *</label>
           <input type="text" id="catEditTagline" class="modal-input" placeholder="Best-in-class video and timeline editing suites for creators &amp; studios." required />
@@ -1873,6 +2085,62 @@ A: Placements are determined algorithmically through live developer benchmarks a
         <div class="modal-footer" style="margin-top:16px;">
           <button type="button" class="btn-secondary" id="cancelCategoryEditorBtn">Cancel</button>
           <button type="submit" class="btn-submit-bid" id="saveCategoryEditorBtn">Save Directory</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 8B: HUMAN AUTHOR CREATOR & PROFILE MODAL (#authorEditorModalBackdrop)
+       ========================================================================= -->
+  <div class="modal-backdrop hidden" id="authorEditorModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="authorModalHeading">
+    <div class="modal-window modal-md">
+      <div class="modal-header">
+        <div>
+          <span class="modal-eyebrow">Editorial Author Persona</span>
+          <h2 class="modal-title" id="authorModalHeading">Add Human Author</h2>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeAuthorEditorModalBtn">&times;</button>
+      </div>
+      <form id="authorEditorForm" class="modal-body">
+        <div style="display:flex;align-items:center;gap:14px;padding:12px;border-radius:10px;background:var(--bg-subtle);border:1px solid var(--border-card);margin-bottom:12px;">
+          <img id="authorEditPreviewImg" src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=240&q=80" alt="Author portrait preview" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--border-card);" />
+          <div>
+            <div style="font-weight:700;font-size:14px;color:var(--text-main);" id="authorEditPreviewName">New Contributor</div>
+            <div style="font-size:12px;color:var(--text-muted);" id="authorEditPreviewRole">Senior Industry Analyst</div>
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-field">
+            <label for="authorEditName">Full Human Name *</label>
+            <input type="text" id="authorEditName" class="modal-input" placeholder="e.g. Elena Rostova" required />
+          </div>
+          <div class="form-field">
+            <label for="authorEditRole">Role / Beat Title *</label>
+            <input type="text" id="authorEditRole" class="modal-input" placeholder="e.g. Security & Cloud Researcher" required />
+          </div>
+        </div>
+        <div class="form-row-2" style="margin-top:10px;">
+          <div class="form-field">
+            <label for="authorEditAvatar">Portrait Photo URL *</label>
+            <input type="url" id="authorEditAvatar" class="modal-input" value="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=240&q=80" required />
+          </div>
+          <div class="form-field">
+            <label for="authorEditLocation">City / Location</label>
+            <input type="text" id="authorEditLocation" class="modal-input" placeholder="e.g. Austin, TX" />
+          </div>
+        </div>
+        <div class="form-field" style="margin-top:10px;">
+          <label for="authorEditExpertise">Areas of Expertise (comma-separated)</label>
+          <input type="text" id="authorEditExpertise" class="modal-input" placeholder="e.g. Cloud Security, Zero Trust, DevSecOps" />
+        </div>
+        <div class="form-field" style="margin-top:10px;">
+          <label for="authorEditBio">Author Bio *</label>
+          <textarea id="authorEditBio" class="modal-textarea" rows="3" placeholder="10+ years testing enterprise infrastructure and writing independent buying guides..." required></textarea>
+        </div>
+        <div class="modal-footer" style="margin-top:16px;">
+          <button type="button" class="btn-secondary" id="cancelAuthorEditorBtn">Cancel</button>
+          <button type="submit" class="btn-submit-bid" id="saveAuthorEditorBtn">Save Human Author</button>
         </div>
       </form>
     </div>
