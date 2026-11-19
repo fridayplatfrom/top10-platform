@@ -915,6 +915,7 @@
         currentView = 'home';
         if (loginModalBackdrop) {
           loginModalBackdrop.classList.remove('hidden');
+          if (loginName && !loginName.value) loginName.value = 'Platform Admin';
           if (loginEmail) loginEmail.value = 'admin@top10.io';
         }
         showToast('Admin authorization required to access Command Center');
@@ -1236,7 +1237,7 @@
           homeTopicPillsBar.querySelectorAll('[data-home-topic]').forEach((b) => {
             b.classList.toggle('active', b.getAttribute('data-home-topic') === window._activeHomeTopic);
           });
-          renderHomepage();
+          renderHomePage();
         });
       });
     }
