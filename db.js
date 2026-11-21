@@ -98,8 +98,9 @@ async function saveDbState(data) {
     let result;
     try {
       [result] = await pool.execute(
-        'UPDATE top10_state_store SET payload = ? WHERE state_key = ? AND SHA2(payload, 256) = ?',
-        [payload, 'full_state', digest(previous)]
+        // SHA2 returns text in the session collation. Compare digest bytes across server defaults.
+        "UPDATE top10_state_store SET payload = ? WHERE state_key = 'full_state' AND UNHEX(SHA2(payload, 256)) = UNHEX(?)",
+        [payload, digest(previous)]
       );
     } catch (err) {
       console.error('[Database] Write failed:', err.code || err.message);
