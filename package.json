@@ -1,19 +1,20 @@
 {
   "name": "top10-platform",
   "version": "1.0.0",
-  "description": "Top 10 Pay-for-Rank Auction Directory Platform",
+  "description": "Top 10 editorial buying guides",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build": "node --check server.js",
-    "test": "node test-all-flows.js",
+    "build": "node --check server.js && node --check db.js && node --check public/app.js",
+    "test": "node test-blog-release.js && npm run test:editorial",
     "test:editorial": "node test-publisher-lifecycle.js && node test-crawler-surfaces.js && node test-seo-schema.js && node test-ui-data-integrity.js",
     "test:flows": "node test-all-flows.js",
     "test:browser": "node test-browser-debug.js",
     "test:scenarios": "node test-all-scenarios.js",
     "test:universe": "node test-complete-universe.js",
     "test:dashboard": "node test-dashboard.js",
-    "test:all": "node test-all-flows.js && node test-browser-debug.js && node test-all-scenarios.js && node test-complete-universe.js && node test-dashboard.js"
+    "test:all": "node test-all-flows.js && node test-browser-debug.js && node test-all-scenarios.js && node test-complete-universe.js && node test-dashboard.js",
+    "test:release": "node test-blog-release.js"
   },
   "license": "ISC",
   "dependencies": {

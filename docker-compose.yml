@@ -1,6 +1,6 @@
 # ==============================================================================
 # TOP 10 PLATFORM — DOCKER COMPOSE ORCHESTRATION
-# Single Node process with persistent JSON; optional external MariaDB mirror
+# App with externally managed MariaDB
 # ==============================================================================
 
 version: '3.8'
@@ -18,20 +18,11 @@ services:
       - NODE_ENV=production
       - PORT=3456
       - BASE_URL=${BASE_URL:-http://localhost:3456}
-      - DB_PATH=/app/data/db.json
       - DB_HOST=${DB_HOST:-127.0.0.1}
       - DB_PORT=${DB_PORT:-3306}
-      - DB_USER=${DB_USER:-}
+      - DB_USER=${DB_USER:?Set DB_USER}
       - DB_PASSWORD=${DB_PASSWORD:-}
-      - DB_NAME=${DB_NAME:-}
-      - PAYPAL_MODE=${PAYPAL_MODE:-sandbox}
-      - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID:-}
-      - PAYPAL_CLIENT_SECRET=${PAYPAL_CLIENT_SECRET:-}
+      - DB_NAME=${DB_NAME:?Set DB_NAME}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:?Set ADMIN_PASSWORD before starting}
-      - PUBLISH_API_KEY=${PUBLISH_API_KEY:-}
-    volumes:
-      - top10-app-data:/app/data
-
-volumes:
-  top10-app-data:
-    driver: local
+      - EDITORIAL_PUBLISH_KEY=${EDITORIAL_PUBLISH_KEY:-}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@top10.io}

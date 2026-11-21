@@ -13,7 +13,7 @@ const cat = (slug, status) => ({id: slug, slug, title: `Top 10 ${slug}`, shortNa
   scheduledAt: status === 'scheduled' ? '2099-01-01T00:00:00.000Z' : undefined,
   updatedAt: '2026-11-19T00:00:00Z', products: [1,2,3].map(n => ({id:`p${n}`,name:`${slug} pick ${n}`,companyName:'Fixture',website:'https://example.com',tagline:'Fixture only',amountPaid:0})), comments: []});
 fs.writeFileSync(dbPath, JSON.stringify({categories:[cat('crawler-public','published'),cat('crawler-private','draft'),cat('crawler-future','scheduled')], users:[], apiKeys:[{id:'test',key,active:true}], platformStats:{minEntryBid:49}, articles:[]}));
-const env = {...process.env, PORT:String(PORT), DB_PATH:dbPath, BASE_URL:BASE, PUBLISH_API_KEY:key, NODE_ENV:'test'};
+const env = {...process.env, PORT:String(PORT), DB_PATH:dbPath, BASE_URL:BASE, EDITORIAL_PUBLISH_KEY:key, NODE_ENV:'test'};
 for (const name of Object.keys(env)) if (/^(DB_|MYSQL_)/.test(name) && name !== 'DB_PATH') delete env[name];
 const server = spawn(process.execPath, ['server.js'], {cwd:ROOT,env,stdio:['ignore','pipe','pipe']});
 let log = '', failed = 0, passed = 0;

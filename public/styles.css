@@ -10155,3 +10155,52 @@ html[data-theme="dark"] .home-topic-pill.active {
 
 
 
+
+.guide-archive {
+  width: min(1040px, 100%);
+  margin: 0 auto;
+  padding: clamp(32px, 6vw, 72px) 24px;
+}
+
+.guide-archive h1 {
+  margin: 0 0 28px;
+  font-size: clamp(32px, 5vw, 54px);
+  letter-spacing: -0.04em;
+}
+
+.guide-archive-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guide-archive-item {
+  padding: 20px 0;
+  border-top: 1px solid var(--border-main, #ddd);
+}
+
+.guide-archive-item h2 {
+  margin: 0 0 6px;
+  font-size: clamp(18px, 3vw, 24px);
+}
+
+.guide-archive-item a { color: inherit; }
+.guide-archive-item p { margin: 0; color: var(--text-muted); }
+
+#navNotificationBtn,
+.below-list-stats-cta-card,
+#tabPanelContext,
+#footerBrandSubmitBtn,
+[data-boost-existing],
+[data-claim-prod],
+[data-manage-prod],
+[data-rfp-prod],
+[data-acc-tab="sponsorships"],
+[data-acc-tab="receipts"],
+#adminTabOverview,
+#adminTabLeads,
+#adminTabTransactions,
+#adminTabReviews,
+#adminProdEditBid {
+  display: none !important;
+}

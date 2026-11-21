@@ -9,9 +9,9 @@ Source-reviewed against `server.js` on 2026-11-19, including authenticated detai
 
 ## Authentication and transport
 
-Use HTTPS and a server-to-server client. Supply `X-API-Key: <PUBLISHING_KEY>` for automation. The server accepts either an active stored key or `PUBLISH_API_KEY` from its environment. `Authorization: Bearer <PUBLISHING_KEY>` also works; if both headers are present, X-API-Key takes precedence for key validation.
+Use HTTPS and a server-to-server client. Supply the configured EDITORIAL_PUBLISH_KEY as an X-API-Key header. Authorization: Bearer also accepts the publishing key. If both headers are present, X-API-Key takes precedence.
 
-An authenticated **admin session** also authorizes publishing operations, through `Authorization: Bearer <SESSION_TOKEN>` or the `top10_session` cookie. A company-user session does not. `POST /api/auth/login` accepts JSON `{ "email": "<ADMIN_EMAIL>", "password": "<ADMIN_PASSWORD>" }` and returns a token and sets a session cookie on successful admin authentication. Sessions are held in process memory, expire after seven days, and do not survive restart. `/api/auth/me` reads the current session; `/api/auth/logout` logs out by POST.
+An authenticated editor can also publish with the top10_session cookie. POST /api/auth/login accepts the configured editor email and password and sets the cookie. Sessions are stored durably, expire after eight hours, and are invalidated when the editor password is changed. GET /api/auth/me reads the current session. POST /api/auth/logout revokes it.
 
 Keys are broad editorial credentials, **not read-only or per-article scoped credentials**. Keep them out of browser bundles, URLs, analytics, logs and public repositories. A separate backend is the appropriate integration boundary. General cross-origin browser API support is not established; the public SSE endpoint's wildcard CORS header is not a general API CORS policy.
 
@@ -140,7 +140,7 @@ Use the directory publishing API for draft or scheduled workflows, not the legac
 
 ## Key management and recommended safe access model
 
-Only an admin session can use GET `/api/admin/api-keys` or POST `/api/admin/api-keys/rotate`. Listing returns stored keys; rotation replaces the stored-key list and returns the new key. **An environment PUBLISH_API_KEY remains independently accepted**, so stored-key rotation alone does not revoke that credential. Coordinate environment rotation and restart as appropriate; avoid logging either response.
+Rotate the publishing key by replacing EDITORIAL_PUBLISH_KEY in the hosting environment and restarting the app. Update the publisher integration to use the new secret. Stored keys from earlier application versions are ignored.
 
 For production integrations, provision a unique admin credential, assign secrets through the server environment, and rotate them without sharing them in chat. Use dedicated least-privilege credentials when scoped keys become available; do not give today's publishing key to a read-only client. Keep audit logs free of credentials, and validate requests before forwarding them.
 

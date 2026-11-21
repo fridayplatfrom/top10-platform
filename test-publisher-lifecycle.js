@@ -14,7 +14,7 @@ const base = 'http://127.0.0.1:3471';
 fs.writeFileSync(dbPath, JSON.stringify({ categories: [], users: [], transactions: [], platformStats: {} }));
 const server = spawn(process.execPath, ['server.js'], {
   cwd: __dirname,
-  env: { ...process.env, PORT: '3471', DB_PATH: dbPath, PUBLISH_API_KEY: key,
+  env: { ...process.env, PORT: '3471', DB_PATH: dbPath, EDITORIAL_PUBLISH_KEY: key,
     DB_USER: '', MYSQL_USER: '', DB_NAME: '', MYSQL_DATABASE: '',
     DB_PASSWORD: '', MYSQL_PASSWORD: '', ADMIN_PASSWORD: crypto.randomBytes(20).toString('hex') },
   stdio: ['ignore', 'pipe', 'pipe']

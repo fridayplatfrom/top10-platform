@@ -64,11 +64,6 @@
                 <span class="cat-menu-count" id="catTotalCountBadge">5</span>
               </div>
               <div class="cat-menu-list" id="categoryMenuList"></div>
-              <div class="cat-menu-footer">
-                <button type="button" class="cat-menu-create-btn" id="dropdownCreateListBtn">
-                  <span>+ Launch a new Top 10 list</span>
-                </button>
-              </div>
             </div>
           </div>
 
@@ -97,8 +92,8 @@
         <div class="topbar-right">
           <!-- Topbar Nav Links: Lists, Founder Portal, Admin -->
           <nav class="topbar-nav" aria-label="Main Navigation">
-            <button type="button" class="topbar-nav-link" id="navGuidesBtn">Lists</button>
-            <button type="button" class="topbar-nav-link" id="navFounderPortalBtn">Founder Portal</button>
+            <a class="topbar-nav-link" id="navGuidesBtn" href="/blog">All Guides</a>
+
             <button type="button" class="topbar-nav-link admin-pill-link hidden" id="navAdminBtn" style="display:none;">
               <span class="admin-dot"></span> Dashboard
             </button>
@@ -183,12 +178,7 @@
         <section id="searchNotFoundPaywall" class="not-found-paywall-card hidden">
           <div class="nf-badge">Missing Category</div>
           <h2 class="nf-title" id="nfHeadingText">We haven't published "Top 10 Video Editors" yet.</h2>
-          <p class="nf-desc">
-            Launch the official <strong id="nfListNameStrong">Top 10 Video Editors</strong> directory and feature your platform first.
-          </p>
-          <button type="button" class="btn-paywall-create" id="nfCreateListPaywallBtn">
-            Launch "<span id="nfBtnLabelSpan">Top 10 Video Editors</span>" ($99)
-          </button>
+          <p class="nf-desc">Try a different search or view the guides below.</p>
         </section>
 
         <!-- FEATURED DIRECTORY HERO CARD (2-Column Editorial Hero with Feature Image) -->
@@ -213,6 +203,8 @@
       <!-- =====================================================================
            VIEW 2: MINIMALIST SINGLE LIST PAGE
            ===================================================================== -->
+      <main id="blogIndexSection" class="guide-archive hidden"></main>
+
       <main id="singleListPageView" class="workspace-container hidden">
 
         <article>
@@ -577,10 +569,10 @@
           <div class="admin-topbar">
             <div>
               <div class="admin-eyebrow">Executive Creator &amp; Monetization Suite</div>
-              <h2 class="admin-title">Platform Command Center &amp; Dashboard</h2>
+              <h2 class="admin-title">Editorial Workspace</h2>
             </div>
             <div class="admin-actions">
-              <span class="admin-status-pill"><span class="pulse-dot"></span> Live Auction Running</span>
+              <span class="admin-status-pill"><span class="pulse-dot"></span> Guide publishing</span>
               <button type="button" class="btn-primary-compact" id="adminHeaderNewCatBtn">+ New Directory</button>
               <button type="button" class="btn-secondary-compact" id="adminExitBtn">Exit to Site →</button>
             </div>
@@ -588,11 +580,6 @@
 
           <!-- 4 KPI Overview Cards -->
           <div class="admin-kpi-grid">
-            <div class="admin-kpi-card">
-              <span class="admin-kpi-label">Total Auction Revenue</span>
-              <span class="admin-kpi-value" id="adminKpiRevenue">$0</span>
-              <span class="admin-kpi-sub">Programmatic Rank Bids + $99 Launches</span>
-            </div>
             <div class="admin-kpi-card">
               <span class="admin-kpi-label">Active Directories</span>
               <span class="admin-kpi-value" id="adminKpiCategories">14</span>
@@ -603,22 +590,13 @@
               <span class="admin-kpi-value" id="adminKpiProducts">140+</span>
               <span class="admin-kpi-sub">Ranked across all directories</span>
             </div>
-            <div class="admin-kpi-card">
-              <span class="admin-kpi-label">Buyer Leads Captured</span>
-              <span class="admin-kpi-value" id="adminKpiLeads">0</span>
-              <span class="admin-kpi-sub">High-intent RFP / Pricing inquiries</span>
-            </div>
           </div>
 
           <!-- Admin Tabs -->
           <div class="admin-nav-tabs">
-            <button type="button" class="admin-tab active" data-admin-tab="products">⚡ Product &amp; Bid Manager</button>
-            <button type="button" class="admin-tab" data-admin-tab="overview">📊 Platform Overview &amp; Analytics</button>
+            <button type="button" class="admin-tab" data-admin-tab="products">Products</button>
             <button type="button" class="admin-tab" data-admin-tab="categories">📁 Directory &amp; List Manager</button>
-            <button type="button" class="admin-tab" data-admin-tab="transactions">💰 Sales &amp; Revenue</button>
-            <button type="button" class="admin-tab" data-admin-tab="reviews">⭐ Review Moderation <span class="admin-tab-badge" id="adminPendingReviewsBadge">0</span></button>
-            <button type="button" class="admin-tab" data-admin-tab="leads">🎯 Buyer RFP Leads <span class="admin-tab-badge" id="adminLeadsCountBadge" style="background:#0284C7;">0</span></button>
-            <button type="button" class="admin-tab" data-admin-tab="editorial">✍️ Articles, Authors &amp; Schedule <span class="admin-tab-badge" id="adminScheduledCountBadge" style="background:#7C3AED;">0</span></button>
+            <button type="button" class="admin-tab active" data-admin-tab="editorial">✍️ Articles, Authors &amp; Schedule <span class="admin-tab-badge" id="adminScheduledCountBadge" style="background:#7C3AED;">0</span></button>
           </div>
 
           <!-- Tab 0: Platform Overview & Revenue Analytics -->
@@ -773,7 +751,7 @@
           </div>
 
           <!-- Tab 1: Product & Bid Master Controller -->
-          <div class="admin-tab-content" id="adminTabProducts">
+          <div class="admin-tab-content hidden" id="adminTabProducts">
             <div class="admin-table-controls">
               <input type="search" id="adminProductSearchInput" class="admin-search-box" placeholder="Filter by product name, category, or founder email..." />
               <select id="adminCategoryFilterSelect" class="admin-select-filter" aria-label="Filter products by directory category">
@@ -934,7 +912,7 @@
           </div>
 
           <!-- Tab 6: Editorial Publishing, Human Authors, Categories, Tags & Schedule -->
-          <div class="admin-tab-content hidden" id="adminTabEditorial">
+          <div class="admin-tab-content" id="adminTabEditorial">
             <!-- Summary Strip -->
             <div class="dash-perf-strip" style="margin-bottom:18px;">
               <div class="perf-stat-item">
@@ -1030,12 +1008,7 @@
                   </div>
                 </div>
                 <div class="dash-widget-body" style="padding:16px;">
-                  <label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:var(--text-main);">X-API-Key Header</label>
-                  <div style="display:flex;gap:8px;margin-bottom:12px;">
-                    <input type="text" id="adminApiKeyDisplay" class="modal-input" readonly value="Loading..." style="font-family:monospace;font-size:12px;flex:1;" />
-                    <button type="button" class="btn-secondary-compact" id="copyApiKeyBtn">Copy Key</button>
-                    <button type="button" class="btn-secondary-compact" id="rotateApiKeyBtn">Rotate</button>
-                  </div>
+                  <p class="dash-widget-sub">Configure the publishing key in the hosting environment.</p>
                   <label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:var(--text-main);">Quick Publish &amp; Schedule Endpoint</label>
                   <pre id="publishApiSnippetPre" style="margin:0;padding:10px;border-radius:8px;background:var(--bg-subtle);border:1px solid var(--border-card);font-size:11px;overflow-x:auto;color:var(--text-main);line-height:1.45;">POST /api/publish/article
 Headers: X-API-Key: &lt;YOUR_KEY&gt;
@@ -1108,9 +1081,8 @@ Body: { "title", "authorId", "topic", "tags": [...], "status": "scheduled", "sch
             <div class="footer-col">
               <div class="footer-col-title">Platform</div>
               <ul class="footer-links">
-                <li><button type="button" class="footer-link-btn" id="footerLinkAllGuides">All Top 10 Directories</button></li>
-                <li><button type="button" class="footer-link-btn" id="footerLinkLaunchPaywall">+ Launch Directory ($99)</button></li>
-                <li><button type="button" class="footer-link-btn" id="footerLinkAdmin">Admin Dashboard</button></li>
+                <li><a class="footer-link-a" id="footerLinkAllGuides" href="/blog">All Top 10 Guides</a></li>
+                <li><a class="footer-link-a" href="/admin">Editor Sign-In</a></li>
                 <li><a href="/sitemap.xml" target="_blank" class="footer-link-a">XML Sitemap</a></li>
                 <li><a href="/llms.txt" target="_blank" class="footer-link-a">LLMs &amp; AI Manifest</a></li>
               </ul>
@@ -1321,28 +1293,20 @@ Body: { "title", "authorId", "topic", "tags": [...], "status": "scheduled", "sch
     <div class="modal-window modal-sm">
       <div class="modal-header">
         <div>
-          <span class="modal-eyebrow">Reader &amp; Brand Account</span>
-          <h2 class="modal-title">Sign In or Switch Profile</h2>
+          <span class="modal-eyebrow">Editorial Workspace</span>
+          <h2 class="modal-title">Editor Sign In</h2>
         </div>
         <button type="button" class="modal-close-btn" id="closeLoginModalBtn">&times;</button>
       </div>
 
       <form id="loginForm" class="modal-body">
         <div class="form-field">
-          <label>Your Name *</label>
-          <input type="text" id="loginName" class="modal-input" placeholder="Sarah Jenkins" required />
-        </div>
-        <div class="form-field">
           <label>Email *</label>
-          <input type="email" id="loginEmail" class="modal-input" placeholder="sarah@company.com" required />
+          <input type="email" id="loginEmail" class="modal-input" autocomplete="username" required />
         </div>
         <div class="form-field">
-          <label>Company / Role *</label>
-          <input type="text" id="loginCompany" class="modal-input" placeholder="Product Researcher" required />
-        </div>
-        <div class="form-field">
-          <label>Password (Required for Admin / Verified Accounts)</label>
-          <input type="password" id="loginPassword" class="modal-input" placeholder="••••••••" autocomplete="current-password" />
+          <label>Password</label>
+          <input type="password" id="loginPassword" class="modal-input" placeholder="••••••••" autocomplete="current-password" required />
         </div>
         <div id="loginErrorMsg" class="form-error hidden" style="color:#DC2626;font-size:12px;font-weight:600;margin-top:6px;"></div>
         <div class="modal-footer">
@@ -1573,7 +1537,7 @@ Body: { "title", "authorId", "topic", "tags": [...], "status": "scheduled", "sch
           </div>
           <div class="form-field">
             <label for="reviewAuthorEmail">Work Email * <span class="autofill-hint">Verified badge</span></label>
-            <input type="email" id="reviewAuthorEmail" class="modal-input" placeholder="sarah@company.com" required />
+            <input type="email" id="reviewAuthorEmail" class="modal-input" autocomplete="username" required />
           </div>
         </div>
 

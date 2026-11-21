@@ -116,7 +116,6 @@
   const catTotalCountBadge = document.getElementById('catTotalCountBadge');
   const topCatIcon = document.getElementById('topCatIcon');
   const topCatName = document.getElementById('topCatName');
-  const dropdownCreateListBtn = document.getElementById('dropdownCreateListBtn');
   const topbarSearchInput = document.getElementById('topbarSearchInput');
   const topbarSearchKbd = document.getElementById('topbarSearchKbd');
   const topbarSearchClearBtn = document.getElementById('topbarSearchClearBtn');
@@ -207,7 +206,6 @@
   const nfHeadingText = document.getElementById('nfHeadingText');
   const nfListNameStrong = document.getElementById('nfListNameStrong');
   const nfBtnLabelSpan = document.getElementById('nfBtnLabelSpan');
-  const nfCreateListPaywallBtn = document.getElementById('nfCreateListPaywallBtn');
   const homeGridHeading = document.getElementById('homeGridHeading');
   const homeListsGrid = document.getElementById('homeListsGrid');
 
@@ -325,9 +323,7 @@
   const closeLoginModalBtn = document.getElementById('closeLoginModalBtn');
   const cancelLoginModalBtn = document.getElementById('cancelLoginModalBtn');
   const loginForm = document.getElementById('loginForm');
-  const loginName = document.getElementById('loginName');
   const loginEmail = document.getElementById('loginEmail');
-  const loginCompany = document.getElementById('loginCompany');
 
   // Modal 4: 1-Click Embed Badge Generator
   const badgeModalBackdrop = document.getElementById('badgeModalBackdrop');
@@ -847,11 +843,11 @@
     if (!cat) return;
     currentCategorySlug = cat.slug;
 
-    updateDynamicSeoHead(cat);
+    if (currentView !== 'blog') updateDynamicSeoHead(cat);
 
     // Update nav links active states
     const isAdmin = currentUser && currentUser.role === 'admin';
-    if (navGuidesBtn) navGuidesBtn.classList.toggle('active', currentView === 'home' || currentView === 'list');
+    if (navGuidesBtn) navGuidesBtn.classList.toggle('active', currentView === 'blog' || currentView === 'list');
     if (navBlogBtn) navBlogBtn.classList.toggle('active', currentView === 'blog' || currentView === 'article');
     if (navAdminBtn) {
       navAdminBtn.classList.toggle('hidden', !isAdmin);
@@ -891,14 +887,14 @@
       renderHomePage();
       syncSingleH1('home');
     } else if (currentView === 'blog') {
-      topCatName.textContent = 'Editorial & Blog';
+      topCatName.textContent = 'All Top 10 Buying Guides';
       homePageView.classList.add('hidden');
       singleListPageView.classList.add('hidden');
       if (blogIndexSection) blogIndexSection.classList.remove('hidden');
       if (blogArticleSection) blogArticleSection.classList.add('hidden');
       if (adminViewSection) adminViewSection.classList.add('hidden');
       if (compareHeadToHeadView) compareHeadToHeadView.classList.add('hidden');
-      renderBlogIndex();
+      renderGuideArchive();
       syncSingleH1('other');
     } else if (currentView === 'article') {
       topCatName.textContent = 'Buying Guide';
@@ -915,7 +911,6 @@
         currentView = 'home';
         if (loginModalBackdrop) {
           loginModalBackdrop.classList.remove('hidden');
-          if (loginName && !loginName.value) loginName.value = 'Platform Admin';
           if (loginEmail) loginEmail.value = 'admin@top10.io';
         }
         showToast('Admin authorization required to access Command Center');
@@ -1214,8 +1209,6 @@
     if (rawQuery && matchedCats.length === 0) {
       searchNotFoundPaywall.classList.remove('hidden');
       nfHeadingText.textContent = `We haven't published "${formattedSearchListTitle}" yet.`;
-      nfListNameStrong.textContent = formattedSearchListTitle;
-      nfBtnLabelSpan.textContent = formattedSearchListTitle;
       homeGridHeading.textContent = 'Other Top 10 Directories';
     } else {
       searchNotFoundPaywall.classList.add('hidden');
@@ -2146,66 +2139,7 @@
                         </a>
                       </h3>
 
-                      ${prod.claimed ? `
-                        <span class="verified-claim-badge" title="Official Founder Verified">
-                          <svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                          Verified
-                        </span>
-                      ` : ''}
-                    </div>
-
-                    <div class="prod-sub-row">
-                      <span class="prod-company-muted">by <span itemprop="brand">${escapeHtml(prod.companyName)}</span></span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Right Action Block: Single-Line Minimalist Toolbar (Share, Bookmark, Visit) -->
-                <div class="product-header-actions">
-                  <div class="card-toolbar-actions">
-                    <button
-                      type="button"
-                      class="btn-compare-vs hidden-accessible"
-                      data-compare-vs="${escapeHtml(prod.id)}"
-                      title="Compare ${escapeHtml(prod.name)} head-to-head"
-                      aria-label="Compare head-to-head"
-                    >
-                      VS
-                    </button>
-
-                    ${prod.claimed ? `
                       <button
-                        type="button"
-                        class="btn-manage-listing hidden-accessible"
-                        data-manage-prod="${escapeHtml(prod.id)}"
-                        title="Manage ${escapeHtml(prod.name)} in Founder Portal"
-                        aria-label="Manage listing"
-                      >
-                        ⚙️
-                      </button>
-                    ` : `
-                      <button
-                        type="button"
-                        class="btn-claim-link hidden-accessible"
-                        data-claim-prod="${escapeHtml(prod.id)}"
-                        title="Claim ${escapeHtml(prod.name)} as official founder"
-                        aria-label="Claim listing"
-                      >
-                        Claim
-                      </button>
-                    `}
-
-                    <button
-                      type="button"
-                      class="btn-boost-pill hidden-accessible"
-                      data-boost-existing="${escapeHtml(prod.id)}"
-                      title="Boost ${escapeHtml(prod.name)} to #1"
-                      aria-label="Boost platform"
-                    >
-                      ⚡ Boost
-                    </button>
-
-                    <button
                       type="button"
                       class="btn-share-ranking icon-btn"
                       data-share-prod="${escapeHtml(prod.id)}"
@@ -2411,20 +2345,7 @@
     }
 
     // Outbound Website Click handler
-    document.querySelectorAll('[data-click-prod]').forEach((link) => {
-      link.addEventListener('click', () => {
-        const prodId = link.getAttribute('data-click-prod');
-        fetch(`/api/categories/${cat.slug}/products/${prodId}/interact`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'click' })
-        })
-          .then((r) => r.json())
-          .then((d) => {
-            if (d.state) appState = d.state;
-          });
-      });
-    });
+
 
     // Lightbox Studio Photo Click Handler
     document.querySelectorAll('.card-media-stage').forEach((stage) => {
@@ -3275,17 +3196,7 @@
     }
 
     if (matchedCats.length === 0 && topProds.length === 0 && matchedArticles.length === 0) {
-      const formattedListTitle = rawQuery.toLowerCase().startsWith('top 10')
-        ? rawQuery
-        : `Top 10 ${rawQuery}`;
-      dropdownHtml = `
-        <div class="lsd-empty-launch">
-          <div class="lsd-empty-text">No matches for "${escapeHtml(rawQuery)}"</div>
-          <button type="button" class="lsd-launch-btn" id="topbarLaunchMissingBtn">
-            + Launch "${escapeHtml(formattedListTitle)}" ($99)
-          </button>
-        </div>
-      `;
+      dropdownHtml = '<div class="lsd-empty-text">No matches for "' + escapeHtml(rawQuery) + '"</div>';
     }
 
     topbarLiveSearchDropdown.innerHTML = dropdownHtml;
@@ -4603,15 +4514,6 @@
     homeBigSearchInput.focus();
   });
 
-  nfCreateListPaywallBtn.addEventListener('click', () => {
-    openCreateListPaywallModal(homeBigSearchInput.value.trim());
-  });
-
-  dropdownCreateListBtn.addEventListener('click', () => {
-    categoryDropdownMenu.classList.add('hidden');
-    openCreateListPaywallModal('');
-  });
-
   if (openBidModalBtn) {
     openBidModalBtn.addEventListener('click', () => openBidModal(1));
   }
@@ -4783,7 +4685,6 @@
   }
 
   // Topbar Navigation Links
-  if (navGuidesBtn) navGuidesBtn.addEventListener('click', () => navigateToHome());
   if (navBlogBtn) navBlogBtn.addEventListener('click', () => navigateToBlog());
   if (navAdminBtn) navAdminBtn.addEventListener('click', () => navigateToAdmin());
   if (adminExitBtn) adminExitBtn.addEventListener('click', () => navigateToHome());
@@ -4933,16 +4834,14 @@
       if (loginErrorMsg) loginErrorMsg.classList.add('hidden');
 
       const passInput = document.getElementById('loginPassword');
-      const password = passInput ? passInput.value.trim() : '';
+      const password = passInput ? passInput.value : '';
 
       try {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: loginName.value.trim(),
             email: loginEmail.value.trim(),
-            company: loginCompany.value.trim(),
             password
           })
         });
@@ -4958,7 +4857,7 @@
         }
         if (data.user) {
           currentUser = data.user;
-          if (data.token) localStorage.setItem('top10_token', data.token);
+          if (window.location.pathname === '/admin') currentView = 'admin';
           if (data.state) appState = data.state;
           loginModalBackdrop.classList.add('hidden');
           loginForm.reset();
@@ -4993,90 +4892,19 @@
     return { name, role: 'Technology Analyst', avatarBg: '#2563EB', avatarText };
   }
 
-  function renderBlogIndex() {
+  function renderGuideArchive() {
     if (!blogIndexSection || !appState) return;
-    const articles = appState.articles || [];
-    if (articles.length === 0) return;
-
-    if (blogTotalCountBadge) {
-      blogTotalCountBadge.textContent = `${articles.length} Buying Guides`;
-    }
-
-    const lead = articles[0];
-    if (blogFeaturedLead && lead) {
-      const leadAuthor = getAuthorInfo(lead.author);
-      const catName = lead.categoryName || lead.category || 'Blog';
-      blogFeaturedLead.className = 'blog-lead-card editorial-hero-card';
-      blogFeaturedLead.innerHTML = `
-        <div class="ehc-left">
-          <div class="ehc-top-row">
-            <div class="ehc-guide-pill">
-              <span class="ehc-guide-label">○ ${escapeHtml(catName)}</span>
-            </div>
-            <span class="ehc-circle-btn" aria-hidden="true">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            </span>
-          </div>
-          <div class="ehc-body">
-            <p class="ehc-date">${escapeHtml(lead.publishedDate || '13 Sept 2026')}</p>
-            <h2 class="ehc-title">${escapeHtml(lead.title)}</h2>
-            <p class="ehc-desc">${escapeHtml(lead.subtitle || lead.excerpt || '')}</p>
-          </div>
-          <div class="ehc-author-row">
-            <img src="${escapeHtml(DEFAULT_FOUNDER_AVATAR)}" alt="${escapeHtml(leadAuthor.name)}" class="ehc-author-avatar" loading="lazy" />
-            <div class="ehc-author-meta">
-              <span class="ehc-author-name">${escapeHtml(leadAuthor.name)}</span>
-              <span class="ehc-author-role">Founder</span>
-            </div>
-          </div>
-        </div>
-        <div class="ehc-right">
-          <div class="ehc-feature-media">
-            <img src="${escapeHtml(lead.coverImage)}" alt="${escapeHtml(lead.title)}" class="ehc-feature-img" loading="eager" />
-          </div>
-        </div>
-      `;
-      blogFeaturedLead.onclick = () => navigateToArticle(lead.slug);
-    }
-
-    if (blogCardsGrid) {
-      const rest = articles.slice(1);
-      blogCardsGrid.innerHTML = rest
-        .map(
-          (a) => {
-            const aAuthor = getAuthorInfo(a.author);
-            return `
-        <article class="blog-card related-dir-card editorial-feature-card" data-blog-slug="${escapeHtml(a.slug)}">
-          <div class="rdc-top-content">
-            <div class="rdc-media-wrap">
-              <img src="${escapeHtml(a.coverImage)}" alt="${escapeHtml(a.title)}" class="rdc-feature-img" loading="eager" />
-            </div>
-            <div class="rdc-body">
-              <div class="rdc-date">${escapeHtml(a.publishedDate || '15 Sept 2026')}</div>
-              <h3 class="rdc-title">${escapeHtml(a.title)}</h3>
-              <p class="rdc-desc">${escapeHtml(a.subtitle || a.excerpt || '')}</p>
-            </div>
-          </div>
-          <div class="rdc-author-row">
-            <img src="${escapeHtml(DEFAULT_FOUNDER_AVATAR)}" alt="${escapeHtml(aAuthor.name)}" class="rdc-author-avatar" loading="lazy" />
-            <div class="rdc-author-meta">
-              <span class="rdc-author-name">${escapeHtml(aAuthor.name)}</span>
-              <span class="rdc-author-role">Founder</span>
-            </div>
-          </div>
-        </article>
-      `;
-          }
-        )
-        .join('');
-
-      blogCardsGrid.querySelectorAll('[data-blog-slug]').forEach((card) => {
-        card.addEventListener('click', () => {
-          const s = card.getAttribute('data-blog-slug');
-          navigateToArticle(s);
-        });
-      });
-    }
+    const guides = [...(appState.categories || [])].sort((a, b) =>
+      (Date.parse(b.publishedAt || b.scheduledAt) || 0) - (Date.parse(a.publishedAt || a.scheduledAt) || 0)
+    );
+    blogIndexSection.innerHTML = '<h1>All Top 10 Buying Guides</h1><ul class="guide-archive-list">' +
+      guides.map(guide => {
+        const title = escapeHtml(guide.editorialTitle || guide.title);
+        const summary = escapeHtml(guide.editorialGuide?.summary || guide.description || '');
+        const url = '/list/' + encodeURIComponent(guide.slug);
+        return '<li class="guide-archive-item"><h2><a href="' + url + '">' + title + '</a></h2><p>' +
+          summary + '</p></li>';
+      }).join('') + '</ul>';
   }
 
   function renderBlogArticle(slug) {
@@ -5311,7 +5139,7 @@
   // =========================================================================
   // ADMIN OPERATIONS COMMAND CENTER (/admin)
   // =========================================================================
-  let activeAdminTab = 'products';
+  let activeAdminTab = 'editorial';
 
   function renderAdminPanel() {
     if (!adminViewSection || !appState) return;
@@ -6383,18 +6211,7 @@
         .join('');
     }
 
-    // Fetch Publishing API Key
-    const apiKeyDisplay = document.getElementById('adminApiKeyDisplay');
-    if (apiKeyDisplay && apiKeyDisplay.value === 'Loading...') {
-      try {
-        const kr = await fetch('/api/admin/api-keys');
-        if (kr.ok) {
-          const kd = await kr.json();
-          const keyVal = kd.apiKeys?.[0]?.key || '';
-          apiKeyDisplay.value = keyVal || 'Not configured';
-        }
-      } catch {}
-    }
+
   }
 
   // Editorial Controls & Author Modal Listeners
@@ -6461,31 +6278,6 @@
       if (tagInput) tagInput.value = '';
       renderAdminEditorialTab();
       showToast(`Added tag(s): ${(d.added || []).join(', ')}`);
-    });
-  }
-
-  const copyApiKeyBtn = document.getElementById('copyApiKeyBtn');
-  if (copyApiKeyBtn) {
-    copyApiKeyBtn.addEventListener('click', async () => {
-      const el = document.getElementById('adminApiKeyDisplay');
-      if (el && el.value) {
-        await copyTextWithFallback(el.value, el);
-        showToast('Publishing X-API-Key copied!');
-      }
-    });
-  }
-
-  const rotateApiKeyBtn = document.getElementById('rotateApiKeyBtn');
-  if (rotateApiKeyBtn) {
-    rotateApiKeyBtn.addEventListener('click', async () => {
-      if (!confirm('Generate a new Publishing API Key? The old key will immediately stop working.')) return;
-      const r = await fetch('/api/admin/api-keys/rotate', { method: 'POST' });
-      const d = await r.json();
-      if (r.ok && d.apiKey) {
-        const el = document.getElementById('adminApiKeyDisplay');
-        if (el) el.value = d.apiKey.key;
-        showToast('API Key rotated!');
-      }
     });
   }
 
@@ -7410,8 +7202,6 @@
     });
   });
 
-  const footerLinkAllGuides = document.getElementById('footerLinkAllGuides');
-  if (footerLinkAllGuides) footerLinkAllGuides.addEventListener('click', () => navigateToHome());
 
   const footerLinkBlog = document.getElementById('footerLinkBlog');
   if (footerLinkBlog) footerLinkBlog.addEventListener('click', () => navigateToBlog());
@@ -7550,173 +7340,5 @@
     }, 100);
   }
 
-  function initLiveAuctionStream() {
-    if (typeof EventSource === 'undefined') return;
-
-    const sse = new EventSource('/api/events/live-bids');
-
-    sse.addEventListener('connected', () => {
-      console.log('[SSE] Connected to real-time live auction stream');
-    });
-
-    sse.addEventListener('bid_placed', (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.state) appState = data.state;
-
-        addAppNotification({
-          type: 'bid',
-          title: `${data.productName} placed a bid of $${data.amountPaid}`,
-          sub: `Moved to Rank #${data.newRank} in ${data.categoryTitle || data.categorySlug}`,
-          categorySlug: data.categorySlug,
-          productId: data.productId
-        });
-
-        if (currentView === 'list' && currentCategorySlug === data.categorySlug) {
-          const cat = getActiveCategory();
-          if (cat) renderSingleListPage(cat);
-          highlightRankShift(data.productId);
-          showToast(`⚡ Live Bid: ${data.productName} just bid $${data.amountPaid} & rose to Rank #${data.newRank}!`);
-        } else if (currentView === 'home') {
-          renderHomePage();
-          showToast(`⚡ Live Bid: ${data.productName} bid $${data.amountPaid} in ${data.categoryTitle || data.categorySlug}!`);
-        } else if (currentView === 'admin') {
-          renderAdminPanel();
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    });
-
-    sse.addEventListener('rank_boosted', (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.state) appState = data.state;
-
-        addAppNotification({
-          type: 'bid',
-          title: `${data.productName} boosted rank`,
-          sub: `PayPal order paid $${data.amount}. Rank #${data.rankAchieved}`,
-          categorySlug: data.categorySlug,
-          productId: data.productId
-        });
-
-        if (currentView === 'list' && currentCategorySlug === data.categorySlug) {
-          const cat = getActiveCategory();
-          if (cat) renderSingleListPage(cat);
-          highlightRankShift(data.productId);
-          showToast(`⚡ Rank Boosted: ${data.productName} paid $${data.amount} for Rank #${data.rankAchieved}!`);
-        } else if (currentView === 'admin') {
-          renderAdminPanel();
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    });
-
-    sse.addEventListener('retainer_locked', (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.state) appState = data.state;
-
-        addAppNotification({
-          type: 'retainer',
-          title: `${data.productName} locked retainer`,
-          sub: `${data.tierName} ($${data.monthlyAmount}/mo MRR)`,
-          categorySlug: data.categorySlug,
-          productId: data.productId
-        });
-
-        if (currentView === 'list' && currentCategorySlug === data.categorySlug) {
-          const cat = getActiveCategory();
-          if (cat) renderSingleListPage(cat);
-          highlightRankShift(data.productId);
-          showToast(`💎 Retainer Locked: ${data.productName} locked ${data.tierName}!`);
-        } else if (currentView === 'admin') {
-          renderAdminPanel();
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    });
-
-    sse.addEventListener('new_review', (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.state) appState = data.state;
-
-        addAppNotification({
-          type: 'review',
-          title: `New Review for ${data.productName}`,
-          sub: `"${data.authorName}" submitted a ${data.stars || 5}-star review`,
-          categorySlug: data.categorySlug
-        });
-
-        showToast(`⭐ New Review: "${data.authorName}" reviewed ${data.productName}`);
-        if (currentView === 'admin') renderAdminPanel();
-      } catch (err) {
-        console.error(err);
-      }
-    });
-
-    sse.addEventListener('review_moderated', (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.state) {
-          appState = data.state;
-          if (currentView === 'list') {
-            const cat = getActiveCategory();
-            if (cat) renderContextStream(cat);
-          } else if (currentView === 'admin') {
-            renderAdminReviews();
-          }
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    });
-
-    sse.addEventListener('new_lead', (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.state) appState = data.state;
-
-        addAppNotification({
-          type: 'lead',
-          title: `Enterprise RFP from ${data.companyName}`,
-          sub: `Requested custom pricing across ${data.selectedPlatforms?.length || 1} platforms`,
-          categorySlug: data.categorySlug
-        });
-
-        showToast(`🎯 New Enterprise RFP captured from ${data.companyName}!`);
-        if (currentView === 'admin') renderAdminPanel();
-      } catch (err) {
-        console.error(err);
-      }
-    });
-
-    sse.addEventListener('new_directory', (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.state) appState = data.state;
-
-        addAppNotification({
-          type: 'directory',
-          title: `New Directory Launched`,
-          sub: `${data.title} is now live with real-time bidding!`,
-          categorySlug: data.categorySlug
-        });
-
-        showToast(`🚀 New Directory Launched: ${data.title}`);
-        if (currentView === 'home') renderHomePage();
-        if (currentView === 'admin') renderAdminPanel();
-      } catch (err) {
-        console.error(err);
-      }
-    });
-  }
-
-  // Initialize
   fetchState();
-  initLiveAuctionStream();
 })();

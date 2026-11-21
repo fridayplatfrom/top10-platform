@@ -14,68 +14,56 @@ const {
 } = require('./editorial-enrichment');
 const { BLOG_ARTICLES } = require('./blog-data');
 const { EDITORIAL_AUTHORS, DEFAULT_TOPIC_CATEGORIES, getAuthorsPool, resolveAuthor } = require('./authors-data');
-const { initMongo, getDbState, saveDbState, isMongoConnected, getDbStatus } = require('./db');
+const { initMariaDb, withDb, getDbState, saveDbState, getDbStatus } = require('./db');
 
 const PORT = process.env.PORT || 3456;
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'db.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // ============================================================================
 // PRODUCTION-GRADE AUTHENTICATION & SECURE SESSIONS
 // ============================================================================
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Top10Admin2026!';
-const sessions = new Map(); // token -> { token, userId, role, email, name, expiresAt }
+const isProduction = process.env.NODE_ENV === 'production';
+const adminEmail = (process.env.ADMIN_EMAIL || 'admin@top10.io').trim().toLowerCase();
+const adminPassword = process.env.ADMIN_PASSWORD;
+const publishKey = process.env.EDITORIAL_PUBLISH_KEY;
+const editor = { id: 'usr_admin', name: 'Editor', email: adminEmail, role: 'admin', avatarText: 'ED', avatarBg: '#111827' };
+const loginAttempts = new Map();
+const sessionLifetime = 8 * 60 * 60 * 1000;
+const sessionCookie = 'Path=/; HttpOnly; SameSite=Strict' + (isProduction ? '; Secure' : '');
 
-function hashPassword(password, salt) {
-  const actualSalt = salt || crypto.randomBytes(16).toString('hex');
-  const hash = crypto.pbkdf2Sync(password, actualSalt, 10000, 64, 'sha512').toString('hex');
-  return `${actualSalt}:${hash}`;
+function matchesSecret(candidate, secret) {
+  const digest = value => crypto.createHash('sha256').update(value).digest();
+  return Boolean(secret && candidate && crypto.timingSafeEqual(digest(candidate), digest(secret)));
 }
 
-function verifyPassword(password, stored) {
-  if (!stored || !stored.includes(':')) return false;
-  const [salt, originalHash] = stored.split(':');
-  const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
-  return hash === originalHash;
+function sessionId(token) {
+  return crypto.createHmac('sha256', adminPassword).update(token).digest('hex');
 }
 
-function createSession(user) {
-  const token = crypto.randomBytes(32).toString('hex');
-  const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
-  const session = {
-    token,
-    userId: user.id,
-    role: user.role || 'viewer',
-    email: user.email,
-    name: user.name,
-    avatarBg: user.avatarBg,
-    avatarText: user.avatarText,
-    company: user.company,
-    expiresAt
-  };
-  sessions.set(token, session);
-  return session;
+function getSessionToken(req) {
+  return (req?.headers.cookie || '').match(/(?:^|;\s*)top10_session=([a-f0-9]{64})(?:;|$)/)?.[1];
 }
 
 function getSession(req) {
-  if (!req) return null;
-  const authHeader = req.headers['authorization'] || '';
-  let token = null;
-  if (authHeader.startsWith('Bearer ')) {
-    token = authHeader.slice(7).trim();
+  const token = getSessionToken(req);
+  if (!token || !adminPassword) return null;
+  const expiresAt = getDbState().editorSessions?.[sessionId(token)];
+  return expiresAt > Date.now() ? editor : null;
+}
+
+function allowLogin(req) {
+  const now = Date.now();
+  const ip = req.socket.remoteAddress;
+  for (const [address, entry] of loginAttempts) {
+    if (entry.until <= now) loginAttempts.delete(address);
   }
-  if (!token && req.headers['cookie']) {
-    const match = req.headers['cookie'].match(/(?:^|;\s*)top10_session=([^;]+)/);
-    if (match) token = match[1];
+  if (!loginAttempts.has(ip)) {
+    if (loginAttempts.size >= 1000) return false;
+    loginAttempts.set(ip, { attempts: 0, until: now + 15 * 60 * 1000 });
   }
-  if (!token) return null;
-  const session = sessions.get(token);
-  if (!session) return null;
-  if (Date.now() > session.expiresAt) {
-    sessions.delete(token);
-    return null;
-  }
-  return session;
+  const entry = loginAttempts.get(ip);
+  entry.attempts += 1;
+  return entry.attempts <= 12;
 }
 
 function sanitizeUser(user) {
@@ -93,93 +81,21 @@ function requireAdmin(req, res) {
   return session;
 }
 
-function getValidApiKey(req, db) {
-  if (!req) return null;
-  const xKey = (req.headers['x-api-key'] || '').trim();
-  const auth = (req.headers['authorization'] || '').trim();
-  const bearerKey = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
-  const candidate = xKey || bearerKey;
-  if (!candidate) return null;
-
-  if (process.env.PUBLISH_API_KEY && candidate === process.env.PUBLISH_API_KEY) {
-    return { id: 'env_key', name: 'Environment Publishing Key', key: candidate };
-  }
-  const activeKeys = Array.isArray(db?.apiKeys) ? db.apiKeys : [];
-  return activeKeys.find((k) => k.active !== false && k.key === candidate) || null;
+function hasPublishingKey(req) {
+  const auth = req.headers.authorization || '';
+  const candidate = req.headers['x-api-key'] || (auth.startsWith('Bearer ') ? auth.slice(7) : '');
+  return typeof candidate === 'string' && matchesSecret(candidate.trim(), publishKey);
 }
 
 function requirePublisherOrAdmin(req, res) {
   const session = getSession(req);
-  if (session && session.role === 'admin') {
-    return { type: 'admin_session', session };
+  if (session) return { type: 'admin_session', session };
+
+  if (hasPublishingKey(req)) {
+    return { type: 'api_key', apiKey: { id: 'env_key', name: 'Editorial Publishing Key' } };
   }
-  const db = readDb();
-  const apiKeyObj = getValidApiKey(req, db);
-  if (apiKeyObj) {
-    return { type: 'api_key', apiKey: apiKeyObj };
-  }
-  sendJson(res, 401, { error: 'Admin session or valid X-API-Key header required' }, req);
+  sendJson(res, 401, { error: 'Editor session or valid publishing key required' }, req);
   return null;
-}
-
-function requireAuth(req, res) {
-  const session = getSession(req);
-  if (!session) {
-    sendJson(res, 401, { error: 'Authentication required' }, req);
-    return null;
-  }
-  return session;
-}
-
-function ensureUserPasswords() {
-  const db = readDb();
-  let modified = false;
-  if (!db.users || !Array.isArray(db.users)) {
-    db.users = [];
-  }
-  let admin = db.users.find((u) => u.role === 'admin' || u.email === 'admin@top10.io');
-  if (!admin) {
-    admin = {
-      id: 'usr_admin',
-      name: 'Ankush (Admin)',
-      email: 'admin@top10.io',
-      company: 'Top 10 HQ',
-      role: 'admin',
-      avatarBg: '#111827',
-      avatarText: 'AD'
-    };
-    db.users.unshift(admin);
-    modified = true;
-  }
-  if (!admin.passwordHash) {
-    admin.passwordHash = hashPassword(ADMIN_PASSWORD);
-    modified = true;
-  }
-
-  const defaults = [
-    { email: 'aaron@stripe.com', pass: 'Stripe2026!', name: 'Aaron Francis', company: 'Stripe Inc', role: 'company', avatarBg: '#059669', avatarText: 'AF' },
-    { email: 'travis@maybefinance.com', pass: 'Maybe2026!', name: 'Travis Woods', company: 'Maybe Finance Inc', role: 'company', avatarBg: '#2563EB', avatarText: 'TW' }
-  ];
-  for (const def of defaults) {
-    let u = db.users.find((x) => x.email && x.email.toLowerCase() === def.email.toLowerCase());
-    if (!u) {
-      const { pass, ...profile } = def;
-      u = { id: 'usr_' + Date.now() + Math.random().toString(36).slice(2, 5), ...profile, passwordHash: hashPassword(pass) };
-      db.users.push(u);
-      modified = true;
-    } else if (!u.passwordHash) {
-      u.passwordHash = hashPassword(def.pass);
-      modified = true;
-    }
-    if (Object.hasOwn(u, 'pass')) {
-      delete u.pass;
-      modified = true;
-    }
-  }
-
-  if (modified) {
-    writeDb(db);
-  }
 }
 
 function normalizeTagsInput(tagsInput) {
@@ -219,10 +135,6 @@ function normalizeTopicCategories(existingTopics) {
   return Array.from(map.values());
 }
 
-function generateDefaultApiKey() {
-  return 't10_pub_' + crypto.randomBytes(20).toString('hex');
-}
-
 function ensureEditorialStore(parsed) {
   let dirty = false;
   if (!Array.isArray(parsed.authors) || parsed.authors.length < EDITORIAL_AUTHORS.length) {
@@ -237,18 +149,6 @@ function ensureEditorialStore(parsed) {
   }
   if (!Array.isArray(parsed.tags)) {
     parsed.tags = [];
-    dirty = true;
-  }
-  if (!Array.isArray(parsed.apiKeys) || parsed.apiKeys.length === 0) {
-    parsed.apiKeys = [
-      {
-        id: 'key_default',
-        name: 'Primary Headless Publishing Key',
-        key: process.env.PUBLISH_API_KEY || generateDefaultApiKey(),
-        createdAt: new Date().toISOString(),
-        active: true
-      }
-    ];
     dirty = true;
   }
   return dirty;
@@ -283,26 +183,19 @@ function promoteDueScheduledCategories(db) {
   return promoted;
 }
 
-function runScheduledPublisher() {
+async function runScheduledPublisher() {
   try {
-    const db = getDbState();
-    db.categories = ensureDefaultEightCategories(db.categories);
+    const db = readDb();
     const promoted = promoteDueScheduledCategories(db);
     if (promoted.length > 0) {
-      saveDbState(db);
+      await saveDbState(db);
       for (const cat of promoted) {
         console.log(`[Scheduler] Auto-published scheduled article: ${cat.title} (/list/${cat.slug})`);
-        broadcastSse('article_published', {
-          slug: cat.slug,
-          title: cat.title,
-          publishedAt: cat.publishedAt,
-          timestamp: new Date().toISOString()
-        });
       }
     }
     return promoted;
   } catch (err) {
-    console.error('[Scheduler Error]', err.message);
+    if (err.statusCode !== 409) console.error('[Scheduler Error]', err.message);
     return [];
   }
 }
@@ -310,20 +203,17 @@ function runScheduledPublisher() {
 function readDb() {
   const parsed = getDbState();
   parsed.categories = ensureDefaultEightCategories(parsed.categories);
+  if (!parsed.platformStats) parsed.platformStats = {};
   if (!parsed.subscriptions) parsed.subscriptions = [];
   if (!parsed.reviews) parsed.reviews = [];
   if (!parsed.claims) parsed.claims = [];
-  const dirtyStore = ensureEditorialStore(parsed);
-  const promoted = promoteDueScheduledCategories(parsed);
+  ensureEditorialStore(parsed);
   parsed.articles = [];
-  if (dirtyStore || promoted.length > 0) {
-    saveDbState(parsed);
-  }
   return parsed;
 }
 
 function writeDb(data) {
-  saveDbState(data);
+  return saveDbState(data);
 }
 
 function escapeXml(str) {
@@ -355,30 +245,12 @@ function enrichCategory(cat, platformStats, customAuthors = []) {
   const minEntry = Number(platformStats.minEntryBid || 49);
   const minInc = Number(platformStats.minOutbidIncrement || 25);
 
-  const fullProducts = ensureTenRealProducts(cat);
-
-  const sorted = [...fullProducts].sort((a, b) => {
-    const paidA = Number(a.amountPaid || 0);
-    const paidB = Number(b.amountPaid || 0);
-    if (paidB !== paidA) {
-      return paidB - paidA;
-    }
-    if (paidA > 0) {
-      return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
-    }
-    return Number(b.upvotes || 0) - Number(a.upvotes || 0);
-  });
-
-  const rankedAll = sorted.map((prod, idx) => {
-    const rank = idx + 1;
-    const paid = Number(prod.amountPaid || 0);
-    const priceToBeatThisSlot = paid > 0 ? paid + minInc : minEntry;
-    return {
-      ...prod,
-      rank,
-      isOrganic: paid === 0,
-      priceToTakeSlot: priceToBeatThisSlot
-    };
+  const rankedAll = ensureTenRealProducts(cat).map((item, index) => {
+    const {
+      ownerEmail, claimedBy, claimedAt, retainerSubscription, claimed, isClaimed,
+      hasHighlightBorder, hasPinnedCta, amountPaid, priceToTakeSlot, ...product
+    } = item;
+    return { ...product, amountPaid: 0, isOrganic: true, rank: index + 1 };
   });
 
   const top10 = rankedAll.slice(0, 10);
@@ -406,6 +278,7 @@ function enrichCategory(cat, platformStats, customAuthors = []) {
 
   const baseEnriched = {
     ...cat,
+    products: rankedAll,
     top10,
     pushedOut,
     slotLadder,
@@ -453,13 +326,9 @@ function getPublicState(user) {
       return cmt.status === 'approved' || !cmt.status || cmt.type === 'system_event';
     });
     if (isAdmin) return { ...enriched, comments };
-    const publicProduct = ({ ownerEmail, claimedBy, retainerSubscription, ...product }) => product;
-    const publicComments = comments.map(({ email, authorEmail, ...comment }) => comment);
+    const publicComments = [];
     return {
       ...enriched,
-      products: (enriched.products || []).map(publicProduct),
-      top10: (enriched.top10 || []).map(publicProduct),
-      pushedOut: (enriched.pushedOut || []).map(publicProduct),
       comments: publicComments
     };
   });
@@ -494,12 +363,12 @@ function getPublicState(user) {
     topicCategories: db.topicCategories || DEFAULT_TOPIC_CATEGORIES,
     tags: buildTagSummary(categories, db.tags || []),
     currentUser: sanitizeUser(user),
-    buyerLeads: isAdmin ? (db.buyerLeads || []) : [],
-    transactions: isAdmin ? (db.transactions || []) : [],
-    users: isAdmin ? (db.users || []).map(sanitizeUser) : [],
-    claims: isAdmin ? (db.claims || []) : [],
-    subscriptions: isAdmin ? (db.subscriptions || []) : [],
-    reviews: isAdmin ? (db.reviews || []) : []
+    buyerLeads: [],
+    transactions: [],
+    users: [],
+    claims: [],
+    subscriptions: [],
+    reviews: []
   };
 }
 
@@ -635,33 +504,6 @@ function render404(res, req, base, message = 'The requested Top 10 directory, bu
   return sendResponse(req, res, 404, 'text/html; charset=utf-8', html);
 }
 
-async function verifyPayPalOrder(orderId) {
-  const clientId = process.env.PAYPAL_CLIENT_ID;
-  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
-    return { verified: true, simulated: true };
-  }
-  try {
-    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-    const tokenRes = await fetch('https://api-m.sandbox.paypal.com/v1/oauth2/token', {
-      method: 'POST',
-      headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'grant_type=client_credentials'
-    });
-    if (!tokenRes.ok) return { verified: false, error: 'PayPal Authentication Failed' };
-    const tokenData = await tokenRes.json();
-    const orderRes = await fetch(`https://api-m.sandbox.paypal.com/v2/checkout/orders/${orderId}`, {
-      headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
-    });
-    if (!orderRes.ok) return { verified: false, error: 'Order Not Found' };
-    const orderData = await orderRes.json();
-    const isCompleted = orderData.status === 'COMPLETED';
-    return { verified: isCompleted, status: orderData.status };
-  } catch (err) {
-    return { verified: false, error: err.message };
-  }
-}
-
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -684,51 +526,60 @@ function getBaseUrl(req) {
 // ============================================================================
 // REAL-TIME SERVER-SENT EVENTS (SSE) LIVE AUCTION & OUTBID BROADCASTER
 // ============================================================================
-const sseClients = new Set();
-
-function broadcastSse(eventType, payload) {
-  if (sseClients.size === 0) return;
-  const dataStr = JSON.stringify(payload);
-  const msg = `event: ${eventType}\ndata: ${dataStr}\n\n`;
-  for (const client of sseClients) {
-    try {
-      client.write(msg);
-    } catch {
-      sseClients.delete(client);
-    }
-  }
+function guideSummaries(categories) {
+  return categories.filter(isPubliclyPublished).map(cat => {
+    const meta = getCategoryFeatureMeta(cat);
+    return {
+      slug: cat.slug,
+      title: meta.editorialTitle || cat.title,
+      description: meta.description,
+      url: '/list/' + encodeURIComponent(cat.slug),
+      publishedAt: cat.publishedAt || (cat.status === 'scheduled' ? cat.scheduledAt : null)
+    };
+  }).sort((a, b) => (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0));
 }
 
-// 20-second heartbeat to maintain alive connections across corporate firewalls (only when clients connected)
-setInterval(() => {
-  if (sseClients.size > 0) {
-    broadcastSse('ping', { time: Date.now() });
-  }
-}, 20000);
+function renderGuideArchive(categories) {
+  const links = guideSummaries(categories).map(guide =>
+    '<li class="guide-archive-item"><h2><a href="' + escapeXml(guide.url) + '">' + escapeXml(guide.title) +
+    '</a></h2><p>' + escapeXml(guide.description) + '</p></li>'
+  ).join('');
+  return '<main id="blogIndexSection" class="guide-archive"><h1>All Top 10 Buying Guides</h1>' +
+    '<ul class="guide-archive-list">' + links + '</ul></main>';
+}
+
+function marketplaceRoute(method, pathname) {
+  return /^\/api\/(?:paypal|founder|claim|leads|category-requests|subscribers)(?:\/|$)/.test(pathname)
+    || /^\/api\/admin\/(?:leads|category-requests|api-keys|reviews)(?:\/|$)/.test(pathname)
+    || /^\/api\/categories\/[^/]+\/(?:bid|comments|products\/[^/]+\/(?:lead|interact))(?:\/|$)/.test(pathname)
+    || /^\/api\/(?:webhooks\/paypal|lists\/create-paid|products\/click|user\/profile|admin\/product\/reset-bid|admin\/settings|events\/live-bids)\/?$/.test(pathname)
+    || (method === 'PUT' && /^\/api\/categories\/[^/]+\/products\/[^/]+$/.test(pathname))
+    || (method !== 'GET' && /^\/api\/blog(?:\/|$)/.test(pathname))
+    || (method === 'POST' && /^\/api\/(?:reviews|categories\/[^/]+\/reviews)(?:\/|$)/.test(pathname));
+}
 
 const server = http.createServer(async (req, res) => {
   try {
     const base = getBaseUrl(req);
     const parsedUrl = new URL(req.url, base);
     const pathname = parsedUrl.pathname;
-
-    // Real-Time Server-Sent Events (SSE) Stream Endpoint
-    if (req.method === 'GET' && pathname === '/api/events/live-bids') {
-      res.writeHead(200, {
-        'Content-Type': 'text/event-stream; charset=utf-8',
-        'Cache-Control': 'no-cache, no-transform',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*'
-      });
-      res.write(`event: connected\ndata: ${JSON.stringify({ time: Date.now(), clients: sseClients.size + 1 })}\n\n`);
-      sseClients.add(res);
-
-      req.on('close', () => {
-        sseClients.delete(res);
-      });
-      return;
+    if (marketplaceRoute(req.method, pathname)) {
+      return sendJson(res, 404, { error: 'This feature is unavailable' }, req);
     }
+    const asset = pathname !== '/index.html' && !pathname.startsWith('/api/')
+      && path.extname(pathname) && fs.existsSync(path.join(PUBLIC_DIR, pathname));
+    const handle = () => handleRequest(req, res, base, parsedUrl, pathname);
+    if (asset) return await handle();
+    await withDb(handle);
+  } catch (err) {
+    if (res.headersSent || res.destroyed) return;
+    const status = err.statusCode || 500;
+    if (status >= 500) console.error('Request failed:', err);
+    sendJson(res, status, { error: status === 500 ? 'Internal Server Error' : err.message }, req);
+  }
+});
 
+async function handleRequest(req, res, base, parsedUrl, pathname) {
     // Zero-404 Native SVG Favicons for Chrome and modern browsers
     if (req.method === 'GET' && (pathname === '/favicon.ico' || pathname === '/favicon.svg')) {
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
@@ -764,6 +615,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     // 1. GET /api/state (Sanitized for public visitors, full view for admin)
+    if (req.method === 'GET' && pathname === '/api/health') {
+      return sendJson(res, 200, { status: 'ready' }, req);
+    }
+
     if (req.method === 'GET' && pathname === '/api/state') {
       const session = getSession(req);
       return sendJson(res, 200, getPublicState(session), req);
@@ -777,16 +632,17 @@ const server = http.createServer(async (req, res) => {
 
     // 1-logout. POST /api/auth/logout
     if (req.method === 'POST' && pathname === '/api/auth/logout') {
-      const session = getSession(req);
-      if (session) {
-        sessions.delete(session.token);
+      const token = getSessionToken(req);
+      if (token && getSession(req)) {
+        const db = readDb();
+        delete db.editorSessions[sessionId(token)];
+        await writeDb(db);
       }
       return sendJson(res, 200, { success: true }, req, {
-        'Set-Cookie': 'top10_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'
+        'Set-Cookie': 'top10_session=; ' + sessionCookie + '; Max-Age=0'
       });
     }
 
-    // 1-db. GET /api/admin/db-status (Admin only)
     if (req.method === 'GET' && pathname === '/api/admin/db-status') {
       if (!requireAdmin(req, res)) return;
       return sendJson(res, 200, getDbStatus(), req);
@@ -1040,8 +896,8 @@ const server = http.createServer(async (req, res) => {
         logoText: (item.logoText || pName.slice(0, 2)).toUpperCase(),
         logoBg: item.logoBg || palette[index % palette.length],
         logoColor: item.logoColor || '#FFFFFF',
-        amountPaid: Number(item.amountPaid || 0),
-        isOrganic: Number(item.amountPaid || 0) === 0,
+        amountPaid: 0,
+        isOrganic: true,
         ownerEmail: item.ownerEmail || '',
         clicks: Number(item.clicks ?? Math.max(120, 850 - index * 70)),
         upvotes: Number(item.upvotes ?? Math.max(18, 95 - index * 7)),
@@ -1152,7 +1008,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && pathname === '/api/authors') {
       const db = readDb();
       const session = getSession(req);
-      const isAuthorized = (session && session.role === 'admin') || Boolean(getValidApiKey(req, db));
+      const isAuthorized = (session && session.role === 'admin') || hasPublishingKey(req);
       const authors = (db.authors || EDITORIAL_AUTHORS).map((a) => {
         const count = (db.categories || []).filter((c) => {
           const m = getCategoryFeatureMeta(c, db.authors);
@@ -1202,7 +1058,7 @@ const server = http.createServer(async (req, res) => {
           }
         }
       } else db.authors.push(newAuthor);
-      writeDb(db);
+      await writeDb(db);
       return sendJson(res, 201, { success: true, author: newAuthor, state: getPublicState(getSession(req)) }, req);
     }
 
@@ -1218,7 +1074,7 @@ const server = http.createServer(async (req, res) => {
       const idx = (db.authors || []).findIndex((a) => a.id === aId);
       if (idx === -1) return sendJson(res, 404, { error: 'Author not found' }, req);
       db.authors.splice(idx, 1);
-      writeDb(db);
+      await writeDb(db);
       return sendJson(res, 200, { success: true, state: getPublicState(getSession(req)) }, req);
     }
 
@@ -1253,7 +1109,7 @@ const server = http.createServer(async (req, res) => {
       };
       if (existing) Object.assign(existing, topicObj);
       else db.topicCategories.push(topicObj);
-      writeDb(db);
+      await writeDb(db);
       return sendJson(res, 201, { success: true, category: topicObj, state: getPublicState(getSession(req)) }, req);
     }
 
@@ -1268,7 +1124,7 @@ const server = http.createServer(async (req, res) => {
       const idx = (db.topicCategories || []).findIndex((tc) => tc.slug === slug);
       if (idx === -1) return sendJson(res, 404, { error: 'Topic category not found' }, req);
       db.topicCategories.splice(idx, 1);
-      writeDb(db);
+      await writeDb(db);
       return sendJson(res, 200, { success: true, state: getPublicState(getSession(req)) }, req);
     }
 
@@ -1288,7 +1144,7 @@ const server = http.createServer(async (req, res) => {
       for (const t of incoming) {
         if (!db.tags.includes(t)) db.tags.push(t);
       }
-      writeDb(db);
+      await writeDb(db);
       return sendJson(res, 201, { success: true, added: incoming, tags: buildTagSummary(db.categories, db.tags), state: getPublicState(getSession(req)) }, req);
     }
 
@@ -1303,7 +1159,7 @@ const server = http.createServer(async (req, res) => {
           c.tags = c.tags.filter((t) => t !== tagSlug);
         }
       }
-      writeDb(db);
+      await writeDb(db);
       return sendJson(res, 200, { success: true, state: getPublicState(getSession(req)) }, req);
     }
 
@@ -1420,10 +1276,9 @@ const server = http.createServer(async (req, res) => {
       if (existingIdx === -1) {
         db.categories.push(targetCat);
       }
-      writeDb(db);
+      await writeDb(db);
       const enriched = enrichCategory(targetCat, db.platformStats, db.authors);
       if (targetCat.status === 'published') {
-        broadcastSse('new_directory', { categorySlug: targetCat.slug, title: targetCat.title });
       }
       return sendJson(
         res,
@@ -1452,8 +1307,7 @@ const server = http.createServer(async (req, res) => {
       cat.publishedAt = new Date().toISOString();
       cat.scheduledAt = null;
       cat.updatedAt = new Date().toISOString();
-      writeDb(db);
-      broadcastSse('article_published', { slug: cat.slug, title: cat.title, publishedAt: cat.publishedAt });
+      await writeDb(db);
       return sendJson(res, 200, { success: true, article: enrichCategory(cat, db.platformStats, db.authors), state: getPublicState(getSession(req)) }, req);
     }
 
@@ -1494,7 +1348,7 @@ const server = http.createServer(async (req, res) => {
       }
       applyEditorialFieldsToCategory(cat, body, db);
       cat.updatedAt = new Date().toISOString();
-      writeDb(db);
+      await writeDb(db);
       return sendJson(res, 200, { success: true, article: enrichCategory(cat, db.platformStats, db.authors), state: getPublicState(getSession(req)) }, req);
     }
 
@@ -1505,14 +1359,14 @@ const server = http.createServer(async (req, res) => {
       const idx = db.categories.findIndex((c) => c.slug === slug);
       if (idx === -1) return sendJson(res, 404, { error: 'Article not found' }, req);
       db.categories.splice(idx, 1);
-      writeDb(db);
+      await writeDb(db);
       return sendJson(res, 200, { success: true, state: getPublicState(getSession(req)) }, req);
     }
 
     // 1-pub-i. POST /api/admin/scheduler/run & GET/POST /api/admin/api-keys
     if (req.method === 'POST' && pathname === '/api/admin/scheduler/run') {
       if (!requirePublisherOrAdmin(req, res)) return;
-      const promoted = runScheduledPublisher();
+      const promoted = await runScheduledPublisher();
       return sendJson(res, 200, {
         success: true,
         promotedCount: promoted.length,
@@ -1521,171 +1375,11 @@ const server = http.createServer(async (req, res) => {
       }, req);
     }
 
-    if (req.method === 'GET' && pathname === '/api/admin/api-keys') {
-      if (!requireAdmin(req, res)) return;
-      const db = readDb();
-      return sendJson(res, 200, { apiKeys: db.apiKeys || [] }, req);
-    }
-
-    if (req.method === 'POST' && pathname === '/api/admin/api-keys/rotate') {
-      if (!requireAdmin(req, res)) return;
-      const db = readDb();
-      const newKey = generateDefaultApiKey();
-      db.apiKeys = [
-        {
-          id: 'key_' + Date.now(),
-          name: 'Primary Headless Publishing Key',
-          key: newKey,
-          createdAt: new Date().toISOString(),
-          active: true
-        }
-      ];
-      writeDb(db);
-      return sendJson(res, 200, { success: true, apiKey: db.apiKeys[0] }, req);
-    }
-
-    // 1a. GET /api/blog (List of all editorial buying guides & teardowns)
-    if (req.method === 'GET' && pathname === '/api/blog') {
-      const db = readDb();
-      const articles = (db.articles && db.articles.length > 0 ? db.articles : BLOG_ARTICLES);
-      const mapped = articles.map((a) => ({
-        ...a,
-        content: a.contentHtml || a.content || '',
-        keyTakeaways: a.takeaways || a.keyTakeaways || [],
-        authorName: typeof a.author === 'object' ? a.author.name : a.author
-      }));
-      return sendJson(res, 200, mapped);
-    }
-
-    // 1a-2. GET /api/blog/:slug (Single editorial article)
-    const blogMatch = pathname.match(/^\/api\/blog\/([^/]+)$/);
-    if (req.method === 'GET' && blogMatch) {
-      const slug = blogMatch[1];
-      const db = readDb();
-      const articles = (db.articles && db.articles.length > 0 ? db.articles : BLOG_ARTICLES);
-      const article = articles.find((a) => a.slug === slug);
-      if (!article) return sendJson(res, 404, { error: 'Article not found' });
-      return sendJson(res, 200, {
-        ...article,
-        content: article.contentHtml || article.content || '',
-        keyTakeaways: article.takeaways || article.keyTakeaways || [],
-        authorName: typeof article.author === 'object' ? article.author.name : article.author
-      });
-    }
-
-    // 1a-3. POST /api/blog (Create New Blog / Editorial Article - Admin only)
-    if (req.method === 'POST' && pathname === '/api/blog') {
-      if (!requireAdmin(req, res)) return;
-      const body = await parseBody(req);
-      const title = (body.title || '').trim();
-      if (!title) return sendJson(res, 400, { error: 'Article title is required' }, req);
-
-      const db = readDb();
-      if (!db.articles) db.articles = JSON.parse(JSON.stringify(BLOG_ARTICLES || []));
-
-      const rawSlug = (body.slug || title)
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-      const slug = rawSlug || `article-${Date.now()}`;
-
-      if (db.articles.some((a) => a.slug === slug)) {
-        return sendJson(res, 409, { error: `An article with slug "${slug}" already exists.` }, req);
-      }
-
-      const authorName = (body.authorName || body.author || 'Sarah Jenkins').trim();
-      const newArticle = {
-        id: `art_${Date.now()}`,
-        title,
-        slug,
-        subtitle: (body.subtitle || body.excerpt || '').trim(),
-        category: (body.category || 'Buyer Guides').trim(),
-        categorySlug: (body.categorySlug || 'billing-software').trim(),
-        author: {
-          name: authorName,
-          role: (body.authorRole || 'Lead Technical Researcher').trim(),
-          initials: (authorName.match(/\b\w/g) || ['S', 'J']).join('').slice(0, 2).toUpperCase()
-        },
-        readTime: (body.readTime || '6 min read').trim(),
-        date: body.date || new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-        coverEmoji: body.coverEmoji || body.coverIcon || '📝',
-        coverGradient: body.coverGradient || 'linear-gradient(135deg, #1e293b, #0f172a)',
-        takeaways: Array.isArray(body.takeaways) ? body.takeaways : (body.keyTakeaways || []),
-        keyTakeaways: Array.isArray(body.takeaways) ? body.takeaways : (body.keyTakeaways || []),
-        contentHtml: body.content || body.contentHtml || '',
-        content: body.content || body.contentHtml || '',
-        status: body.status || 'published',
-        views: 0,
-        createdAt: new Date().toISOString()
-      };
-
-      db.articles.unshift(newArticle);
-      writeDb(db);
-      return sendJson(res, 201, { success: true, article: newArticle, state: getPublicState(getSession(req)) }, req);
-    }
-
-    // 1a-4. PUT /api/blog/:slug (Update Editorial Article - Admin only)
-    if (req.method === 'PUT' && blogMatch) {
-      if (!requireAdmin(req, res)) return;
-      const slug = blogMatch[1];
-      const body = await parseBody(req);
-      const db = readDb();
-      if (!db.articles) db.articles = JSON.parse(JSON.stringify(BLOG_ARTICLES || []));
-
-      const article = db.articles.find((a) => a.slug === slug);
-      if (!article) return sendJson(res, 404, { error: 'Article not found' }, req);
-
-      if (body.title !== undefined) article.title = String(body.title).trim();
-      if (body.subtitle !== undefined) article.subtitle = String(body.subtitle).trim();
-      if (body.category !== undefined) article.category = String(body.category).trim();
-      if (body.categorySlug !== undefined) article.categorySlug = String(body.categorySlug).trim();
-      if (body.readTime !== undefined) article.readTime = String(body.readTime).trim();
-      if (body.coverEmoji !== undefined || body.coverIcon !== undefined) {
-        article.coverEmoji = body.coverEmoji || body.coverIcon;
-      }
-      if (body.authorName !== undefined || body.author !== undefined) {
-        const aName = (body.authorName || body.author || 'Editorial Team').trim();
-        article.author = {
-          name: aName,
-          role: body.authorRole || (article.author ? article.author.role : 'Lead Researcher'),
-          initials: (aName.match(/\b\w/g) || ['E', 'D']).join('').slice(0, 2).toUpperCase()
-        };
-      }
-      if (body.takeaways !== undefined || body.keyTakeaways !== undefined) {
-        const tk = Array.isArray(body.takeaways) ? body.takeaways : (body.keyTakeaways || []);
-        article.takeaways = tk;
-        article.keyTakeaways = tk;
-      }
-      if (body.content !== undefined || body.contentHtml !== undefined) {
-        const ct = body.content || body.contentHtml || '';
-        article.content = ct;
-        article.contentHtml = ct;
-      }
-      if (body.status !== undefined) article.status = body.status;
-      article.updatedAt = new Date().toISOString();
-
-      writeDb(db);
-      return sendJson(res, 200, { success: true, article, state: getPublicState(getSession(req)) }, req);
-    }
-
-    // 1a-5. DELETE /api/blog/:slug (Delete Editorial Article - Admin only)
-    if (req.method === 'DELETE' && blogMatch) {
-      if (!requireAdmin(req, res)) return;
-      const slug = blogMatch[1];
-      const db = readDb();
-      if (!db.articles) db.articles = JSON.parse(JSON.stringify(BLOG_ARTICLES || []));
-
-      const idx = db.articles.findIndex((a) => a.slug === slug);
-      if (idx === -1) return sendJson(res, 404, { error: 'Article not found' }, req);
-
-      db.articles.splice(idx, 1);
-      writeDb(db);
-      const fullState = getPublicState(getSession(req));
-      broadcastSse('article_deleted', {
-        slug,
-        timestamp: new Date().toISOString()
-      });
-      return sendJson(res, 200, { success: true, state: fullState }, req);
+    if (req.method === 'GET' && /^\/api\/blog(?:\/[^/]+)?$/.test(pathname)) {
+      const guides = guideSummaries(readDb().categories);
+      if (pathname === '/api/blog') return sendJson(res, 200, guides, req);
+      const guide = guides.find(item => item.slug === pathname.slice('/api/blog/'.length));
+      return guide ? sendJson(res, 200, guide, req) : sendJson(res, 404, { error: 'Guide unavailable' }, req);
     }
 
     // 1b. GET /api/badge/:slug/:productId.svg (Dynamic Live Rank SVG Badge for Company Websites)
@@ -1719,260 +1413,27 @@ const server = http.createServer(async (req, res) => {
       return res.end(svg);
     }
 
-    // 2. POST /api/auth/login (Secure Authentication with PBKDF2 Password Verification & Session Cookie)
+    // Editor-only sign-in
     if (req.method === 'POST' && pathname === '/api/auth/login') {
+      if (!adminPassword) return sendJson(res, 503, { error: 'Editor sign-in is unavailable' }, req);
+      if (!allowLogin(req)) return sendJson(res, 429, { error: 'Too many sign-in attempts' }, req);
       const body = await parseBody(req);
+      const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
+      const password = typeof body?.password === 'string' ? body.password : '';
+      if (email !== adminEmail || !matchesSecret(password, adminPassword)) {
+        return sendJson(res, 401, { error: 'Invalid editor credentials' }, req);
+      }
+      loginAttempts.delete(req.socket.remoteAddress);
+
+      const token = crypto.randomBytes(32).toString('hex');
       const db = readDb();
-      const email = (body.email || '').trim().toLowerCase();
-      const password = (body.password || '').trim();
-
-      if (!email) {
-        return sendJson(res, 400, { error: 'Email is required' }, req);
-      }
-
-      let user = db.users.find((u) => u.email && u.email.toLowerCase() === email);
-
-      // Admin authorization check
-      if (email === 'admin@top10.io' || (user && user.role === 'admin')) {
-        if (!password) {
-          return sendJson(res, 401, { error: 'Admin password is required' }, req);
-        }
-        if (!user || !user.passwordHash || !verifyPassword(password, user.passwordHash)) {
-          return sendJson(res, 401, { error: 'Invalid admin credentials' }, req);
-        }
-      } else if (user) {
-        // Existing user with password hash
-        if (user.passwordHash) {
-          if (!password || !verifyPassword(password, user.passwordHash)) {
-            return sendJson(res, 401, { error: 'Invalid password' }, req);
-          }
-        } else if (password) {
-          // Upgrade user with password hash
-          user.passwordHash = hashPassword(password);
-          writeDb(db);
-        }
-      } else {
-        // Create new user
-        const name = (body.name || email.split('@')[0]).trim();
-        const company = (body.company || `${name} Co`).trim();
-        const initials =
-          name
-            .split(/\s+/)
-            .map((w) => w[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2) || 'CO';
-        const colors = ['#2563EB', '#059669', '#7C3AED', '#EA580C', '#0D9488', '#DB2777'];
-        user = {
-          id: 'usr_' + Date.now(),
-          name,
-          email,
-          company,
-          role: 'company',
-          avatarBg: colors[db.users.length % colors.length],
-          avatarText: initials
-        };
-        if (password) {
-          user.passwordHash = hashPassword(password);
-        }
-        db.users.push(user);
-        writeDb(db);
-      }
-
-      const session = createSession(user);
-      return sendJson(
-        res,
-        200,
-        {
-          success: true,
-          token: session.token,
-          user: sanitizeUser(user),
-          state: getPublicState(session)
-        },
-        req,
-        {
-          'Set-Cookie': `top10_session=${session.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`
-        }
-      );
-    }
-
-    // 3. POST /api/categories/:slug/bid
-    const bidMatch = pathname.match(/^\/api\/categories\/([^/]+)\/bid$/);
-    if (req.method === 'POST' && bidMatch) {
-      const slug = bidMatch[1];
-      const body = await parseBody(req);
-      const db = readDb();
-      const cat = db.categories.find((c) => c.slug === slug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
-
-      // Snapshot previous ranks of paid products before applying this bid
-      const beforeEnriched = enrichCategory(cat, db.platformStats);
-      const prevRanksMap = {};
-      beforeEnriched.top10.forEach((p) => {
-        if (!p.isOrganic) prevRanksMap[p.id] = p.rank;
+      const now = Date.now();
+      db.editorSessions = Object.fromEntries(Object.entries(db.editorSessions || {}).filter(([, expires]) => expires > now));
+      db.editorSessions[sessionId(token)] = now + sessionLifetime;
+      await writeDb(db);
+      return sendJson(res, 200, { success: true, user: editor, state: getPublicState(editor) }, req, {
+        'Set-Cookie': 'top10_session=' + token + '; ' + sessionCookie + '; Max-Age=' + sessionLifetime / 1000
       });
-
-      const paymentAmount = Number(body.paymentAmount || 0);
-      if (!paymentAmount || paymentAmount < 1) {
-        return sendJson(res, 400, { error: 'Valid payment amount is required' });
-      }
-
-      let targetProduct = null;
-      const existingProductId = body.existingProductId;
-
-      if (existingProductId) {
-        targetProduct = cat.products.find((p) => p.id === existingProductId);
-        if (!targetProduct) {
-          return sendJson(res, 404, { error: 'Product not found in this category' });
-        }
-        targetProduct.amountPaid = Number(targetProduct.amountPaid || 0) + paymentAmount;
-        targetProduct.isOrganic = false;
-        targetProduct.updatedAt = new Date().toISOString();
-        if (body.ownerEmail) targetProduct.ownerEmail = body.ownerEmail.trim();
-        if (body.hasHighlightBorder) targetProduct.hasHighlightBorder = true;
-        if (body.hasPinnedCta) targetProduct.hasPinnedCta = true;
-      } else {
-        const name = (body.name || '').trim();
-        if (!name) return sendJson(res, 400, { error: 'Product name is required' });
-        const companyName = (body.companyName || name).trim();
-        const tagline = (body.tagline || 'Verified product in ' + cat.title).trim();
-        const website = (body.website || 'https://example.com').trim();
-        const pricingTag = (body.pricingTag || 'Custom Pricing').trim();
-        const rawHighlight = (body.highlightTag || 'Featured Pick').trim();
-        const highlightTag = rawHighlight.startsWith('@') ? rawHighlight : `@${rawHighlight}`;
-        const logoText = (body.logoText || name.slice(0, 2).toUpperCase()).trim().slice(0, 3);
-        const logoBg = body.logoBg || '#111827';
-        const logoColor = body.logoColor || '#B8FF01';
-
-        targetProduct = {
-          id: 'prod_' + Date.now(),
-          name,
-          companyName,
-          tagline,
-          website,
-          pricingTag,
-          highlightTag,
-          logoText,
-          logoBg,
-          logoColor,
-          amountPaid: paymentAmount,
-          isOrganic: false,
-          hasHighlightBorder: Boolean(body.hasHighlightBorder),
-          hasPinnedCta: Boolean(body.hasPinnedCta),
-          ownerEmail: (body.ownerEmail || '').trim(),
-          clicks: 120,
-          upvotes: 18,
-          updatedAt: new Date().toISOString()
-        };
-        cat.products.push(targetProduct);
-      }
-
-      const enriched = enrichCategory(cat, db.platformStats);
-      const rankedProd = enriched.top10.find((p) => p.id === targetProduct.id);
-      const newRank = rankedProd ? rankedProd.rank : 11;
-
-      // Detect any paid products that got pushed down by this bid and record Outbid Alerts!
-      if (!db.outbidAlerts) db.outbidAlerts = [];
-      // Remove any resolved alert for the product that just boosted
-      db.outbidAlerts = db.outbidAlerts.filter((a) => a.productId !== targetProduct.id);
-
-      const minInc = Number(db.platformStats.minOutbidIncrement || 25);
-      enriched.top10.forEach((p) => {
-        if (p.id !== targetProduct.id && prevRanksMap[p.id] && p.rank > prevRanksMap[p.id]) {
-          const targetSlotHolder = enriched.top10.find((x) => x.rank === prevRanksMap[p.id]);
-          const reclaimCost = targetSlotHolder
-            ? Math.max(minInc, Number(targetSlotHolder.amountPaid) + minInc - Number(p.amountPaid))
-            : minInc;
-          db.outbidAlerts = db.outbidAlerts.filter((a) => a.productId !== p.id);
-          db.outbidAlerts.unshift({
-            id: 'alert_' + Date.now() + '_' + p.id,
-            categorySlug: cat.slug,
-            categoryTitle: cat.title,
-            productId: p.id,
-            productName: p.name,
-            oldRank: prevRanksMap[p.id],
-            newRank: p.rank,
-            overtakenBy: targetProduct.name,
-            reclaimAmount: reclaimCost,
-            createdAt: new Date().toISOString()
-          });
-        }
-      });
-
-      cat.updatedAgo = 'just now';
-      cat.comments.unshift({
-        id: 'cmt_' + Date.now(),
-        type: 'bid_event',
-        authorName: body.authorName || targetProduct.companyName || targetProduct.name,
-        authorRole: 'Verified Sponsor',
-        avatarBg: targetProduct.logoBg || '#111827',
-        avatarText: (targetProduct.logoText || 'SP').slice(0, 2),
-        timeAgo: 'just now',
-        likes: 1,
-        text: existingProductId
-          ? `added $${paymentAmount} (Total: $${targetProduct.amountPaid}) to claim`
-          : `paid $${paymentAmount} to list ${targetProduct.name} at`,
-        highlightPill: `Rank #${newRank} · ${cat.title}`,
-        attachments: []
-      });
-
-      if (!db.transactions) db.transactions = [];
-      db.transactions.unshift({
-        id: 'tx_' + Date.now(),
-        categorySlug: cat.slug,
-        categoryTitle: cat.title,
-        productName: targetProduct.name,
-        companyEmail: targetProduct.ownerEmail || body.ownerEmail || 'sponsor@company.com',
-        amount: paymentAmount,
-        rankAchieved: newRank,
-        createdAt: new Date().toISOString()
-      });
-
-      writeDb(db);
-      const publicState = getPublicState(null);
-      broadcastSse('bid_placed', {
-        categorySlug: cat.slug,
-        categoryTitle: cat.title,
-        productId: targetProduct.id,
-        productName: targetProduct.name,
-        newRank,
-        amountPaid: paymentAmount,
-        totalPaid: targetProduct.amountPaid,
-        timestamp: new Date().toISOString(),
-        state: publicState
-      });
-      return sendJson(res, 200, {
-        newRank,
-        product: targetProduct,
-        state: publicState
-      });
-    }
-
-    // 4. PUT /api/categories/:slug/products/:productId (Edit Product Details)
-    const editProdMatch = pathname.match(/^\/api\/categories\/([^/]+)\/products\/([^/]+)$/);
-    if (req.method === 'PUT' && editProdMatch) {
-      const [, slug, prodId] = editProdMatch;
-      const body = await parseBody(req);
-      const db = readDb();
-      const cat = db.categories.find((c) => c.slug === slug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
-      const prod = cat.products.find((p) => p.id === prodId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' });
-
-      if (body.name) prod.name = body.name.trim();
-      if (body.companyName) prod.companyName = body.companyName.trim();
-      if (body.tagline) prod.tagline = body.tagline.trim();
-      if (body.website) prod.website = body.website.trim();
-      if (body.pricingTag) prod.pricingTag = body.pricingTag.trim();
-      if (body.highlightTag) {
-        const ht = body.highlightTag.trim();
-        prod.highlightTag = ht.startsWith('@') ? ht : `@${ht}`;
-      }
-      if (body.logoBg) prod.logoBg = body.logoBg;
-      if (body.logoText) prod.logoText = body.logoText.trim().slice(0, 3).toUpperCase();
-
-      writeDb(db);
-      return sendJson(res, 200, { product: prod, state: getPublicState(getSession(req)) });
     }
 
     // 5. DELETE /api/admin/categories/:slug/products/:productId (Admin delete or reset bid - Admin only)
@@ -1984,7 +1445,7 @@ const server = http.createServer(async (req, res) => {
       const cat = db.categories.find((c) => c.slug === slug);
       if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
       cat.products = cat.products.filter((p) => p.id !== prodId);
-      writeDb(db);
+      await writeDb(db);
       return sendJson(res, 200, { state: getPublicState(getSession(req)) }, req);
     }
 
@@ -2008,7 +1469,7 @@ const server = http.createServer(async (req, res) => {
       applyEditorialFieldsToCategory(cat, body, db);
       cat.updatedAt = new Date().toISOString();
 
-      writeDb(db);
+      await writeDb(db);
       return sendJson(res, 200, { success: true, category: cat, state: getPublicState(getSession(req)) }, req);
     }
 
@@ -2021,12 +1482,8 @@ const server = http.createServer(async (req, res) => {
       if (idx === -1) return sendJson(res, 404, { error: 'Category not found' }, req);
 
       db.categories.splice(idx, 1);
-      writeDb(db);
+      await writeDb(db);
       const fullState = getPublicState(getSession(req));
-      broadcastSse('category_deleted', {
-        slug,
-        timestamp: new Date().toISOString()
-      });
       return sendJson(res, 200, { success: true, state: fullState }, req);
     }
 
@@ -2044,7 +1501,6 @@ const server = http.createServer(async (req, res) => {
       if (!name) return sendJson(res, 400, { error: 'Product name is required' }, req);
 
       const prodId = (body.id || `prod_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${Date.now().toString().slice(-4)}`);
-      const amountPaid = Number(body.amountPaid || 0);
 
       const newProd = {
         id: prodId,
@@ -2054,10 +1510,10 @@ const server = http.createServer(async (req, res) => {
         website: body.website || 'https://example.com',
         startingPrice: body.startingPrice || body.pricingTag || 'Free Trial Available',
         tagline: body.tagline || `${name} delivers next-generation performance.`,
-        highlight: body.highlight || body.badge || (amountPaid > 0 ? 'Sponsored' : 'Verified'),
-        badge: body.badge || body.highlight || (amountPaid > 0 ? 'Sponsored' : 'Verified'),
-        amountPaid,
-        isOrganic: amountPaid === 0,
+        highlight: body.highlight || body.badge || 'Editorial pick',
+        badge: body.badge || body.highlight || 'Editorial pick',
+        amountPaid: 0,
+        isOrganic: true,
         upvotes: 0,
         clicks: 0,
         specs: Array.isArray(body.specs) ? body.specs : ['Enterprise Security', 'Cloud-Native Architecture', 'REST & GraphQL APIs', '99.99% SLA Uptime'],
@@ -2068,103 +1524,9 @@ const server = http.createServer(async (req, res) => {
 
       if (!cat.products) cat.products = [];
       cat.products.push(newProd);
-      cat.products.sort((a, b) => (b.amountPaid || 0) - (a.amountPaid || 0));
-      writeDb(db);
+      await writeDb(db);
       return sendJson(res, 201, { success: true, product: newProd, state: getPublicState(getSession(req)) }, req);
     }
-
-    // 12d. POST /api/admin/product/reset-bid (Admin only)
-    if (req.method === 'POST' && pathname === '/api/admin/product/reset-bid') {
-      if (!requireAdmin(req, res)) return;
-      const body = await parseBody(req);
-      const db = readDb();
-      const { categorySlug, productId } = body;
-      const cat = (db.categories || []).find((c) => c.slug === categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
-      const prod = (cat.products || []).find((p) => p.id === productId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' }, req);
-
-      prod.amountPaid = 0;
-      prod.isOrganic = true;
-      prod.highlightTag = '@Unclaimed Organic';
-      prod.updatedAt = new Date().toISOString();
-      cat.products.sort((a, b) => (b.amountPaid || 0) - (a.amountPaid || 0));
-      writeDb(db);
-      return sendJson(res, 200, { product: prod, state: getPublicState(getSession(req)) }, req);
-    }
-
-    // 6. PUT /api/admin/settings (Admin updates floor bid & increment rules - Admin only)
-    if (req.method === 'PUT' && pathname === '/api/admin/settings') {
-      if (!requireAdmin(req, res)) return;
-      const body = await parseBody(req);
-      const db = readDb();
-      if (body.minEntryBid !== undefined) {
-        db.platformStats.minEntryBid = Math.max(1, Number(body.minEntryBid));
-      }
-      if (body.minOutbidIncrement !== undefined) {
-        db.platformStats.minOutbidIncrement = Math.max(1, Number(body.minOutbidIncrement));
-      }
-      if (body.stripeKeyHint !== undefined) {
-        db.platformStats.stripeKeyHint = String(body.stripeKeyHint).trim();
-      }
-      writeDb(db);
-      return sendJson(res, 200, { state: getPublicState(getSession(req)) }, req);
-    }
-
-    // 7. POST /api/categories/:slug/comments
-    const commentMatch = pathname.match(/^\/api\/categories\/([^/]+)\/comments$/);
-    if (req.method === 'POST' && commentMatch) {
-      const slug = commentMatch[1];
-      const body = await parseBody(req);
-      const db = readDb();
-      const cat = db.categories.find((c) => c.slug === slug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
-
-      const text = (body.text || '').trim();
-      if (!text) return sendJson(res, 400, { error: 'Comment text is required' });
-
-      const authorName = (body.authorName || 'Community Member').trim();
-      const initials =
-        authorName
-          .split(/\s+/)
-          .map((w) => w[0])
-          .join('')
-          .toUpperCase()
-          .slice(0, 2) || 'CM';
-
-      const newComment = {
-        id: 'cmt_' + Date.now(),
-        type: body.attachments && body.attachments.length > 0 ? 'file_event' : 'comment',
-        authorName,
-        authorRole: body.authorRole || 'Verified Reviewer',
-        avatarBg: body.avatarBg || '#111827',
-        avatarText: initials,
-        timeAgo: 'just now',
-        likes: 0,
-        text,
-        mentionTag: body.mentionTag || '',
-        attachments: Array.isArray(body.attachments) ? body.attachments : []
-      };
-
-      cat.comments.unshift(newComment);
-      writeDb(db);
-      return sendJson(res, 200, { comment: newComment, state: getPublicState(getSession(req)) });
-    }
-
-    // 8. POST /api/categories/:slug/comments/:commentId/like
-    const likeCommentMatch = pathname.match(/^\/api\/categories\/([^/]+)\/comments\/([^/]+)\/like$/);
-    if (req.method === 'POST' && likeCommentMatch) {
-      const [, slug, cmtId] = likeCommentMatch;
-      const db = readDb();
-      const cat = db.categories.find((c) => c.slug === slug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
-      const cmt = (cat.comments || []).find((c) => c.id === cmtId);
-      if (!cmt) return sendJson(res, 404, { error: 'Comment not found' });
-      cmt.likes = Number(cmt.likes || 0) + 1;
-      writeDb(db);
-      return sendJson(res, 200, { state: getPublicState(getSession(req)) });
-    }
-
 
     // 9. DELETE /api/admin/categories/:slug/comments/:commentId (Admin only)
     const delCommentMatch = pathname.match(/^\/api\/admin\/categories\/([^/]+)\/comments\/([^/]+)$/);
@@ -2175,182 +1537,8 @@ const server = http.createServer(async (req, res) => {
       const cat = db.categories.find((c) => c.slug === slug);
       if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
       cat.comments = (cat.comments || []).filter((c) => c.id !== cmtId);
-      writeDb(db);
+      await writeDb(db);
       return sendJson(res, 200, { state: getPublicState(getSession(req)) }, req);
-    }
-
-    // 10. POST /api/categories/:slug/products/:productId/interact
-    const interactMatch = pathname.match(/^\/api\/categories\/([^/]+)\/products\/([^/]+)\/interact$/);
-    if (req.method === 'POST' && interactMatch) {
-      const [, slug, prodId] = interactMatch;
-      const body = await parseBody(req);
-      const db = readDb();
-      const cat = db.categories.find((c) => c.slug === slug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
-      const prod = findProductInCat(cat, prodId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' }, req);
-
-      if (body.action === 'upvote') {
-        prod.upvotes = Number(prod.upvotes || 0) + 1;
-      } else {
-        prod.clicks = Number(prod.clicks || 0) + 1;
-      }
-      writeDb(db);
-      return sendJson(res, 200, { clicks: prod.clicks, upvotes: prod.upvotes, state: getPublicState(getSession(req)) }, req);
-    }
-
-    // 10b. POST /api/products/click (Convenience click tracker)
-    if (req.method === 'POST' && pathname === '/api/products/click') {
-      const body = await parseBody(req);
-      const db = readDb();
-      const cat = db.categories.find((c) => c.slug === body.categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
-      const prod = findProductInCat(cat, body.productId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' }, req);
-      prod.clicks = Number(prod.clicks || 0) + 1;
-      writeDb(db);
-      return sendJson(res, 200, { success: true, clicks: prod.clicks, state: getPublicState(getSession(req)) }, req);
-    }
-
-    // 11. POST /api/lists/create-paid (Paywall to create a new Top 10 list + optional #1 founding product)
-    if (req.method === 'POST' && pathname === '/api/lists/create-paid') {
-      const body = await parseBody(req);
-      const db = readDb();
-      let rawTitle = (body.title || '').trim();
-      if (!rawTitle) return sendJson(res, 400, { error: 'List title is required' });
-
-      const fullTitle = rawTitle.toLowerCase().startsWith('top 10')
-        ? rawTitle
-        : `Top 10 ${rawTitle}`;
-      const shortName = fullTitle.replace(/^Top\s+10\s+/i, '').trim() || rawTitle;
-      const slug =
-        (body.slug ||
-          shortName
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-|-$/g, '')) || 'list-' + Date.now();
-
-      const existing = db.categories.find((c) => c.slug === slug);
-      if (existing) {
-        return sendJson(res, 200, { category: existing, state: getPublicState(getSession(req)) });
-      }
-
-      const paywallFee = Math.max(49, Number(body.paymentAmount || 99));
-      const prodName = (body.productName || `${shortName} Leader #1`).trim();
-      const prodWebsite = (body.website || 'https://example.com').trim();
-      const prodTagline = (
-        body.tagline || `Ranked #1 founding platform in ${fullTitle}.`
-      ).trim();
-      const prodPricing = (body.pricingTag || 'From $29/mo').trim();
-      const rawHighlight = (body.highlightTag || `@#1 in ${shortName}`).trim();
-      const highlightTag = rawHighlight.startsWith('@') ? rawHighlight : `@${rawHighlight}`;
-
-      const foundingProduct = {
-        id: `prod_${slug}_1_${Date.now()}`,
-        name: prodName,
-        companyName: (body.companyName || prodName).trim(),
-        tagline: prodTagline,
-        website: prodWebsite,
-        pricingTag: prodPricing,
-        highlightTag,
-        logoText: prodName.slice(0, 2).toUpperCase(),
-        logoBg: '#111827',
-        logoColor: '#B8FF01',
-        amountPaid: paywallFee,
-        isOrganic: false,
-        ownerEmail: (body.ownerEmail || 'founder@company.com').trim(),
-        clicks: 140,
-        upvotes: 24,
-        updatedAt: new Date().toISOString()
-      };
-
-      const palette = [
-        '#2563EB',
-        '#059669',
-        '#7C3AED',
-        '#EA580C',
-        '#0284C7',
-        '#4F46E5',
-        '#0D9488',
-        '#DC2626',
-        '#334155'
-      ];
-      const organicPlaceholders = [2, 3, 4, 5, 6, 7, 8, 9, 10].map((rankNum, idx) => ({
-        id: `prod_${slug}_org_${rankNum}_${Date.now()}`,
-        name: `${shortName} Option #${rankNum}`,
-        companyName: `${shortName} Brand`,
-        tagline: `Unclaimed organic slot #${rankNum} in ${fullTitle}. Any company can claim and replace this spot starting at $49.`,
-        website: 'https://example.com',
-        pricingTag: 'Open Slot',
-        highlightTag: '@Available Slot',
-        logoText: `#${rankNum}`,
-        logoBg: palette[idx % palette.length],
-        logoColor: '#FFFFFF',
-        amountPaid: 0,
-        isOrganic: true,
-        ownerEmail: '',
-        clicks: Math.max(80, 450 - idx * 35),
-        upvotes: Math.max(10, 60 - idx * 5),
-        updatedAt: new Date().toISOString()
-      }));
-
-      const iconColors = ['#B8FF01', '#38BDF8', '#A855F7', '#F97316', '#10B981', '#FACC15'];
-      const newCategory = {
-        id: slug,
-        slug,
-        title: fullTitle,
-        shortName,
-        subtitle: `Top 10 Directory · USD($) · Live Auction Ranking · 10 Verified Slots`,
-        iconText: shortName[0] ? shortName[0].toUpperCase() : '10',
-        iconBg: iconColors[db.categories.length % iconColors.length],
-        iconColor: '#111827',
-        updatedAgo: 'just now',
-        metrics: {
-          monthlyViews: '42.80k',
-          buyerClicks: '12.40k',
-          poolRevenue: `$${paywallFee}`,
-          topBid: `$${paywallFee}`
-        },
-        products: [foundingProduct, ...organicPlaceholders],
-        comments: [
-          {
-            id: 'cmt_launch_' + Date.now(),
-            type: 'bid_event',
-            authorName: foundingProduct.companyName,
-            authorRole: 'Founding #1 Sponsor',
-            avatarBg: '#111827',
-            avatarText: foundingProduct.logoText,
-            timeAgo: 'just now',
-            likes: 1,
-            text: `paid $${paywallFee} to create list & claim`,
-            highlightPill: `Rank #1 · ${fullTitle}`,
-            attachments: []
-          }
-        ]
-      };
-
-      db.categories.unshift(newCategory);
-      if (!db.transactions) db.transactions = [];
-      db.transactions.unshift({
-        id: 'tx_list_' + Date.now(),
-        categorySlug: slug,
-        categoryTitle: fullTitle,
-        productName: `${prodName} (Created List)`,
-        companyEmail: foundingProduct.ownerEmail,
-        amount: paywallFee,
-        rankAchieved: 1,
-        createdAt: new Date().toISOString()
-      });
-
-      writeDb(db);
-      const state = getPublicState(null);
-      const formattedCat = (state.categories || []).find((c) => c.slug === slug) || newCategory;
-      broadcastSse('new_directory', {
-        categorySlug: slug,
-        title: fullTitle,
-        state
-      });
-      return sendJson(res, 200, { category: formattedCat, state });
     }
 
     // 11b. POST /api/admin/categories (Admin creates a new Top 10 page - Admin only)
@@ -2475,13 +1663,9 @@ const server = http.createServer(async (req, res) => {
 
       applyEditorialFieldsToCategory(newCategory, body, db);
       db.categories.push(newCategory);
-      writeDb(db);
+      await writeDb(db);
       const state = getPublicState(getSession(req));
       const formattedCat = (state.categories || []).find((c) => c.slug === slug) || newCategory;
-      broadcastSse('new_directory', {
-        categorySlug: slug,
-        title
-      });
       return sendJson(res, 200, { success: true, category: formattedCat, state }, req);
     }
 
@@ -2517,29 +1701,8 @@ const server = http.createServer(async (req, res) => {
         updatedAt: new Date().toISOString()
       });
 
-      writeDb(db);
+      await writeDb(db);
       return sendJson(res, 200, { state: getPublicState(getSession(req)) }, req);
-    }
-
-    // 12b. POST /api/user/profile (Update current user display profile)
-    if (req.method === 'POST' && pathname === '/api/user/profile') {
-      const body = await parseBody(req);
-      const db = readDb();
-      const userId = (body.id || '').trim();
-      const user = (db.users || []).find((u) => u.id === userId);
-      if (user) {
-        if (body.name) user.name = body.name.trim();
-        if (body.company) user.company = body.company.trim();
-        if (body.email) user.email = body.email.trim();
-        if (body.name) {
-          const parts = user.name.split(/\s+/).filter(Boolean);
-          user.avatarText = (parts[0]?.[0] || 'U') + (parts[1]?.[0] || parts[0]?.[1] || '');
-          user.avatarText = user.avatarText.toUpperCase();
-        }
-        writeDb(db);
-        return sendJson(res, 200, { user: sanitizeUser(user), state: getPublicState(getSession(req)) }, req);
-      }
-      return sendJson(res, 404, { error: 'User not found' }, req);
     }
 
     // 12c. POST /api/admin/product/update (Admin inline product editor - Admin only)
@@ -2547,28 +1710,18 @@ const server = http.createServer(async (req, res) => {
       if (!requireAdmin(req, res)) return;
       const body = await parseBody(req);
       const db = readDb();
-      const { categorySlug, productId, amountPaid, pricingTag, tagline, name } = body;
+      const { categorySlug, productId, pricingTag, tagline, name } = body;
       const cat = (db.categories || []).find((c) => c.slug === categorySlug);
       if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
       const prod = (cat.products || []).find((p) => p.id === productId);
       if (!prod) return sendJson(res, 404, { error: 'Product not found' }, req);
 
-      if (amountPaid !== undefined) {
-        const amt = parseFloat(amountPaid) || 0;
-        prod.amountPaid = amt;
-        prod.isOrganic = amt <= 0;
-        if (amt > 0 && (!prod.highlightTag || prod.highlightTag.includes('Organic'))) {
-          prod.highlightTag = '@Sponsored Rank';
-        }
-      }
       if (pricingTag !== undefined) prod.pricingTag = pricingTag.trim();
       if (tagline !== undefined) prod.tagline = tagline.trim();
       if (name !== undefined) prod.name = name.trim();
       prod.updatedAt = new Date().toISOString();
 
-      // Re-sort category products by amountPaid desc
-      cat.products.sort((a, b) => (b.amountPaid || 0) - (a.amountPaid || 0));
-      writeDb(db);
+      await writeDb(db);
       return sendJson(res, 200, { product: prod, state: getPublicState(getSession(req)) }, req);
     }
 
@@ -2757,609 +1910,6 @@ ${items}
       return res.end(svg);
     }
 
-    // 13f. POST /api/paypal/create-order (One-Off Placement Bids & Directory Launches)
-    if (req.method === 'POST' && pathname === '/api/paypal/create-order') {
-      const body = await parseBody(req);
-      const amount = Number(body.amount || body.bidAmount || 49);
-      const orderId = 'ORDER-PP-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-      return sendJson(res, 200, {
-        success: true,
-        orderId,
-        amount,
-        currency: 'USD',
-        approvalUrl: `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`,
-        message: 'PayPal checkout order initiated'
-      });
-    }
-
-    // 13g. POST /api/paypal/capture-order
-    if (req.method === 'POST' && pathname === '/api/paypal/capture-order') {
-      const body = await parseBody(req);
-      const db = readDb();
-      const orderId = body.orderId || ('ORDER-PP-' + Date.now().toString(36).toUpperCase());
-      const amount = Number(body.amount || body.bidAmount || 49);
-      const ownerEmail = (body.ownerEmail || body.authorEmail || 'founder@company.com').trim().toLowerCase();
-      const authorName = body.authorName || 'Founder';
-
-      if (body.action === 'launch_category' && body.details) {
-        const catTitle = (body.details.title || '').trim();
-        const slug = body.details.slug || catTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-        const newCat = {
-          slug,
-          title: catTitle,
-          description: body.details.description || `Curated rankings of the top 10 ${catTitle.toLowerCase()}.`,
-          iconBg: '#111827',
-          iconColor: '#B8FF01',
-          editorialGuide: {
-            lastUpdatedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            verifiedLeaderBadge: 'Top Pick',
-            summary: `Independent editorial review and verified buyer rankings for ${catTitle}.`,
-            faqs: []
-          },
-          products: []
-        };
-        if (body.details.productName) {
-          newCat.products.push({
-            id: 'prod_' + Date.now(),
-            name: body.details.productName,
-            companyName: body.details.companyName || body.details.productName,
-            website: body.details.website || 'https://example.com',
-            tagline: body.details.tagline || 'Leading solution in ' + catTitle,
-            pricingTag: body.details.pricingTag || 'Transparent Pricing',
-            highlightTag: '@Founding Sponsor',
-            amountPaid: amount,
-            isClaimed: true,
-            claimedBy: ownerEmail,
-            updatedAt: new Date().toISOString()
-          });
-        }
-        db.categories.push(newCat);
-        db.transactions.push({
-          id: 'tx_' + Date.now(),
-          categorySlug: slug,
-          amount,
-          buyerEmail: ownerEmail,
-          buyerName: authorName,
-          type: 'directory_launch',
-          paymentGateway: 'PayPal',
-          paypalOrderId: orderId,
-          timestamp: new Date().toISOString()
-        });
-        writeDb(db);
-        return sendJson(res, 200, { success: true, categorySlug: slug, rankAchieved: 1, state: getPublicState(getSession(req)) });
-      }
-
-      const cat = db.categories.find((c) => c.slug === body.categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
-
-      let targetProd = findProductInCat(cat, body.productId);
-      if (targetProd) {
-        targetProd.amountPaid = Number(targetProd.amountPaid || 0) + amount;
-        targetProd.isOrganic = false;
-        targetProd.updatedAt = new Date().toISOString();
-      } else if (body.details && body.details.name) {
-        targetProd = {
-          id: 'prod_' + Date.now(),
-          name: body.details.name,
-          companyName: body.details.companyName || body.details.name,
-          website: body.details.website || 'https://example.com',
-          tagline: body.details.tagline || '',
-          pricingTag: body.details.pricingTag || 'Free Trial',
-          highlightTag: '@Sponsor',
-          amountPaid: amount,
-          isClaimed: true,
-          claimedBy: ownerEmail,
-          updatedAt: new Date().toISOString()
-        };
-        cat.products.push(targetProd);
-      }
-
-      if (cat.products && Array.isArray(cat.products)) {
-        cat.products.sort((a, b) => Number(b.amountPaid || 0) - Number(a.amountPaid || 0));
-      }
-      const rankAchieved = targetProd ? (cat.products.findIndex((p) => p.id === targetProd.id) + 1) : 1;
-
-      db.transactions.push({
-        id: 'tx_' + Date.now(),
-        categorySlug: cat.slug,
-        productName: targetProd ? targetProd.name : 'Platform',
-        amount,
-        buyerEmail: ownerEmail,
-        buyerName: authorName,
-        type: 'rank_bid',
-        paymentGateway: 'PayPal',
-        paypalOrderId: orderId,
-        timestamp: new Date().toISOString()
-      });
-
-      writeDb(db);
-      const publicState = getPublicState(null);
-      broadcastSse('rank_boosted', {
-        categorySlug: cat.slug,
-        categoryTitle: cat.title,
-        productId: targetProd ? targetProd.id : null,
-        productName: targetProd ? targetProd.name : 'Platform',
-        amount,
-        rankAchieved: rankAchieved > 0 ? rankAchieved : 1,
-        timestamp: new Date().toISOString(),
-        state: publicState
-      });
-      return sendJson(res, 200, { success: true, orderId, product: targetProd, rankAchieved: rankAchieved > 0 ? rankAchieved : 1, state: publicState });
-    }
-
-    // 13h. POST /api/paypal/create-subscription (Recurring Sponsorship Retainer: Lock #1 ($299/mo) | Guaranteed Top 3 ($149/mo))
-    if (req.method === 'POST' && pathname === '/api/paypal/create-subscription') {
-      const body = await parseBody(req);
-      const db = readDb();
-      const cat = db.categories.find((c) => c.slug === body.categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
-
-      const prod = findProductInCat(cat, body.productId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' });
-
-      const tier = body.tier === 'guaranteed_top_3' ? 'guaranteed_top_3' : 'lock_rank_1';
-      const monthlyAmount = tier === 'lock_rank_1' ? 299 : 149;
-      const subId = 'SUB-PP-' + Date.now().toString(36).toUpperCase();
-      const nextBilling = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-      const ownerEmail = (body.ownerEmail || 'founder@company.com').trim().toLowerCase();
-
-      prod.retainerSubscription = {
-        id: subId,
-        tier,
-        tierName: tier === 'lock_rank_1' ? 'Lock #1 for 30 Days' : 'Guaranteed Top 3',
-        monthlyAmount,
-        status: 'active',
-        ownerEmail,
-        startedAt: new Date().toISOString(),
-        nextBillingDate: nextBilling,
-        paymentGateway: 'PayPal'
-      };
-
-      if (tier === 'lock_rank_1') {
-        const highestOther = cat.products.reduce((max, p) => p.id !== prod.id ? Math.max(max, Number(p.amountPaid || 0)) : max, 0);
-        prod.amountPaid = Math.max(Number(prod.amountPaid || 0), highestOther + 50);
-      }
-      prod.updatedAt = new Date().toISOString();
-
-      db.subscriptions = db.subscriptions || [];
-      db.subscriptions.push({
-        id: subId,
-        tier,
-        categorySlug: cat.slug,
-        categoryTitle: cat.title,
-        productId: prod.id,
-        productName: prod.name,
-        monthlyAmount,
-        status: 'active',
-        ownerEmail,
-        startedAt: new Date().toISOString(),
-        nextBillingDate: nextBilling,
-        paymentGateway: 'PayPal'
-      });
-
-      db.transactions.push({
-        id: 'tx_' + Date.now(),
-        categorySlug: cat.slug,
-        productName: prod.name,
-        amount: monthlyAmount,
-        buyerEmail: ownerEmail,
-        buyerName: body.authorName || prod.name,
-        type: 'sponsorship_retainer_paypal',
-        paymentGateway: 'PayPal',
-        subscriptionId: subId,
-        timestamp: new Date().toISOString()
-      });
-
-      writeDb(db);
-      const publicState = getPublicState(null);
-      broadcastSse('retainer_locked', {
-        categorySlug: cat.slug,
-        categoryTitle: cat.title,
-        productId: prod.id,
-        productName: prod.name,
-        tier,
-        tierName: prod.retainerSubscription.tierName,
-        monthlyAmount,
-        rank: tier === 'lock_rank_1' ? 1 : 3,
-        timestamp: new Date().toISOString(),
-        state: publicState
-      });
-      return sendJson(res, 200, {
-        success: true,
-        subscription: prod.retainerSubscription,
-        state: publicState
-      });
-    }
-
-    // 13i. POST /api/paypal/cancel-subscription
-    if (req.method === 'POST' && pathname === '/api/paypal/cancel-subscription') {
-      const body = await parseBody(req);
-      const db = readDb();
-      const sub = (db.subscriptions || []).find((s) => s.id === body.subscriptionId);
-      if (sub) {
-        sub.status = 'cancelled';
-        sub.cancelledAt = new Date().toISOString();
-        for (const cat of db.categories) {
-          for (const prod of cat.products) {
-            if (prod.retainerSubscription && prod.retainerSubscription.id === body.subscriptionId) {
-              prod.retainerSubscription.status = 'cancelled';
-            }
-          }
-        }
-        writeDb(db);
-      }
-      return sendJson(res, 200, { success: true, state: getPublicState(getSession(req)) });
-    }
-
-    // 13j. POST /api/webhooks/paypal (Automated PayPal Webhook Event Processing for MRR & Bids)
-    if (req.method === 'POST' && pathname === '/api/webhooks/paypal') {
-      const event = await parseBody(req);
-      const db = readDb();
-      const eventType = event.event_type || '';
-      const resource = event.resource || {};
-      console.log(`[PayPal Webhook] Received event: ${eventType} (ID: ${event.id || 'N/A'})`);
-
-      let stateModified = false;
-
-      // Event A: Recurring Monthly Retainer Renewal Payment Received
-      if (eventType === 'PAYMENT.SALE.COMPLETED') {
-        const subId = resource.billing_agreement_id || resource.subscription_id;
-        const amount = Number(resource.amount?.total || 299);
-        const payerEmail = (resource.payer?.payer_info?.email || resource.billing_agreement_id || 'subscriber@company.com').toLowerCase();
-
-        if (subId) {
-          const sub = (db.subscriptions || []).find((s) => s.id === subId);
-          if (sub) {
-            sub.status = 'active';
-            sub.nextBillingDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-            sub.lastPaymentDate = new Date().toISOString();
-          }
-
-          // Log recurring revenue transaction
-          db.transactions.push({
-            id: 'tx_renewal_' + Date.now(),
-            categorySlug: sub ? sub.categorySlug : '',
-            productName: sub ? sub.productName : 'Sponsorship Retainer Renewal',
-            amount,
-            buyerEmail: payerEmail,
-            buyerName: 'Verified Retainer Partner',
-            type: 'sponsorship_retainer_renewal',
-            paymentGateway: 'PayPal',
-            subscriptionId: subId,
-            timestamp: new Date().toISOString()
-          });
-          stateModified = true;
-        }
-      }
-
-      // Event B: Retainer Subscription Activated by Buyer
-      else if (eventType === 'BILLING.SUBSCRIPTION.ACTIVATED') {
-        const subId = resource.id;
-        if (subId) {
-          const sub = (db.subscriptions || []).find((s) => s.id === subId);
-          if (sub) {
-            sub.status = 'active';
-            stateModified = true;
-          }
-          for (const cat of db.categories) {
-            for (const prod of cat.products) {
-              if (prod.retainerSubscription && prod.retainerSubscription.id === subId) {
-                prod.retainerSubscription.status = 'active';
-                stateModified = true;
-              }
-            }
-          }
-        }
-      }
-
-      // Event C: Retainer Subscription Cancelled or Suspended
-      else if (eventType === 'BILLING.SUBSCRIPTION.CANCELLED' || eventType === 'BILLING.SUBSCRIPTION.SUSPENDED') {
-        const subId = resource.id;
-        if (subId) {
-          const sub = (db.subscriptions || []).find((s) => s.id === subId);
-          if (sub) {
-            sub.status = 'cancelled';
-            sub.cancelledAt = new Date().toISOString();
-            stateModified = true;
-          }
-          for (const cat of db.categories) {
-            for (const prod of cat.products) {
-              if (prod.retainerSubscription && prod.retainerSubscription.id === subId) {
-                prod.retainerSubscription.status = 'cancelled';
-                stateModified = true;
-              }
-            }
-          }
-        }
-      }
-
-      // Event D: One-Off Placement Bid / Directory Launch Payment Captured
-      else if (eventType === 'PAYMENT.CAPTURE.COMPLETED') {
-        const orderId = resource.supplementary_data?.related_ids?.order_id || resource.id;
-        const amount = Number(resource.amount?.value || 0);
-        const alreadyLogged = (db.transactions || []).some((t) => t.paypalOrderId === orderId || t.id === orderId);
-
-        if (!alreadyLogged && amount > 0) {
-          db.transactions.push({
-            id: 'tx_capture_' + Date.now(),
-            categorySlug: resource.custom_id || '',
-            productName: 'Programmatic Placement Bid',
-            amount,
-            buyerEmail: resource.payer?.email_address || 'buyer@company.com',
-            buyerName: 'Verified Bidder',
-            type: 'rank_bid',
-            paymentGateway: 'PayPal',
-            paypalOrderId: orderId,
-            timestamp: new Date().toISOString()
-          });
-          stateModified = true;
-        }
-      }
-
-      if (stateModified) {
-        writeDb(db);
-      }
-
-      return sendJson(res, 200, {
-        success: true,
-        received: true,
-        eventType,
-        processed: stateModified,
-        state: getPublicState(getSession(req))
-      });
-    }
-
-    // 13k. POST /api/categories/:slug/reviews (Community UGC Review Submission)
-    const reviewPathMatch = pathname.match(/^\/api\/categories\/([^/]+)\/reviews$/);
-    if (req.method === 'POST' && (reviewPathMatch || pathname === '/api/reviews')) {
-      const body = await parseBody(req);
-      const db = readDb();
-      const slug = reviewPathMatch ? reviewPathMatch[1] : (body.categorySlug || body.slug || (db.categories[0] ? db.categories[0].slug : ''));
-      const cat = db.categories.find((c) => c.slug === slug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
-
-      const reviewerName = (body.reviewerName || body.authorName || 'Verified Buyer').trim();
-      const reviewerEmail = (body.reviewerEmail || body.authorEmail || '').trim().toLowerCase();
-      const text = (body.text || '').trim();
-      const stars = Math.min(5, Math.max(1, parseInt(body.stars || body.rating || 5, 10)));
-      const productId = body.productId || (cat.products[0] ? cat.products[0].id : '');
-      const targetProd = findProductInCat(cat, productId);
-
-      if (!text) {
-        return sendJson(res, 400, { error: 'Review text is required' });
-      }
-
-      const reviewId = 'rev_' + Date.now();
-      const newReview = {
-        id: reviewId,
-        categorySlug: slug,
-        productId,
-        productName: targetProd ? targetProd.name : 'Platform',
-        stars,
-        authorName: reviewerName,
-        authorEmail: reviewerEmail,
-        authorRole: body.reviewerRole || body.authorRole || 'Verified User',
-        avatarText: (reviewerName[0] || 'U').toUpperCase(),
-        avatarBg: '#111827',
-        headline: body.headline || '',
-        text,
-        pros: Array.isArray(body.pros) ? body.pros : (body.pros ? [body.pros] : []),
-        cons: Array.isArray(body.cons) ? body.cons : (body.cons ? [body.cons] : []),
-        likes: 0,
-        timeAgo: 'Just now',
-        createdAt: new Date().toISOString(),
-        status: 'pending', // Directly sent to moderation queue!
-        type: 'comment'
-      };
-
-      db.reviews = db.reviews || [];
-      db.reviews.unshift(newReview);
-      cat.comments = cat.comments || [];
-      cat.comments.unshift(newReview);
-
-      writeDb(db);
-      const publicState = getPublicState(null);
-      broadcastSse('new_review', {
-        categorySlug: cat.slug,
-        categoryTitle: cat.title,
-        reviewId: newReview.id,
-        productName: newReview.productName,
-        authorName: newReview.authorName,
-        stars: newReview.stars,
-        timestamp: new Date().toISOString(),
-        state: publicState
-      });
-      return sendJson(res, 200, {
-        success: true,
-        review: newReview,
-        state: publicState,
-        message: 'Your verified review has been submitted for moderation.'
-      });
-    }
-
-    // 13l. POST /api/categories/:slug/reviews/:reviewId/reply (Official Founder Response)
-    if (req.method === 'POST' && pathname.match(/^\/api\/categories\/([^/]+)\/reviews\/([^/]+)\/reply$/)) {
-      const [, slug, reviewId] = pathname.match(/^\/api\/categories\/([^/]+)\/reviews\/([^/]+)\/reply$/);
-      const body = await parseBody(req);
-      const db = readDb();
-      const cat = db.categories.find((c) => c.slug === slug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
-
-      const cmt = (cat.comments || []).find((c) => c.id === reviewId);
-      if (!cmt) return sendJson(res, 404, { error: 'Review not found' });
-
-      const founderName = (body.founderName || body.authorName || 'Founder').trim();
-      const founderEmail = (body.founderEmail || body.ownerEmail || '').trim().toLowerCase();
-      const founderRole = (body.authorRole || body.role || 'Official Founder Response').trim();
-      const replyText = (body.replyText || body.text || '').trim();
-      if (!replyText) return sendJson(res, 400, { error: 'Reply text is required' });
-
-      cmt.founderReply = {
-        founderName,
-        authorName: founderName,
-        founderEmail,
-        role: founderRole,
-        authorRole: founderRole,
-        text: replyText,
-        timeAgo: 'Just now',
-        date: new Date().toISOString()
-      };
-
-      const globalRev = (db.reviews || []).find((r) => r.id === reviewId);
-      if (globalRev) {
-        globalRev.founderReply = cmt.founderReply;
-      }
-
-      writeDb(db);
-      return sendJson(res, 200, { success: true, review: cmt, state: getPublicState(getSession(req)) });
-    }
-
-    // 13m. GET /api/admin/reviews (Review Moderation Queue - Admin only)
-    if (req.method === 'GET' && pathname === '/api/admin/reviews') {
-      if (!requireAdmin(req, res)) return;
-      const db = readDb();
-      const allReviews = [];
-      for (const cat of (db.categories || [])) {
-        for (const cmt of (cat.comments || [])) {
-          if (cmt.type === 'comment' || !cmt.type) {
-            allReviews.push({ ...cmt, categorySlug: cat.slug, categoryTitle: cat.title });
-          }
-        }
-      }
-      const pendingCount = allReviews.filter((r) => r.status === 'pending').length;
-      return sendJson(res, 200, { reviews: allReviews, pendingCount }, req);
-    }
-
-    // 13n. POST /api/admin/reviews/:reviewId/moderate (Approve, Reject, or Delete Review - Admin only)
-    if (req.method === 'POST' && pathname.match(/^\/api\/admin\/reviews\/([^/]+)\/moderate$/)) {
-      if (!requireAdmin(req, res)) return;
-      const reviewId = pathname.match(/^\/api\/admin\/reviews\/([^/]+)\/moderate$/)[1];
-      const body = await parseBody(req);
-      const db = readDb();
-      const action = body.action; // 'approve' | 'reject' | 'delete'
-
-      for (const cat of (db.categories || [])) {
-        const idx = (cat.comments || []).findIndex((c) => c.id === reviewId);
-        if (idx !== -1) {
-          if (action === 'delete') {
-            cat.comments.splice(idx, 1);
-          } else {
-            cat.comments[idx].status = action === 'approve' ? 'approved' : 'rejected';
-          }
-        }
-      }
-
-      if (db.reviews) {
-        const gIdx = db.reviews.findIndex((r) => r.id === reviewId);
-        if (gIdx !== -1) {
-          if (action === 'delete') {
-            db.reviews.splice(gIdx, 1);
-          } else {
-            db.reviews[gIdx].status = action === 'approve' ? 'approved' : 'rejected';
-          }
-        }
-      }
-
-      writeDb(db);
-      const fullState = getPublicState(getSession(req));
-      broadcastSse('review_moderated', {
-        reviewId,
-        action,
-        timestamp: new Date().toISOString()
-      });
-      return sendJson(res, 200, { success: true, state: fullState }, req);
-    }
-
-    // 13o. POST /api/claim/send-code (Founder "Claim This Listing" OTP Dispatch)
-    if (req.method === 'POST' && pathname === '/api/claim/send-code') {
-      const body = await parseBody(req);
-      const db = readDb();
-      const cat = db.categories.find((c) => c.slug === body.categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
-
-      const prod = findProductInCat(cat, body.productId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' }, req);
-
-      const founderEmail = (body.founderEmail || body.workEmail || body.ownerEmail || '').trim().toLowerCase();
-      if (!founderEmail || !founderEmail.includes('@')) {
-        return sendJson(res, 400, { error: 'Valid company work email is required' }, req);
-      }
-
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      db.claims = db.claims || [];
-      db.claims.push({
-        id: 'claim_' + Date.now(),
-        categorySlug: cat.slug,
-        productId: prod.id,
-        productName: prod.name,
-        founderEmail,
-        code,
-        expiresAt: Date.now() + 15 * 60 * 1000,
-        isVerified: false
-      });
-
-      writeDb(db);
-      const isDev = process.env.NODE_ENV !== 'production';
-      const responsePayload = {
-        success: true,
-        message: `Verification code sent to ${founderEmail}`
-      };
-      if (isDev) {
-        responsePayload.devCode = code;
-      }
-      return sendJson(res, 200, responsePayload, req);
-    }
-
-    // 13p. POST /api/claim/verify (Verify OTP & Link Founder Ownership)
-    if (req.method === 'POST' && pathname === '/api/claim/verify') {
-      const body = await parseBody(req);
-      const db = readDb();
-      const cat = db.categories.find((c) => c.slug === body.categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' }, req);
-
-      const prod = findProductInCat(cat, body.productId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' }, req);
-
-      const founderEmail = (body.founderEmail || body.workEmail || body.ownerEmail || '').trim().toLowerCase();
-      const code = (body.code || '').trim();
-
-      const claimRecord = (db.claims || []).find((c) =>
-        c.categorySlug === cat.slug &&
-        (c.productId === prod.id || c.productId === body.productId) &&
-        (!founderEmail || c.founderEmail === founderEmail) &&
-        c.code === code &&
-        Date.now() < c.expiresAt
-      );
-
-      const isDev = process.env.NODE_ENV !== 'production';
-      if (!claimRecord && (!isDev || code !== '123456')) {
-        return sendJson(res, 400, { error: 'Invalid or expired verification code' }, req);
-      }
-
-      prod.isClaimed = true;
-      prod.claimed = true;
-      prod.claimedBy = founderEmail || body.ownerName || 'Verified Founder';
-      prod.claimedAt = new Date().toISOString();
-      prod.claimedAt = new Date().toISOString();
-      if (claimRecord) claimRecord.isVerified = true;
-
-      const user = (db.users || []).find((u) => u.email && u.email.toLowerCase() === founderEmail);
-      if (user) {
-        user.claimedProductIds = user.claimedProductIds || [];
-        if (!user.claimedProductIds.includes(prod.id)) {
-          user.claimedProductIds.push(prod.id);
-        }
-      }
-
-      writeDb(db);
-      return sendJson(res, 200, {
-        success: true,
-        message: `Successfully verified and claimed ${prod.name}!`,
-        product: prod,
-        state: getPublicState(getSession(req))
-      });
-    }
-
     // 14. GET /embed/:slug (Embeddable Mini Top 10 Widget for Bloggers & Partners)
     const embedMatch = pathname.match(/^\/embed\/([^/]+)$/);
     if (req.method === 'GET' && embedMatch) {
@@ -3398,220 +1948,6 @@ ${items}
       return res.end(html);
     }
 
-    // 15. POST /api/category-requests (Company pays deposit to request a new Top 10 page from Admin)
-    if (req.method === 'POST' && pathname === '/api/category-requests') {
-      const body = await parseBody(req);
-      const db = readDb();
-      if (!db.categoryRequests) db.categoryRequests = [];
-
-      const requestedTitle = (body.requestedTitle || '').trim();
-      const productName = (body.productName || '').trim();
-      if (!requestedTitle || !productName) {
-        return sendJson(res, 400, { error: 'Category title and product name are required' });
-      }
-
-      const newReq = {
-        id: 'req_' + Date.now(),
-        requestedTitle: requestedTitle.toLowerCase().startsWith('top 10')
-          ? requestedTitle
-          : `Top 10 ${requestedTitle}`,
-        productName,
-        companyName: (body.companyName || productName).trim(),
-        ownerEmail: (body.ownerEmail || 'founder@company.com').trim(),
-        website: (body.website || 'https://example.com').trim(),
-        tagline: (body.tagline || `Rank #1 founding sponsor for ${requestedTitle}`).trim(),
-        bountyAmount: Math.max(99, Number(body.bountyAmount || 299)),
-        status: 'pending',
-        createdAt: new Date().toISOString()
-      };
-      db.categoryRequests.unshift(newReq);
-      writeDb(db);
-      return sendJson(res, 200, { request: newReq, state: getPublicState(getSession(req)) });
-    }
-
-    // 16. POST /api/admin/category-requests/:reqId/approve (Admin approves & launches requested page! - Admin only)
-    const approveReqMatch = pathname.match(/^\/api\/admin\/category-requests\/([^/]+)\/approve$/);
-    if (req.method === 'POST' && approveReqMatch) {
-      if (!requireAdmin(req, res)) return;
-      const reqId = approveReqMatch[1];
-      const db = readDb();
-      if (!db.categoryRequests) db.categoryRequests = [];
-      const reqItem = db.categoryRequests.find((r) => r.id === reqId);
-      if (!reqItem) return sendJson(res, 404, { error: 'Request not found' });
-
-      const slug = reqItem.requestedTitle
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-
-      const foundingProd = {
-        id: 'prod_founding_' + Date.now(),
-        name: reqItem.productName,
-        companyName: reqItem.companyName,
-        tagline: reqItem.tagline,
-        website: reqItem.website,
-        pricingTag: 'Founding #1 Sponsor',
-        highlightTag: '@Founding Rank #1',
-        logoText: reqItem.productName.slice(0, 2).toUpperCase(),
-        logoBg: '#111827',
-        logoColor: '#B8FF01',
-        amountPaid: Number(reqItem.bountyAmount || 299),
-        isOrganic: false,
-        ownerEmail: reqItem.ownerEmail,
-        clicks: 240,
-        upvotes: 42,
-        updatedAt: new Date().toISOString()
-      };
-
-      const defaultOrganics = [
-        'Editorial Pick #2',
-        'Editorial Pick #3',
-        'Editorial Pick #4',
-        'Editorial Pick #5',
-        'Editorial Pick #6',
-        'Editorial Pick #7',
-        'Editorial Pick #8',
-        'Editorial Pick #9',
-        'Editorial Pick #10'
-      ].map((name, i) => ({
-        id: `prod_org_${slug}_${Date.now()}_${i}`,
-        name,
-        companyName: name,
-        tagline: `Unclaimed $0 organic candidate in ${reqItem.requestedTitle}. Click Replace to take this spot.`,
-        website: 'https://example.com',
-        pricingTag: 'Organic Slot',
-        highlightTag: '@Replaceable ($49)',
-        logoText: `O${i + 2}`,
-        logoBg: '#334155',
-        logoColor: '#FFFFFF',
-        amountPaid: 0,
-        isOrganic: true,
-        ownerEmail: '',
-        clicks: 120,
-        upvotes: 15,
-        updatedAt: new Date().toISOString()
-      }));
-
-      const newCat = {
-        id: slug,
-        slug,
-        title: reqItem.requestedTitle,
-        shortName: reqItem.requestedTitle.replace(/^Top\s+10\s+/i, '').trim(),
-        subtitle: 'Top 10 Directory · USD($) · Live Auction Ranking · 10 Verified Slots',
-        iconText: reqItem.productName[0].toUpperCase(),
-        iconBg: '#B8FF01',
-        iconColor: '#111827',
-        updatedAgo: 'just now',
-        metrics: {
-          monthlyViews: '82.40k',
-          buyerClicks: '24.10k',
-          poolRevenue: `$${reqItem.bountyAmount}`,
-          topBid: `$${reqItem.bountyAmount}`
-        },
-        products: [foundingProd, ...defaultOrganics],
-        comments: [
-          {
-            id: 'cmt_launch_' + Date.now(),
-            type: 'bid_event',
-            authorName: reqItem.companyName,
-            authorRole: 'Founding #1 Sponsor',
-            avatarBg: '#111827',
-            avatarText: foundingProd.logoText,
-            timeAgo: 'just now',
-            likes: 3,
-            text: `sponsored page launch ($${reqItem.bountyAmount}) and locked in`,
-            highlightPill: `Rank #1 · ${reqItem.requestedTitle}`,
-            attachments: []
-          }
-        ]
-      };
-
-      db.categories.push(newCat);
-      db.categoryRequests = db.categoryRequests.filter((r) => r.id !== reqId);
-      if (!db.transactions) db.transactions = [];
-      db.transactions.unshift({
-        id: 'tx_' + Date.now(),
-        categorySlug: slug,
-        categoryTitle: newCat.title,
-        productName: foundingProd.name,
-        companyEmail: foundingProd.ownerEmail,
-        amount: foundingProd.amountPaid,
-        rankAchieved: 1,
-        createdAt: new Date().toISOString()
-      });
-
-      writeDb(db);
-      return sendJson(res, 200, { category: newCat, state: getPublicState(getSession(req)) }, req);
-    }
-
-    // 17. POST /api/categories/:slug/products/:productId/lead (Buyer submits a Quote / Demo lead)
-    const leadMatch = pathname.match(/^\/api\/categories\/([^/]+)\/products\/([^/]+)\/lead$/);
-    if (req.method === 'POST' && leadMatch) {
-      const [, slug, prodId] = leadMatch;
-      const body = await parseBody(req);
-      const db = readDb();
-      const cat = db.categories.find((c) => c.slug === slug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
-      const prod = cat.products.find((p) => p.id === prodId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' });
-
-      if (!db.buyerLeads) db.buyerLeads = [];
-      const newLead = {
-        id: 'lead_' + Date.now(),
-        categorySlug: cat.slug,
-        categoryTitle: cat.title,
-        productId: prod.id,
-        productName: prod.name,
-        buyerName: (body.buyerName || 'Enterprise Buyer').trim(),
-        buyerEmail: (body.buyerEmail || 'buyer@company.com').trim(),
-        teamSize: (body.teamSize || '10-50 employees').trim(),
-        note: (body.note || `Interested in ${prod.name} pricing & onboarding.`).trim(),
-        isUnlocked: Number(prod.amountPaid || 0) > 0, // Free for active paid sponsors, $49 unlock for $0 organic!
-        unlockPrice: Number(db.platformStats.minEntryBid || 49),
-        createdAt: new Date().toISOString()
-      };
-      db.buyerLeads.unshift(newLead);
-      writeDb(db);
-      return sendJson(res, 200, { lead: newLead, state: getPublicState(getSession(req)) });
-    }
-
-    // 18. POST /api/leads/:leadId/unlock (Organic company pays $49 to unlock buyer lead + convert to Paid Sponsor!)
-    const unlockLeadMatch = pathname.match(/^\/api\/leads\/([^/]+)\/unlock$/);
-    if (req.method === 'POST' && unlockLeadMatch) {
-      const leadId = unlockLeadMatch[1];
-      const db = readDb();
-      if (!db.buyerLeads) db.buyerLeads = [];
-      const lead = db.buyerLeads.find((l) => l.id === leadId);
-      if (!lead) return sendJson(res, 404, { error: 'Lead not found' });
-
-      lead.isUnlocked = true;
-      const cat = db.categories.find((c) => c.slug === lead.categorySlug);
-      if (cat) {
-        const prod = cat.products.find((p) => p.id === lead.productId);
-        if (prod) {
-          prod.amountPaid = Number(prod.amountPaid || 0) + Number(lead.unlockPrice || 49);
-          prod.isOrganic = false;
-          prod.updatedAt = new Date().toISOString();
-        }
-      }
-      if (!db.transactions) db.transactions = [];
-      const prodName = lead.productName || (lead.selectedPlatforms && lead.selectedPlatforms[0]) || 'Platform';
-      const cleanName = prodName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'company';
-      db.transactions.unshift({
-        id: 'tx_lead_' + Date.now(),
-        categorySlug: lead.categorySlug,
-        categoryTitle: lead.categoryTitle || 'Category',
-        productName: `${prodName} (Lead Unlock + Bid)`,
-        companyEmail: 'sales@' + cleanName + '.com',
-        amount: Number(lead.unlockPrice || 49),
-        rankAchieved: 5,
-        createdAt: new Date().toISOString()
-      });
-
-      writeDb(db);
-      return sendJson(res, 200, { lead, state: getPublicState(getSession(req)) });
-    }
-
     // 19. POST /api/utils/extract-url (1-Click Auto-Fill Product Info from Website URL)
     if (req.method === 'POST' && pathname === '/api/utils/extract-url') {
       const body = await parseBody(req);
@@ -3636,202 +1972,6 @@ ${items}
         highlightTag: `@${capitalized} Cloud`,
         logoText: capitalized.slice(0, 2).toUpperCase()
       });
-    }
-
-    // 20. POST /api/subscribers (Buyer subscribes to category rank updates)
-    if (req.method === 'POST' && pathname === '/api/subscribers') {
-      const body = await parseBody(req);
-      const email = (body.email || '').trim();
-      if (!email) return sendJson(res, 400, { error: 'Email required' });
-      const db = readDb();
-      if (!db.subscribers) db.subscribers = [];
-      db.subscribers.unshift({
-        id: 'sub_' + Date.now(),
-        email,
-        categorySlug: body.categorySlug || 'all',
-        createdAt: new Date().toISOString()
-      });
-      writeDb(db);
-      return sendJson(res, 200, { count: db.subscribers.length, state: getPublicState(getSession(req)) });
-    }
-
-    // 21. POST /api/founder/update-product (Self-Serve Listing Editor for Claimed Founders)
-    if (req.method === 'POST' && pathname === '/api/founder/update-product') {
-      const body = await parseBody(req);
-      const db = readDb();
-      const cat = db.categories.find((c) => c.slug === body.categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
-
-      const prod = findProductInCat(cat, body.productId);
-      if (!prod) return sendJson(res, 404, { error: 'Product not found' });
-
-      if (body.name) prod.name = body.name.trim();
-      if (body.tagline) prod.tagline = body.tagline.trim();
-      if (body.website) prod.website = body.website.trim();
-      if (body.companyName) prod.companyName = body.companyName.trim();
-      if (body.pricingTag) prod.pricingTag = body.pricingTag.trim();
-      if (body.editorialSummary) prod.editorialSummary = body.editorialSummary.trim();
-
-      if (!prod.specs) prod.specs = {};
-      if (body.startingPrice) prod.specs.startingPrice = body.startingPrice.trim();
-      if (body.freeTrial) prod.specs.freeTrial = body.freeTrial.trim();
-      if (body.idealFor) prod.specs.idealFor = body.idealFor.trim();
-      if (body.platforms) prod.specs.platforms = body.platforms.trim();
-
-      if (Array.isArray(body.pros) && body.pros.length > 0) {
-        prod.pros = body.pros.map((p) => String(p).trim()).filter(Boolean);
-      }
-      if (Array.isArray(body.cons) && body.cons.length > 0) {
-        prod.cons = body.cons.map((c) => String(c).trim()).filter(Boolean);
-      }
-
-      if (body.heroImage) {
-        if (!prod.media) prod.media = {};
-        prod.media.heroImage = body.heroImage.trim();
-        if (body.overlayTag) prod.media.overlayTag = body.overlayTag.trim();
-      }
-
-      prod.updatedAt = new Date().toISOString();
-      writeDb(db);
-      return sendJson(res, 200, { success: true, product: prod, state: getPublicState(getSession(req)) });
-    }
-
-    // 22. GET /api/founder/portal-data (Fetch Managed Platforms & Live Lead Feed for Founders)
-    if (req.method === 'GET' && pathname === '/api/founder/portal-data') {
-      const state = getFullState();
-      const email = (parsedUrl.searchParams.get('email') || '').trim().toLowerCase();
-      const company = (parsedUrl.searchParams.get('company') || '').trim().toLowerCase();
-
-      const managedProducts = [];
-      const relevantLeads = [];
-      const db = readDb();
-      const allLeads = db.buyerLeads || [];
-
-      for (const cat of (state.categories || [])) {
-        const allP = [...(cat.top10 || []), ...(cat.pushedOut || [])];
-        for (const p of allP) {
-          const isOwner =
-            p.claimed ||
-            p.isClaimed ||
-            (email && (p.claimedBy === email || (p.ownerEmail || '').toLowerCase() === email)) ||
-            (company && (p.companyName || '').toLowerCase().includes(company));
-
-          if (isOwner) {
-            managedProducts.push({
-              ...p,
-              categorySlug: cat.slug,
-              categoryTitle: cat.title,
-              views: p.clicks ? p.clicks * 4 : 120,
-              clicks: p.clicks || 0,
-              ctr: p.clicks ? ((p.clicks / (p.clicks * 4)) * 100).toFixed(1) + '%' : '3.8%'
-            });
-            const catLeads = allLeads.filter((l) => l.categorySlug === cat.slug);
-            relevantLeads.push(...catLeads);
-          }
-        }
-      }
-
-      if (managedProducts.length === 0 && state.categories && state.categories[0]) {
-        const demoCat = state.categories[0];
-        const demoProd = demoCat.top10[0];
-        if (demoProd) {
-          managedProducts.push({
-            ...demoProd,
-            categorySlug: demoCat.slug,
-            categoryTitle: demoCat.title,
-            views: 480,
-            clicks: 34,
-            ctr: '7.1%'
-          });
-          const catLeads = allLeads.filter((l) => l.categorySlug === demoCat.slug);
-          relevantLeads.push(...catLeads);
-        }
-      }
-
-      const uniqueLeads = Array.from(new Map(relevantLeads.map((l) => [l.id, l])).values());
-
-      return sendJson(res, 200, {
-        products: managedProducts,
-        leads: uniqueLeads.slice(0, 20),
-        stats: {
-          totalProducts: managedProducts.length,
-          activeRetainers: managedProducts.filter((p) => p.retainerSubscription && p.retainerSubscription.status === 'active').length
-        }
-      });
-    }
-
-    // 23. POST /api/leads/submit (Comprehensive B2B Custom Quote / RFP Submission)
-    if (req.method === 'POST' && pathname === '/api/leads/submit') {
-      const body = await parseBody(req);
-      const db = readDb();
-      const cat = db.categories.find((c) => c.slug === body.categorySlug);
-      if (!cat) return sendJson(res, 404, { error: 'Category not found' });
-
-      const buyerName = (body.buyerName || 'Enterprise Buyer').trim();
-      const buyerEmail = (body.buyerEmail || '').trim().toLowerCase();
-      const companyName = (body.companyName || 'Enterprise Buyer').trim();
-      const teamSize = (body.teamSize || '11–50 employees').trim();
-      const estimatedBudget = (body.estimatedBudget || '$500–$2,000/mo').trim();
-      const timeline = (body.timeline || 'Within 1 month').trim();
-      const projectRequirements = (body.projectRequirements || body.note || 'Looking for pricing and feature comparison demo.').trim();
-      const selectedPlatforms = Array.isArray(body.selectedPlatforms) && body.selectedPlatforms.length > 0
-        ? body.selectedPlatforms
-        : (cat.products || []).slice(0, 3).map((p) => p.name);
-
-      if (!buyerEmail || !buyerEmail.includes('@')) {
-        return sendJson(res, 400, { error: 'Valid business email is required' });
-      }
-
-      const newLead = {
-        id: 'rfp_' + Date.now(),
-        categorySlug: cat.slug,
-        categoryTitle: cat.title,
-        buyerName,
-        buyerEmail,
-        companyName,
-        teamSize,
-        estimatedBudget,
-        timeline,
-        projectRequirements,
-        selectedPlatforms,
-        status: 'new',
-        isUnlocked: false,
-        createdAt: new Date().toISOString()
-      };
-
-      if (!db.buyerLeads) db.buyerLeads = [];
-      db.buyerLeads.unshift(newLead);
-      writeDb(db);
-      broadcastSse('new_lead', {
-        categorySlug: cat.slug,
-        categoryTitle: cat.title,
-        companyName,
-        selectedPlatforms,
-        timestamp: new Date().toISOString()
-      });
-      return sendJson(res, 200, { success: true, lead: newLead, state: getPublicState(getSession(req)) }, req);
-    }
-
-    // 24. GET /api/admin/leads (Admin B2B RFP Leads Ledger - Admin only)
-    if (req.method === 'GET' && pathname === '/api/admin/leads') {
-      if (!requireAdmin(req, res)) return;
-      const db = readDb();
-      return sendJson(res, 200, { leads: db.buyerLeads || [] }, req);
-    }
-
-    // 25. POST /api/admin/leads/:leadId/status (Admin only)
-    if (req.method === 'POST' && pathname.match(/^\/api\/admin\/leads\/([^/]+)\/status$/)) {
-      if (!requireAdmin(req, res)) return;
-      const leadId = pathname.match(/^\/api\/admin\/leads\/([^/]+)\/status$/)[1];
-      const body = await parseBody(req);
-      const db = readDb();
-      const lead = (db.buyerLeads || []).find((l) => l.id === leadId);
-      if (!lead) return sendJson(res, 404, { error: 'Lead not found' }, req);
-
-      lead.status = body.status || 'contacted';
-      lead.updatedAt = new Date().toISOString();
-      writeDb(db);
-      return sendJson(res, 200, { success: true, lead, state: getPublicState(getSession(req)) }, req);
     }
 
     // 26. GET /api/compare/:catSlug/:slugA/:slugB (Head-to-Head Comparison Data)
@@ -3886,8 +2026,6 @@ ${items}
     const isHome = pathname === '/' || pathname === '/index.html';
     const isBlogIndex = pathname === '/blog';
     const isAdminView = pathname === '/admin';
-    const isClaimView = pathname.startsWith('/claim/');
-    const isPricingView = pathname === '/pricing';
 
     function truncateMetaDesc(str, maxLen = 158) {
       const clean = String(str || '').replace(/\s+/g, ' ').trim();
@@ -4140,9 +2278,16 @@ ${items}
       ogType = 'article';
       ogImage = meta.coverImage;
       ogImageAlt = activeCat.title;
-    } else if (blogArticleMatch || isBlogIndex) {
-      res.writeHead(302, { Location: '/' });
+    } else if (blogArticleMatch) {
+      const article = categories.find(c => c.slug === blogArticleMatch[1]);
+      if (!article) return render404(res, req, base, 'This guide is unavailable.');
+      res.writeHead(302, { Location: '/list/' + encodeURIComponent(article.slug) });
       return res.end();
+    } else if (isBlogIndex) {
+      routeKind = 'blog';
+      pageTitle = 'All Top 10 Buying Guides | Top 10';
+      pageDesc = 'Browse the full archive of Top 10 buying guides and editorial rankings.';
+      canonicalUrl = base + '/blog';
     } else if (compareMatch) {
       const [, cSlug, idA, idB] = compareMatch;
       activeCat = categories.find((c) => c.slug === cSlug);
@@ -4165,10 +2310,10 @@ ${items}
     } else if (isAdminView) {
       routeKind = 'admin';
       pageTitle = 'Admin Operations Dashboard — Top 10 Platform';
-      pageDesc = 'Internal command center for managing Top 10 listings and transactions.';
+      pageDesc = 'Editor workspace for managing Top 10 guides.';
       canonicalUrl = `${base}/admin`;
       robotsDirective = 'noindex, nofollow';
-    } else if (!isHome && !isClaimView && !isPricingView) {
+    } else if (!isHome) {
       // Unknown route that doesn't correspond to any page or static file -> Return Real 404!
       return render404(res, req, base, `The requested URL "${escapeXml(pathname)}" was not found on this platform.`);
     }
@@ -4180,6 +2325,9 @@ ${items}
     // Render full semantic SSR body for Home, List, and Compare pages before JS hydration
     if (routeKind === 'home') {
       html = renderSsrHomepageBody(html, categories);
+    } else if (routeKind === 'blog') {
+      html = html.replace('<main id="homePageView" class="home-container">', '<main id="homePageView" class="home-container hidden">');
+      html = html.replace('<main id="blogIndexSection" class="guide-archive hidden"></main>', () => renderGuideArchive(categories));
     } else if (routeKind === 'list' && activeCat) {
       html = renderSsrListBody(html, activeCat, categories);
     } else if (routeKind === 'compare' && activeCat && comparePair) {
@@ -4207,20 +2355,22 @@ ${items}
     return sendResponse(req, res, 200, 'text/html; charset=utf-8', html, {
       'Cache-Control': 'no-cache'
     });
-  } catch (err) {
-    console.error('Server error:', err);
-    const status = err.statusCode || (err.message && err.message.includes('Malformed') ? 400 : 500);
-    sendJson(res, status, { error: err.message || 'Internal Server Error' }, req);
-  }
-});
+}
 
 async function start() {
-  await initMongo();
-  ensureUserPasswords();
-  runScheduledPublisher();
+  if (isProduction && adminPassword && adminPassword.length < 20) {
+    throw new Error('ADMIN_PASSWORD must be at least 20 characters in production');
+  }
+  if (isProduction && publishKey && publishKey.length < 32) {
+    throw new Error('EDITORIAL_PUBLISH_KEY must be at least 32 characters in production');
+  }
+  await initMariaDb();
+  await withDb(runScheduledPublisher);
   server.listen(PORT, () => {
-    console.log(`Top 10 Auction Directory running at http://localhost:${server.address().port}`);
-    setInterval(runScheduledPublisher, 15000).unref();
+    console.log('Top 10 Auction Directory running at http://localhost:' + server.address().port);
+    setInterval(() => {
+      withDb(runScheduledPublisher).catch(err => console.error('[Scheduler Error]', err.message));
+    }, 15000).unref();
   });
 }
 
