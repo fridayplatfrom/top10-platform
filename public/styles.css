@@ -10322,7 +10322,7 @@ html[data-theme="dark"] .home-topic-pill.active {
   border-color: var(--reading-blue);
 }
 
-.guide-index-search { flex: 0 1 220px; }
+.guide-index-search { flex: 0 1 220px; align-self: flex-start; }
 .guide-index-search::placeholder { color: var(--reading-muted); }
 .guide-index-list { list-style: none; border-bottom: 1px solid var(--reading-rule); }
 .guide-index-row { border-top: 1px solid var(--reading-rule); }
@@ -10347,6 +10347,30 @@ html[data-theme="dark"] .home-topic-pill.active {
   .guide-index-search { flex: auto; width: 100%; }
   .guide-index-row-link { grid-template-columns: 89px minmax(0, 1fr); align-items: start; }
   .guide-index-row .guide-index-excerpt, .guide-index-arrow { display: none; }
+}
+
+@media (720px < width <= 900px) {
+  .guide-index-feature { grid-template-columns: minmax(0, 1fr); }
+  .guide-index-feature-image { min-height: 0; aspect-ratio: 2 / 1; }
+  .guide-index-feature-copy { padding: 24px 28px; }
+}
+
+@media (width > 900px) {
+  .guide-index-feature {
+    grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(24px, 3vw, 40px);
+    padding: clamp(20px, 3vw, 36px);
+  }
+
+  .guide-index-feature-image {
+    min-height: 0;
+    aspect-ratio: 16 / 10;
+    border-radius: 10px;
+  }
+
+  .guide-index-feature-copy { padding: 0; }
+  .guide-index-feature h2 { font-size: clamp(1.95rem, 3.1vw, 2.8rem); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -10376,7 +10400,7 @@ html[data-theme="dark"] .home-topic-pill.active {
 .blog-site-footer { border-bottom: 0; }
 
 .blog-shell-inner {
-  width: min(1120px, calc(100% - 48px));
+  width: min(1120px, calc(100% - 64px));
   margin-inline: auto;
   display: flex;
   align-items: center;
@@ -10388,7 +10412,14 @@ html[data-theme="dark"] .home-topic-pill.active {
 .blog-site-header .blog-shell-inner { min-height: 64px; }
 .blog-site-footer .blog-shell-inner { min-height: 96px; padding-block: 18px; }
 .blog-shell-inner nav { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; }
-.blog-shell-inner a { color: inherit; text-decoration: none; }
+.blog-shell-inner a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+}
+.blog-shell-inner a:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 3px; }
 .blog-shell-inner nav a { color: var(--text-secondary); font-size: .88rem; font-weight: 600; }
 .blog-shell-inner nav a:hover,
 .blog-shell-inner nav a:focus-visible { color: var(--accent-blue); text-decoration: underline; }
@@ -10406,7 +10437,6 @@ html[data-theme="dark"] .home-topic-pill.active {
   }
 
   .blog-shell-inner nav { gap: 0 16px; }
-  .blog-shell-inner a { display: inline-flex; min-height: 44px; align-items: center; }
   .blog-site-footer p { margin-top: 0; }
 }
 
@@ -10444,7 +10474,7 @@ html[data-theme="dark"] .home-topic-pill.active {
 }
 
 .guide-reading {
-  width: min(740px, calc(100% - 48px));
+  width: min(740px, calc(100% - 64px));
   margin-inline: auto;
   padding-block: 42px 70px;
 }
@@ -10480,11 +10510,13 @@ html[data-theme="dark"] .home-topic-pill.active {
 
 .guide-reading-crumb li:last-child { min-width: 0; }
 
-.guide-reading-crumb [aria-current="page"] {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.guide-reading-crumb a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
 }
+
+.guide-reading-crumb [aria-current="page"] { overflow-wrap: anywhere; }
 
 .guide-reading-heading {
   padding: clamp(18px, 4vw, 34px);
@@ -10498,7 +10530,7 @@ html[data-theme="dark"] .home-topic-pill.active {
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 3 / 2;
   object-fit: cover;
   margin-bottom: 25px;
   border-radius: 12px;
@@ -10550,8 +10582,11 @@ html[data-theme="dark"] .home-topic-pill.active {
 @media (max-width: 720px) {
   .guide-reading { width: calc(100% - 32px); padding-block: 12px 42px; }
   .guide-reading-crumb { margin-bottom: 8px; }
-  .guide-reading-crumb a { display: inline-flex; min-height: 44px; align-items: center; }
-  .guide-reading-cover { aspect-ratio: 3 / 2; }
+  .guide-reading-crumb [aria-current="page"] {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 #navNotificationBtn,
