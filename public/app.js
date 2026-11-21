@@ -1865,6 +1865,7 @@
     const meta = getCategoryFeatureMeta(cat);
     const products = [...(cat.top10 || []), ...(cat.pushedOut || [])];
     heroCatTitle.textContent = cat.title;
+    document.getElementById('guideBreadcrumbTitle').textContent = cat.title;
     document.getElementById('heroCatDesc').textContent = meta.description;
     const byline = document.getElementById('guideReadingByline');
     if (byline) byline.textContent = [meta.authorName, meta.dateText === 'Date not supplied' ? '' : meta.dateText].filter(Boolean).join(' · ');

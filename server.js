@@ -2194,6 +2194,8 @@ ${items}
         .replace('<main id="singleListPageView" class="guide-reading-view hidden">', '<main id="singleListPageView" class="guide-reading-view">')
         .replace('<h2 id="heroCatTitle">Top 10 Buying Guide</h2>', () =>
           `<h1 id="heroCatTitle">${escapeXml(cat.title)}</h1>`)
+        .replace('<span id="guideBreadcrumbTitle" aria-current="page"></span>', () =>
+          `<span id="guideBreadcrumbTitle" aria-current="page">${escapeXml(cat.title)}</span>`)
         .replace('<p id="guideReadingByline"></p>', () =>
           `<p id="guideReadingByline">${escapeXml(meta.authorName)}${meta.isoDate ? ' · ' + escapeXml(meta.dateText) : ''}</p>`)
         .replace('<p id="heroCatDesc"></p>', () => `<p id="heroCatDesc">${escapeXml(meta.description)}</p>`)

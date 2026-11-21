@@ -218,7 +218,11 @@
       <main id="singleListPageView" class="guide-reading-view hidden">
         <article class="guide-reading">
           <nav class="guide-reading-crumb" aria-label="Breadcrumb">
-            <a href="/blog">← All posts</a>
+            <ol>
+              <li><a href="/">Home</a></li>
+              <li><span aria-hidden="true">/</span><a href="/blog">Blog</a></li>
+              <li><span aria-hidden="true">/</span><span id="guideBreadcrumbTitle" aria-current="page"></span></li>
+            </ol>
           </nav>
           <header class="guide-reading-heading">
             <p class="guide-reading-label" id="heroCatPillLabel">Buying guide</p>

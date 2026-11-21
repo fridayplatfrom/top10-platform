@@ -10340,8 +10340,8 @@ html[data-theme="dark"] .home-topic-pill.active {
 .guide-index-empty { padding-block: 24px; color: var(--reading-muted); }
 
 @media (max-width: 720px) {
-  .guide-index-shell { width: calc(100% - 36px); }
-  .guide-index-feature { grid-template-columns: 1fr; }
+  .guide-index-shell { width: calc(100% - 32px); }
+  .guide-index-feature { grid-template-columns: minmax(0, 1fr); }
   .guide-index-feature-image { min-height: 0; aspect-ratio: 16 / 9; }
   .guide-index-controls { flex-direction: column; }
   .guide-index-search { flex: auto; width: 100%; }
@@ -10396,6 +10396,20 @@ html[data-theme="dark"] .home-topic-pill.active {
 .blog-site-footer p { color: var(--text-muted); margin-top: 4px; font-size: .85rem; }
 .blog-site-header .blog-guide-nav { color: var(--accent-blue); }
 
+@media (max-width: 720px) {
+  .blog-shell-inner { width: calc(100% - 32px); gap: 4px 16px; }
+  .blog-site-header .blog-shell-inner { min-height: 56px; }
+  .blog-site-footer .blog-shell-inner {
+    align-items: flex-start;
+    flex-direction: column;
+    padding-block: 12px 8px;
+  }
+
+  .blog-shell-inner nav { gap: 0 16px; }
+  .blog-shell-inner a { display: inline-flex; min-height: 44px; align-items: center; }
+  .blog-site-footer p { margin-top: 0; }
+}
+
 .guide-delete-dialog {
   width: min(420px, calc(100% - 32px));
   margin: auto;
@@ -10448,6 +10462,28 @@ html[data-theme="dark"] .home-topic-pill.active {
 .guide-reading-crumb {
   margin-bottom: 13px;
   font-size: .86rem;
+}
+
+.guide-reading .guide-reading-crumb ol {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0;
+  list-style: none;
+}
+
+.guide-reading-crumb li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.guide-reading-crumb li:last-child { min-width: 0; }
+
+.guide-reading-crumb [aria-current="page"] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .guide-reading-heading {
@@ -10511,8 +10547,11 @@ html[data-theme="dark"] .home-topic-pill.active {
 .guide-reading-item h3 a { color: inherit; text-decoration-thickness: 1px; }
 .guide-reading-item h3 a:hover { color: var(--reading-blue); }
 
-@media (max-width: 690px) {
-  .guide-reading { width: calc(100% - 32px); padding-block: 30px 42px; }
+@media (max-width: 720px) {
+  .guide-reading { width: calc(100% - 32px); padding-block: 12px 42px; }
+  .guide-reading-crumb { margin-bottom: 8px; }
+  .guide-reading-crumb a { display: inline-flex; min-height: 44px; align-items: center; }
+  .guide-reading-cover { aspect-ratio: 3 / 2; }
 }
 
 #navNotificationBtn,
