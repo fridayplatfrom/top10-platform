@@ -572,13 +572,8 @@
     renderAll();
   }
 
-  function navigateToBlog(pushHistory = true) {
-    currentView = 'blog';
-    if (pushHistory && window.location.pathname !== '/blog') {
-      window.history.pushState({ view: 'blog' }, '', '/blog');
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    renderAll();
+  function navigateToBlog() {
+    window.location.assign('/blog');
   }
 
   function navigateToArticle(slug, pushHistory = true) {
@@ -894,7 +889,6 @@
       if (blogArticleSection) blogArticleSection.classList.add('hidden');
       if (adminViewSection) adminViewSection.classList.add('hidden');
       if (compareHeadToHeadView) compareHeadToHeadView.classList.add('hidden');
-      renderGuideArchive();
       syncSingleH1('other');
     } else if (currentView === 'article') {
       topCatName.textContent = 'Buying Guide';
@@ -1872,6 +1866,8 @@
     const products = [...(cat.top10 || []), ...(cat.pushedOut || [])];
     heroCatTitle.textContent = cat.title;
     document.getElementById('heroCatDesc').textContent = meta.description;
+    const byline = document.getElementById('guideReadingByline');
+    if (byline) byline.textContent = [meta.authorName, meta.dateText === 'Date not supplied' ? '' : meta.dateText].filter(Boolean).join(' · ');
     const cover = document.getElementById('guideReadingCover');
     const image = typeof meta.coverImage === 'string' ? meta.coverImage : '';
     if (/^(?:https:\/\/|\/(?![\/\\]))/i.test(image)) {
@@ -4423,19 +4419,32 @@
     return { name, role: 'Technology Analyst', avatarBg: '#2563EB', avatarText };
   }
 
-  function renderGuideArchive() {
-    if (!blogIndexSection || !appState) return;
-    const guides = [...(appState.categories || [])].sort((a, b) =>
-      (Date.parse(b.publishedAt || b.scheduledAt) || 0) - (Date.parse(a.publishedAt || a.scheduledAt) || 0)
-    );
-    blogIndexSection.innerHTML = '<h1>All Top 10 Buying Guides</h1><ul class="guide-archive-list">' +
-      guides.map(guide => {
-        const title = escapeHtml(guide.editorialTitle || guide.title);
-        const summary = escapeHtml(guide.editorialGuide?.summary || guide.description || '');
-        const url = '/list/' + encodeURIComponent(guide.slug);
-        return '<li class="guide-archive-item"><h2><a href="' + url + '">' + title + '</a></h2><p>' +
-          summary + '</p></li>';
-      }).join('') + '</ul>';
+  function initGuideArchive() {
+    const controls = blogIndexSection?.querySelector('.guide-index-controls');
+    if (!controls) return;
+    const search = controls.querySelector('input');
+    const filters = [...controls.querySelectorAll('[data-guide-filter]')];
+    const rows = [...blogIndexSection.querySelectorAll('[data-guide-topic]')];
+    const empty = blogIndexSection.querySelector('.guide-index-empty');
+    let topic = '';
+    const update = () => {
+      const query = search.value.trim().toLowerCase();
+      let results = 0;
+      for (const row of rows) {
+        row.hidden = Boolean(topic && row.dataset.guideTopic !== topic) || !row.textContent.toLowerCase().includes(query);
+        if (!row.hidden) results++;
+      }
+      empty.hidden = results > 0;
+    };
+    for (const filter of filters) {
+      filter.addEventListener('click', () => {
+        topic = filter.dataset.guideFilter;
+        for (const button of filters) button.setAttribute('aria-pressed', String(button === filter));
+        update();
+      });
+    }
+    search.addEventListener('input', update);
+    controls.hidden = false;
   }
 
   function renderBlogArticle(slug) {
@@ -6871,5 +6880,6 @@
     }, 100);
   }
 
+  initGuideArchive();
   fetchState();
 })();

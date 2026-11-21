@@ -93,7 +93,9 @@ test('blog launch routes, editor sessions and durable publishing', async () => {
 
     const archive = await api(server, '/blog');
     assert.equal(archive.status, 200);
-    assert.match(await archive.text(), /All Top 10 Buying Guides/);
+    const archiveHtml = await archive.text();
+    assert.match(archiveHtml, /Top 10 buying guides/);
+    assert.match(archiveHtml, /guide-index-feature-image[\s\S]*?<img[^>]+src=/);
     const guides = await (await api(server, '/api/blog')).json();
     assert.ok(guides.length > 0);
     const guide = await api(server, '/blog/' + guides[0].slug);

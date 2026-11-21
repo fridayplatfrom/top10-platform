@@ -539,13 +539,81 @@ function guideSummaries(categories) {
   }).sort((a, b) => (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0));
 }
 
-function renderGuideArchive(categories) {
-  const links = guideSummaries(categories).map(guide =>
-    '<li class="guide-archive-item"><h2><a href="' + escapeXml(guide.url) + '">' + escapeXml(guide.title) +
-    '</a></h2><p>' + escapeXml(guide.description) + '</p></li>'
-  ).join('');
-  return '<main id="blogIndexSection" class="guide-archive"><h1>All Top 10 Buying Guides</h1>' +
-    '<ul class="guide-archive-list">' + links + '</ul></main>';
+function guideCoverUrl(value) {
+  const url = typeof value === 'string' ? value.trim() : '';
+  return /^(?:https:\/\/|\/(?![\/\\]))/i.test(url) ? url : '';
+}
+
+function renderGuideArchive(categories, topicCategories) {
+  const summaries = new Map(guideSummaries(categories).map(guide => [guide.slug, guide]));
+  const topicNames = new Map(topicCategories.map(topic => [topic.slug, topic.name]));
+  const dateFormat = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeZone: 'UTC' });
+  const guides = categories.map(category => {
+    const summary = summaries.get(category.slug);
+    const meta = getCategoryFeatureMeta(category);
+    const date = Number(Date.parse(summary.publishedAt || meta.isoDate));
+    return {
+      ...summary,
+      cover: guideCoverUrl(meta.coverImage),
+      topic: meta.topic,
+      topicName: topicNames.get(meta.topic) || 'Buying guides',
+      author: meta.authorName,
+      date: Number.isFinite(date) ? date : 0,
+      hasRankings: Boolean(category.top10?.length)
+    };
+  }).sort((a, b) => b.date - a.date);
+  const featured = guides.find(guide => guide.cover && guide.hasRankings) || guides[0];
+  const topics = new Map(guides.map(guide => [guide.topic, guide.topicName]));
+  const image = (guide, eager = false) => guide.cover
+    ? `<img src="${escapeXml(guide.cover)}" alt="" width="1200" height="675" decoding="async" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'}>`
+    : '';
+  const byline = guide => `<p class="guide-index-byline">${escapeXml(guide.author)}${guide.date ? `
+    <span aria-hidden="true">·</span><time datetime="${new Date(guide.date).toISOString()}">${dateFormat.format(guide.date)}</time>` : ''}</p>`;
+  const topicFilters = [...topics].map(([slug, name]) => `
+    <button type="button" data-guide-filter="${escapeXml(slug)}" aria-pressed="false">${escapeXml(name)}</button>`).join('');
+  const rows = guides.map(guide => `
+    <li class="guide-index-row" data-guide-topic="${escapeXml(guide.topic)}">
+      <a class="guide-index-row-link" href="${escapeXml(guide.url)}">
+        <span class="guide-index-thumb">${image(guide)}</span>
+        <div class="guide-index-row-copy">
+          <p class="guide-index-topic">${escapeXml(guide.topicName)}</p>
+          <h3>${escapeXml(guide.title)}</h3>
+          <p class="guide-index-excerpt">${escapeXml(guide.description)}</p>
+          ${byline(guide)}
+        </div>
+        <span class="guide-index-arrow" aria-hidden="true">↗</span>
+      </a>
+    </li>`).join('');
+
+  return `<main id="blogIndexSection" class="guide-archive">
+    <div class="guide-index-shell">
+      <header class="guide-index-head">
+        <h1>Top 10 buying guides</h1>
+        <p>Browse ranked picks and buying advice across software, hardware, and everyday products.</p>
+      </header>
+      ${featured ? `<section class="guide-index-feature" aria-labelledby="guide-feature-title">
+        <a class="guide-index-feature-image" href="${escapeXml(featured.url)}" tabindex="-1" aria-hidden="true">${image(featured, true)}</a>
+        <div class="guide-index-feature-copy">
+          <p class="guide-index-topic">Featured guide · ${escapeXml(featured.topicName)}</p>
+          <h2 id="guide-feature-title"><a href="${escapeXml(featured.url)}">${escapeXml(featured.title)}</a></h2>
+          <p class="guide-index-excerpt">${escapeXml(featured.description)}</p>
+          ${byline(featured)}
+          <a class="guide-index-feature-cta" href="${escapeXml(featured.url)}">Read the guide <span aria-hidden="true">↗</span></a>
+        </div>
+      </section>` : ''}
+      <section class="guide-index-library" aria-labelledby="guide-index-title">
+        <h2 id="guide-index-title">All guides</h2>
+        <div class="guide-index-controls" hidden>
+          <div class="guide-index-filters" role="group" aria-label="Filter by topic">
+            <button type="button" data-guide-filter="" aria-pressed="true">All topics</button>${topicFilters}
+          </div>
+          <input type="search" class="guide-index-search" aria-label="Search guides" placeholder="Search guides">
+        </div>
+        <ul class="guide-index-list">${rows}</ul>
+        <p class="guide-index-empty" role="status"${guides.length ? ' hidden' : ''}>${guides.length ? 'No guides match your filters.' : 'No guides are published yet.'}</p>
+      </section>
+    </div>
+  </main>`;
 }
 
 function marketplaceRoute(method, pathname) {
@@ -2103,8 +2171,7 @@ ${items}
 
     function renderSsrListBody(rawHtml, cat, allCats) {
       const meta = getCategoryFeatureMeta(cat);
-      const image = typeof meta.coverImage === 'string' ? meta.coverImage : '';
-      const cover = /^(?:https:\/\/|\/(?![\/\\]))/i.test(image) ? image : '';
+      const cover = guideCoverUrl(meta.coverImage);
       const products = [...(cat.top10 || []), ...(cat.pushedOut || [])];
       const intro = cat.editorialGuide?.intro?.trim() || '';
       const related = allCats.filter(other => other.slug !== cat.slug).slice(0, 3);
@@ -2127,6 +2194,8 @@ ${items}
         .replace('<main id="singleListPageView" class="guide-reading-view hidden">', '<main id="singleListPageView" class="guide-reading-view">')
         .replace('<h2 id="heroCatTitle">Top 10 Buying Guide</h2>', () =>
           `<h1 id="heroCatTitle">${escapeXml(cat.title)}</h1>`)
+        .replace('<p id="guideReadingByline"></p>', () =>
+          `<p id="guideReadingByline">${escapeXml(meta.authorName)}${meta.isoDate ? ' · ' + escapeXml(meta.dateText) : ''}</p>`)
         .replace('<p id="heroCatDesc"></p>', () => `<p id="heroCatDesc">${escapeXml(meta.description)}</p>`)
         .replace('id="guideReadingCover" alt="" width="1200" height="675" decoding="async" hidden', () =>
           cover ? `id="guideReadingCover" alt="" width="1200" height="675" decoding="async" src="${escapeXml(cover)}"`
@@ -2285,7 +2354,7 @@ ${items}
       html = renderSsrHomepageBody(html, categories);
     } else if (routeKind === 'blog') {
       html = html.replace('<main id="homePageView" class="home-container">', '<main id="homePageView" class="home-container hidden">');
-      html = html.replace('<main id="blogIndexSection" class="guide-archive hidden"></main>', () => renderGuideArchive(categories));
+      html = html.replace('<main id="blogIndexSection" class="guide-archive hidden"></main>', () => renderGuideArchive(categories, db.topicCategories || DEFAULT_TOPIC_CATEGORIES));
     } else if (routeKind === 'list' && activeCat) {
       html = renderSsrListBody(html, activeCat, categories);
     } else if (routeKind === 'compare' && activeCat && comparePair) {
