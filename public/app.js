@@ -5204,17 +5204,24 @@
     adminCategoriesTableBody.querySelectorAll('.admin-cat-del-btn').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const slug = btn.getAttribute('data-del-cat');
-        if (!confirm(`Delete directory "${slug}" and all its rankings?`)) return;
+        const dialog = document.getElementById('guideDeleteDialog');
+        document.getElementById('guideDeleteMessage').textContent =
+          'This will permanently remove ' + slug + ' and its rankings.';
+        dialog.returnValue = '';
+        const confirmed = new Promise(resolve => {
+          dialog.addEventListener('close', () => resolve(dialog.returnValue === 'remove'), { once: true });
+        });
+        dialog.showModal();
+        if (!(await confirmed)) return;
         try {
-          const res = await fetch(`/api/admin/categories/${slug}`, { method: 'DELETE' });
+          const res = await fetch('/api/admin/categories/' + encodeURIComponent(slug), { method: 'DELETE' });
           const data = await res.json();
-          if (data.state) {
-            appState = data.state;
-            renderAdminPanel();
-            showToast('Directory removed');
-          }
+          if (!res.ok || !data.state) throw new Error(data.error || 'Unable to remove guide');
+          appState = data.state;
+          renderAdminPanel();
+          showToast('Guide removed');
         } catch (err) {
-          alert('Failed to delete directory: ' + err.message);
+          showToast(err.message);
         }
       });
     });

@@ -34,6 +34,16 @@
   <div class="outer-stage">
     <div class="app-window">
 
+      <header class="blog-shell-only blog-site-header">
+        <div class="blog-shell-inner">
+          <a class="blog-wordmark" href="/" aria-label="Top 10 homepage">Top 10</a>
+          <nav aria-label="Blog navigation">
+            <a href="/">Home</a>
+            <a class="blog-guide-nav" href="/blog">All guides</a>
+          </nav>
+        </div>
+      </header>
+
       <!-- =====================================================================
            READER-FIRST TOP NAVIGATION BAR
            Left: // Top 10 Logo (Home) + Category Guide Switcher
@@ -859,6 +869,20 @@ Body: { "title", "authorId", "topic", "tags": [...], "status": "scheduled", "sch
       <!-- =====================================================================
            SITE-WIDE 4-COLUMN FOOTER
            ===================================================================== -->
+      <footer class="blog-shell-only blog-site-footer">
+        <div class="blog-shell-inner">
+          <div>
+            <a class="blog-wordmark" href="/">Top 10</a>
+            <p>Buying guides and ranked recommendations.</p>
+          </div>
+          <nav aria-label="Blog footer">
+            <a href="/">Home</a>
+            <a href="/blog">All guides</a>
+            <a href="/admin">Editor sign-in</a>
+          </nav>
+        </div>
+      </footer>
+
       <footer class="site-footer" role="contentinfo">
         <div class="footer-inner">
           <div class="footer-grid">
@@ -2098,6 +2122,16 @@ Automated daily backups &amp; branching"></textarea>
   <!-- Toast notification -->
   <div class="toast-notification hidden" id="toastNotification"></div>
 
+  <dialog class="guide-delete-dialog" id="guideDeleteDialog" aria-labelledby="guideDeleteTitle">
+    <form method="dialog">
+      <h2 id="guideDeleteTitle">Remove guide?</h2>
+      <p id="guideDeleteMessage"></p>
+      <div>
+        <button value="cancel" autofocus>Cancel</button>
+        <button value="remove">Remove guide</button>
+      </div>
+    </form>
+  </dialog>
   <script src="/app.js"></script>
 </body>
 </html>
