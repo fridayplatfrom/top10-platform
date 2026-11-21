@@ -205,210 +205,28 @@
            ===================================================================== -->
       <main id="blogIndexSection" class="guide-archive hidden"></main>
 
-      <main id="singleListPageView" class="workspace-container hidden">
-
-        <article>
-          <!-- EDITORIAL FEATURE HERO CARD (Title, Description, Author & Rounded Feature Image) -->
-          <header class="entity-header editorial-hero-card">
-            <div class="ehc-left">
-              <div class="ehc-top-row">
-                <div class="ehc-guide-pill">
-                  <span class="ehc-guide-icon" id="heroCatIcon"></span>
-                  <span class="ehc-guide-label" id="heroCatPillLabel">Top 10 Guide</span>
-                </div>
-                <button type="button" class="btn-share-icon-only ehc-circle-btn" id="openShareModalBtn" title="Share rankings on X / LinkedIn" aria-label="Share rankings">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="18" cy="5" r="3"/>
-                    <circle cx="6" cy="12" r="3"/>
-                    <circle cx="18" cy="19" r="3"/>
-                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                  </svg>
-                </button>
-                <button type="button" class="hidden-accessible" id="openCategoryRfpBtn" aria-hidden="true"></button>
-                <button type="button" class="hidden-accessible" id="copyListUrlBtn" aria-hidden="true"><span id="copyListUrlLabel">Copy Link</span></button>
-              </div>
-
-              <div class="ehc-body">
-                <p class="entity-subtitle ehc-date" id="heroCatSubtitle">18 Oct 2026</p>
-                <h2 class="entity-title ehc-title" id="heroCatTitle">Top 10 Billing Software</h2>
-                <p class="ehc-desc" id="heroCatDesc">Compare the leading platforms with our step-by-step guide, key advantages, and independent benchmark testing to find your ideal match.</p>
-              </div>
-
-              <div class="ehc-author-row">
-                <img id="heroCatAuthorAvatar" class="ehc-author-avatar" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80" alt="Bill Roberts" />
-                <div class="ehc-author-meta">
-                  <span class="ehc-author-name" id="heroCatAuthorName">Bill Roberts</span>
-                  <span class="ehc-author-role" id="heroCatAuthorRole">Founder</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="ehc-right">
-              <div class="ehc-feature-media">
-                <img id="heroCatFeatureImg" class="ehc-feature-img" src="https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1200&q=80" alt="Featured Guide Cover" loading="eager" />
-              </div>
-            </div>
-
-            <!-- Focused Inline Search & Sort Bar (Hidden for minimalist view) -->
-            <div class="list-controls-bar hidden-accessible">
-              <div class="list-search-sort-group full-width">
-                <div class="list-inline-search-wrap">
-                  <svg class="search-mini-icon" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="7" cy="7" r="5"></circle>
-                    <line x1="11" y1="11" x2="15" y2="15"></line>
-                  </svg>
-                  <input type="text" id="catInlineSearchInput" class="cat-inline-search" placeholder="Filter in this guide..." autocomplete="off" />
-                  <button type="button" id="catInlineSearchClear" class="cat-inline-clear hidden" aria-label="Clear filter">×</button>
-                </div>
-                <div class="list-sort-select-wrap">
-                  <span class="sort-prefix">Sort:</span>
-                  <select id="catSortSelect" class="cat-sort-select" aria-label="Sort platforms in category">
-                    <option value="rank">Rank (Default)</option>
-                    <option value="score">Editorial Score</option>
-                    <option value="rating">Rating ★</option>
-                    <option value="reviews">Most Reviewed</option>
-                    <option value="alpha">Name (A-Z)</option>
-                  </select>
-                </div>
-              </div>
-              <div class="minimal-filter-chips hidden-accessible" id="listQuickFilterBar"></div>
-            </div>
+      <main id="singleListPageView" class="guide-reading-view hidden">
+        <article class="guide-reading">
+          <nav class="guide-reading-crumb" aria-label="Breadcrumb">
+            <a href="/blog">← All posts</a>
+          </nav>
+          <header class="guide-reading-heading">
+            <p class="guide-reading-label" id="heroCatPillLabel">Buying guide</p>
+            <h2 id="heroCatTitle">Top 10 Buying Guide</h2>
+            <p id="heroCatDesc"></p>
           </header>
-
-          <!-- =================================================================
-               1. TOP 10 PLATFORMS (Unified Minimalist Cards with Real Favicons)
-               ================================================================= -->
-          <section id="tabPanelRankings" class="tab-panel">
-            <div class="clean-product-list" id="top10TimelineList"></div>
-
-            <!-- Additional Listed Platforms when Total Listings > 10 (Maintained for backward-compat) -->
-            <div class="more-listings-section hidden" id="moreListingsSection" style="display: none;">
-              <div class="more-listings-header">
-                <span class="more-listings-title" id="moreListingsTitle">Other Listed Platforms</span>
-                <button type="button" class="btn-toggle-more-listings" id="toggleMoreListingsBtn">
-                  Show all listings ▾
-                </button>
-              </div>
-              <div class="clean-product-list hidden" id="moreListingsTimeline"></div>
-            </div>
+          <img class="guide-reading-cover" id="guideReadingCover" alt="" width="1200" height="675" decoding="async" hidden>
+          <p class="guide-reading-intro" id="guideReadingIntro" hidden></p>
+          <section id="tabPanelRankings" aria-labelledby="guideRankingsTitle">
+            <h2 id="guideRankingsTitle">The rankings</h2>
+            <ol class="guide-reading-list" id="top10TimelineList"></ol>
+            <p id="guideReadingEmpty">No products are listed in this guide yet.</p>
           </section>
-
-          <!-- =================================================================
-               2. UNDER THE 10 LISTS: CLEAN "+ ADD YOUR PLATFORM" CTA
-               ================================================================= -->
-          <section class="below-list-stats-cta-card minimal-below-cta-only">
-            <div class="analytics-card-topbar hidden-accessible">
-              <span class="analytics-card-eyebrow">Directory Analytics</span>
-              <div class="analytics-range-tabs" id="analyticsRangeTabs" role="tablist" aria-label="Analytics time range">
-                <button type="button" class="analytics-range-tab" data-range="7d">7D</button>
-                <button type="button" class="analytics-range-tab active" data-range="30d">30D</button>
-                <button type="button" class="analytics-range-tab" data-range="1y">1Y</button>
-              </div>
-            </div>
-
-            <div class="analytics-big-grid hidden-accessible">
-              <!-- Views + Green Sparkline Graph -->
-              <div class="analytics-stat-card" title="Reader traffic trend">
-                <div class="asc-left">
-                  <span class="asc-label">Views <span class="asc-trend-pill up" id="trendViewsPill">+18%</span></span>
-                  <span class="asc-value" id="kpiViews">130.53k</span>
-                </div>
-                <svg class="asc-sparkline" id="sparkViewsSvg" viewBox="0 0 88 34" fill="none" aria-hidden="true">
-                  <path d="M4 28L20 21L36 24L52 14L68 16L84 6" stroke="#10B981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <circle cx="4" cy="28" r="2.3" fill="#10B981"/>
-                  <circle cx="20" cy="21" r="2.3" fill="#10B981"/>
-                  <circle cx="36" cy="24" r="2.3" fill="#10B981"/>
-                  <circle cx="52" cy="14" r="2.3" fill="#10B981"/>
-                  <circle cx="68" cy="16" r="2.3" fill="#10B981"/>
-                  <circle cx="84" cy="6" r="2.8" fill="#10B981"/>
-                </svg>
-              </div>
-
-              <!-- Reviews + Blue Sparkline Graph -->
-              <div class="analytics-stat-card" title="Verified buyer reviews &amp; pricing notes">
-                <div class="asc-left">
-                  <span class="asc-label">Reviews <span class="asc-trend-pill blue" id="trendReviewsPill">+12%</span></span>
-                  <span class="asc-value" id="kpiReviews">7,304</span>
-                </div>
-                <svg class="asc-sparkline" id="sparkReviewsSvg" viewBox="0 0 88 34" fill="none" aria-hidden="true">
-                  <path d="M4 26L20 18L36 15L52 22L68 12L84 8" stroke="#0EA5E9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <circle cx="4" cy="26" r="2.3" fill="#0EA5E9"/>
-                  <circle cx="20" cy="18" r="2.3" fill="#0EA5E9"/>
-                  <circle cx="36" cy="15" r="2.3" fill="#0EA5E9"/>
-                  <circle cx="52" cy="22" r="2.3" fill="#0EA5E9"/>
-                  <circle cx="68" cy="12" r="2.3" fill="#0EA5E9"/>
-                  <circle cx="84" cy="8" r="2.8" fill="#0EA5E9"/>
-                </svg>
-              </div>
-
-              <!-- Total Listings + Purple Sparkline Graph -->
-              <div class="analytics-stat-card" title="Total verified platforms evaluated in this category">
-                <div class="asc-left">
-                  <span class="asc-label">Total Listings <span class="asc-trend-pill purple" id="trendListingsPill">Live</span></span>
-                  <span class="asc-value" id="kpiTotalListings">14</span>
-                </div>
-                <svg class="asc-sparkline" id="sparkListingsSvg" viewBox="0 0 88 34" fill="none" aria-hidden="true">
-                  <path d="M4 27L20 23L36 20L52 13L68 15L84 7" stroke="#8B5CF6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <circle cx="4" cy="27" r="2.3" fill="#8B5CF6"/>
-                  <circle cx="20" cy="23" r="2.3" fill="#8B5CF6"/>
-                  <circle cx="36" cy="20" r="2.3" fill="#8B5CF6"/>
-                  <circle cx="52" cy="13" r="2.3" fill="#8B5CF6"/>
-                  <circle cx="68" cy="15" r="2.3" fill="#8B5CF6"/>
-                  <circle cx="84" cy="7" r="2.8" fill="#8B5CF6"/>
-                </svg>
-              </div>
-            </div>
-
-            <div class="hero-big-cta-wrap">
-              <button type="button" class="btn-big-add-platform" id="heroBigAddPlatformBtn">
-                <span class="big-add-plus">+</span>
-                <span>Add Your Platform</span>
-              </button>
-            </div>
-          </section>
-
-          <!-- =================================================================
-               3. UNDER STATS CARD: FREQUENTLY ASKED QUESTIONS (Hidden for Minimalist Layout)
-               ================================================================= -->
-          <section class="faq-seo-section hidden-accessible" id="faqSeoSection" aria-labelledby="faqHeading">
-            <div class="section-intro-row" style="margin-bottom: 12px;">
-              <h2 class="section-heading" id="faqHeading">Frequently Asked Questions</h2>
-            </div>
-            <div class="faq-accordion-list" id="faqAccordionList"></div>
-          </section>
-
-          <!-- =================================================================
-               4. AT THE END: CLEAN READER REVIEWS STREAM (Hidden for Minimalist Layout)
-               ================================================================= -->
-          <section id="tabPanelContext" class="context-section hidden-accessible">
-            <div class="reviews-stream-header">
-              <div class="rsh-left">
-                <h2 class="section-heading" style="margin-bottom:2px;">Verified Buyer &amp; Reader Reviews (<span id="verifiedReviewsCount">0</span>)</h2>
-                <span class="reviews-section-sub">Moderated feedback from verified operators &amp; engineering leaders</span>
-              </div>
-              <button type="button" class="btn-write-review-cta" id="openWriteReviewModalBtn">
-                <span>+</span> Write a Review
-              </button>
-            </div>
-
-            <div class="minimal-reviews-stream">
-              <div id="commentsTimelineContainer" class="minimal-reviews-list"></div>
-            </div>
-          </section>
-
-          <!-- =================================================================
-               5. RELATED TOP 10 DIRECTORIES FOOTER ROW (3 Compact Cards)
-               ================================================================= -->
-          <section class="related-directories-section" id="relatedDirectoriesSection" aria-labelledby="relatedDirsHeading">
-            <div class="related-dirs-header">
-              <h2 class="section-heading" id="relatedDirsHeading">Related Top 10 Directories</h2>
-              <button type="button" class="related-dirs-all-btn" id="viewAllDirectoriesFooterBtn">View all directories →</button>
-            </div>
-            <div class="related-dirs-grid" id="relatedDirectoriesGrid"></div>
+          <section class="guide-reading-related" id="relatedDirectoriesSection" aria-labelledby="relatedDirsHeading" hidden>
+            <h2 id="relatedDirsHeading">Related guides</h2>
+            <ul id="relatedDirectoriesGrid"></ul>
           </section>
         </article>
-
       </main>
 
       <!-- =====================================================================

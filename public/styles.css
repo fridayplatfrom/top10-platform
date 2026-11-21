@@ -10187,6 +10187,117 @@ html[data-theme="dark"] .home-topic-pill.active {
 .guide-archive-item a { color: inherit; }
 .guide-archive-item p { margin: 0; color: var(--text-muted); }
 
+/* Individual guide reading view */
+.app-window:has(> .guide-reading-view:not(.hidden)) > :is(.topbar, .site-footer, #backToTopPill, #compareSavedPill) {
+  display: none !important;
+}
+
+.guide-reading-view {
+  --reading-paper: #f4f7fb;
+  --reading-ink: #142449;
+  --reading-muted: #475b7e;
+  --reading-blue: #0042dc;
+  --reading-rule: #d4e3ff;
+  --reading-title: linear-gradient(118deg, #f9fbff, #e6efff);
+  flex: 1;
+  color: var(--reading-ink);
+  background: var(--reading-paper);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 1rem;
+}
+
+[data-theme="dark"] .guide-reading-view {
+  --reading-paper: #111827;
+  --reading-ink: #edf2ff;
+  --reading-muted: #b7c5df;
+  --reading-blue: #a1beff;
+  --reading-rule: #334b70;
+  --reading-title: linear-gradient(118deg, #1d293d, #24395c);
+}
+
+.guide-reading {
+  width: min(740px, calc(100% - 48px));
+  margin-inline: auto;
+  padding-block: 42px 70px;
+}
+
+.guide-reading a {
+  color: var(--reading-blue);
+  text-underline-offset: 3px;
+}
+
+.guide-reading a:focus-visible {
+  outline: 2px solid var(--reading-blue);
+  outline-offset: 4px;
+}
+
+.guide-reading-crumb {
+  margin-bottom: 13px;
+  font-size: .86rem;
+}
+
+.guide-reading-heading {
+  padding: clamp(18px, 4vw, 34px);
+  border: 1px solid var(--reading-rule);
+  border-radius: 14px;
+  margin-bottom: 25px;
+  background: var(--reading-title);
+}
+
+.guide-reading-cover {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  margin-bottom: 25px;
+  border-radius: 12px;
+}
+
+.guide-reading-cover[hidden] { display: none; }
+
+.guide-reading h1 {
+  margin: 9px 0 12px;
+  font-size: clamp(2.35rem, 5.2vw, 3.9rem);
+  font-weight: 750;
+  line-height: 1.04;
+  letter-spacing: -.068em;
+  overflow-wrap: anywhere;
+}
+
+.guide-reading p,
+.guide-reading li {
+  color: var(--reading-muted);
+  line-height: 1.65;
+}
+
+.guide-reading-heading .guide-reading-label {
+  margin-bottom: 15px;
+  color: var(--reading-blue);
+  font-size: .78rem;
+  font-weight: 750;
+}
+
+.guide-reading-heading p:last-child { max-width: 62ch; }
+.guide-reading h2 { margin: 29px 0 8px; font-size: 1.15rem; }
+.guide-reading :is(ol, ul) { padding-inline-start: 1.55em; }
+.guide-reading-item + .guide-reading-item { margin-top: 18px; }
+
+.guide-reading-item::marker,
+.guide-reading-item h3 {
+  color: var(--reading-ink);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.guide-reading-item h3 { margin-bottom: 5px; }
+.guide-reading-item h3 a { color: inherit; text-decoration-thickness: 1px; }
+.guide-reading-item h3 a:hover { color: var(--reading-blue); }
+
+@media (max-width: 690px) {
+  .guide-reading { width: calc(100% - 32px); padding-block: 30px 42px; }
+}
+
 #navNotificationBtn,
 .below-list-stats-cta-card,
 #tabPanelContext,

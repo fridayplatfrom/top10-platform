@@ -1867,520 +1867,51 @@
     };
   }
 
-  // Helper: Render 3 Related Top 10 Directories at Page Bottom (Editorial Feature Card Style)
-  function renderRelatedDirectories(cat) {
-    if (!relatedDirectoriesGrid || !appState || !appState.categories) return;
-    const allCats = appState.categories || [];
-    if (viewAllDirectoriesFooterBtn) {
-      viewAllDirectoriesFooterBtn.textContent = `View all ${allCats.length} directories →`;
-    }
-    const others = getThematicRelatedCategories(cat, allCats);
-
-    relatedDirectoriesGrid.innerHTML = others
-      .map((c) => {
-        const meta = getCategoryFeatureMeta(c);
-        return `
-          <article class="related-dir-card editorial-feature-card" data-open-rel-cat="${escapeHtml(c.slug)}">
-            <div class="rdc-top-content">
-              <div class="rdc-media-wrap">
-                <img src="${escapeHtml(meta.coverImage)}" alt="${escapeHtml(c.title)}" class="rdc-feature-img" loading="eager" />
-              </div>
-              <div class="rdc-body">
-                <div class="rdc-date">${escapeHtml(meta.dateText)}</div>
-                <h3 class="rdc-title">${escapeHtml(meta.editorialTitle)}</h3>
-                <p class="rdc-desc">${escapeHtml(meta.description)}</p>
-              </div>
-            </div>
-            <div class="rdc-author-row">
-              <img src="${escapeHtml(meta.authorAvatar)}" alt="${escapeHtml(meta.authorName)}" class="rdc-author-avatar" loading="lazy" />
-              <div class="rdc-author-meta">
-                <span class="rdc-author-name">${escapeHtml(meta.authorName)}</span>
-                <span class="rdc-author-role">${escapeHtml(meta.authorRole)}</span>
-              </div>
-            </div>
-          </article>
-        `;
-      })
-      .join('');
-
-    relatedDirectoriesGrid.querySelectorAll('[data-open-rel-cat]').forEach((card) => {
-      card.addEventListener('click', () => {
-        const targetSlug = card.getAttribute('data-open-rel-cat');
-        activeQuickFilter = 'all';
-        navigateToCategory(targetSlug);
-      });
-    });
-  }
-
-  // =========================================================================
-  // ULTRA-MINIMALIST SINGLE LIST PAGE RENDERER
-  // =========================================================================
   function renderSingleListPage(cat) {
-    const guide = cat.editorialGuide || {};
-    const top10 = cat.top10 || [];
-    const pushedOut = cat.pushedOut || [];
-    const allCatProds = [...top10, ...pushedOut];
-    const totalListings = cat.totalListingsCount || allCatProds.length;
-    const heroMeta = getCategoryFeatureMeta(cat);
-
-    if (breadcrumbCurrentTitle) breadcrumbCurrentTitle.textContent = cat.title;
-    if (heroCatIcon) {
-      heroCatIcon.innerHTML = renderCategorySvgIcon(cat, 13);
-      heroCatIcon.style.background = 'transparent';
-      heroCatIcon.style.color = 'currentColor';
-    }
-    const heroCatPillLabel = document.getElementById('heroCatPillLabel');
-    if (heroCatPillLabel) {
-      heroCatPillLabel.textContent = cat.shortName || 'Top 10 Guide';
-    }
-    if (heroUpdatedAgo) heroUpdatedAgo.textContent = `Updated ${guide.lastUpdatedDate || 'Oct 2026'}`;
-    if (heroPaidBadge) heroPaidBadge.textContent = `${totalListings} Listed`;
-    if (heroCatTitle) heroCatTitle.textContent = cat.title;
-    if (heroCatSubtitle) heroCatSubtitle.textContent = `${heroMeta.dateText} · ${allCatProds.length} Platforms Ranked`;
-
-    const heroCatDesc = document.getElementById('heroCatDesc');
-    if (heroCatDesc) heroCatDesc.textContent = heroMeta.description;
-
-    const heroCatFeatureImg = document.getElementById('heroCatFeatureImg');
-    if (heroCatFeatureImg) {
-      heroCatFeatureImg.src = heroMeta.coverImage;
-      heroCatFeatureImg.alt = cat.title;
-    }
-
-    const heroCatAuthorAvatar = document.getElementById('heroCatAuthorAvatar');
-    if (heroCatAuthorAvatar) {
-      heroCatAuthorAvatar.src = heroMeta.authorAvatar;
-      heroCatAuthorAvatar.alt = heroMeta.authorName;
-    }
-    const heroCatAuthorName = document.getElementById('heroCatAuthorName');
-    if (heroCatAuthorName) heroCatAuthorName.textContent = heroMeta.authorName;
-    const heroCatAuthorRole = document.getElementById('heroCatAuthorRole');
-    if (heroCatAuthorRole) heroCatAuthorRole.textContent = heroMeta.authorRole;
-
-    // Count saved platforms in this category
-    const savedInCatCount = allCatProds.filter((p) => savedProductIds.has(p.id)).length;
-    if (activeQuickFilter === 'saved' && savedInCatCount === 0) {
-      activeQuickFilter = 'all';
-    }
-
-    // Toggle Floating "Compare Saved (2+)" Pill
-    if (compareSavedPill && compareSavedPillText) {
-      if (currentView === 'list' && savedInCatCount >= 2) {
-        compareSavedPillText.textContent = `Compare ${savedInCatCount} Saved →`;
-        compareSavedPill.classList.remove('hidden');
-      } else {
-        compareSavedPill.classList.add('hidden');
+    const meta = getCategoryFeatureMeta(cat);
+    const products = [...(cat.top10 || []), ...(cat.pushedOut || [])];
+    heroCatTitle.textContent = cat.title;
+    document.getElementById('heroCatDesc').textContent = meta.description;
+    const cover = document.getElementById('guideReadingCover');
+    const image = typeof meta.coverImage === 'string' ? meta.coverImage : '';
+    if (/^(?:https:\/\/|\/(?![\/\\]))/i.test(image)) {
+      if (cover.getAttribute('src') !== image) {
+        cover.onerror = () => { cover.hidden = true; };
+        cover.src = image;
       }
-    }
-
-    // Render 1-Line Quick Filter Chip Bar (accessible hidden)
-    if (listQuickFilterBar) {
-      const filters = [
-        { key: 'all', label: `All (${allCatProds.length})` },
-        { key: 'free', label: 'Free Tier / Sandbox' },
-        { key: 'api', label: 'API & Cloud' },
-        { key: 'enterprise', label: 'Scale & Enterprise' },
-        { key: 'saved', label: `Saved (${savedInCatCount})` }
-      ];
-      listQuickFilterBar.innerHTML = filters
-        .map(
-          (f) => `
-          <button type="button" class="quick-filter-chip ${activeQuickFilter === f.key ? 'active' : ''}" data-qfilter="${f.key}">
-            ${escapeHtml(f.label)}
-          </button>
-        `
-        )
-        .join('');
-
-      listQuickFilterBar.querySelectorAll('[data-qfilter]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const targetFilter = btn.getAttribute('data-qfilter');
-          if (targetFilter === 'saved' && savedInCatCount === 0) {
-            showToast('Click the bookmark icon on any card to save it first');
-            return;
-          }
-          activeQuickFilter = targetFilter;
-          renderSingleListPage(cat);
-        });
-      });
-    }
-
-    // Render Analytics Card (7D / 30D / 1Y)
-    renderAnalyticsRange(cat);
-    if (commentCountBadge) commentCountBadge.textContent = (cat.comments || []).length;
-
-    // Sync Category Filter & Sort Control Elements
-    if (catInlineSearchInput && catInlineSearchInput.value !== activeCategorySearchQuery) {
-      catInlineSearchInput.value = activeCategorySearchQuery;
-    }
-    if (catInlineSearchClear) {
-      catInlineSearchClear.classList.toggle('hidden', !activeCategorySearchQuery);
-    }
-    if (catSortSelect && catSortSelect.value !== activeCategorySort) {
-      catSortSelect.value = activeCategorySort;
-    }
-
-    // Filter pipeline across all listings in category: Quick Filter -> Inline Search
-    let displayTop10 = allCatProds.filter((p) => matchesQuickFilter(p, activeQuickFilter));
-
-    if (activeCategorySearchQuery) {
-      const q = activeCategorySearchQuery.toLowerCase();
-      displayTop10 = displayTop10.filter((p) => {
-        const hay = `${p.name} ${p.companyName || ''} ${p.tagline || ''} ${p.pricingTag || ''} ${p.highlightTag || ''} ${p.bestFor || ''} ${(p.pros || []).join(' ')} ${(p.cons || []).join(' ')}`.toLowerCase();
-        return hay.includes(q);
-      });
-    }
-
-    // Sort pipeline
-    if (activeCategorySort === 'score') {
-      displayTop10.sort((a, b) => {
-        const scoreA = Number(a.editorialScore ?? 0);
-        const scoreB = Number(b.editorialScore ?? 0);
-        return scoreB - scoreA;
-      });
-    } else if (activeCategorySort === 'rating') {
-      displayTop10.sort((a, b) => {
-        const rA = Number(a.rating ?? 0);
-        const rB = Number(b.rating ?? 0);
-        return rB - rA;
-      });
-    } else if (activeCategorySort === 'reviews') {
-      displayTop10.sort((a, b) => {
-        const revA = Number(a.reviewsCount ?? 0);
-        const revB = Number(b.reviewsCount ?? 0);
-        return revB - revA;
-      });
-    } else if (activeCategorySort === 'alpha') {
-      displayTop10.sort((a, b) => a.name.localeCompare(b.name));
+      cover.hidden = false;
     } else {
-      // default: natural rank
-      displayTop10.sort((a, b) => (a.rank || 0) - (b.rank || 0));
+      cover.hidden = true;
+      cover.removeAttribute('src');
     }
+    const intro = document.getElementById('guideReadingIntro');
+    intro.textContent = cat.editorialGuide?.intro?.trim() || '';
+    intro.hidden = !intro.textContent || intro.textContent === meta.description?.trim();
 
-    // 1. Render Unified High-End Product Cards with Real Favicons, Rank Pedigree, Badges & Micro-Toolbar
-    if (displayTop10.length === 0) {
-      top10TimelineList.innerHTML = `
-        <div class="empty-guide-filter">
-          <p>No platforms match <strong>"${escapeHtml(activeCategorySearchQuery || activeQuickFilter)}"</strong> in this category.</p>
-          <button type="button" id="resetCatFiltersBtn">Reset Filters</button>
-        </div>
-      `;
-      const rBtn = document.getElementById('resetCatFiltersBtn');
-      if (rBtn) {
-        rBtn.addEventListener('click', () => {
-          activeQuickFilter = 'all';
-          activeCategorySearchQuery = '';
-          if (catInlineSearchInput) catInlineSearchInput.value = '';
-          if (catInlineSearchClear) catInlineSearchClear.classList.add('hidden');
-          renderSingleListPage(cat);
-        });
+    top10TimelineList.innerHTML = products.map((product, index) => {
+      const title = escapeHtml(product.name);
+      const summary = product.editorialSummary || product.tagline;
+      let link = title;
+      try {
+        const url = new URL(product.website || product.url);
+        if (['http:', 'https:'].includes(url.protocol)) {
+          link = `<a href="${escapeHtml(url.href)}" target="_blank" rel="noopener">${title}</a>`;
+        }
+      } catch {
+        // A product without a valid website still has its rank and review.
       }
-    } else {
-      top10TimelineList.innerHTML = displayTop10
-        .map((prod, idx) => {
-        const rankNum = prod.rank || (idx + 1);
-        const rankClass = rankNum === 1 ? 'rank-1' : rankNum === 2 ? 'rank-2' : rankNum === 3 ? 'rank-3' : '';
+      return `<li class="guide-reading-item card-product-node" id="prod-card-${escapeHtml(product.id)}" value="${product.rank || index + 1}">
+        <h3>${link}</h3>
+        ${summary ? `<p>${escapeHtml(summary)}</p>` : ''}
+      </li>`;
+    }).join('');
+    document.getElementById('guideReadingEmpty').hidden = products.length > 0;
 
-
-        const prosList = Array.isArray(prod.pros) && prod.pros.length > 0 ? prod.pros : [];
-        const consList = Array.isArray(prod.cons) && prod.cons.length > 0 ? prod.cons : [];
-
-        const prosHtml = (prosList.length > 0 ? prosList : ['Verified production reliability and fast team onboarding', 'Transparent pricing structure with low operational overhead'])
-          .slice(0, 3)
-          .map(
-            (pro) => `
-            <li class="pc-bullet-item">
-              <span class="pc-icon-pro">✓</span>
-              <span class="pc-bullet-text">${escapeHtml(shortenBullet(pro))}</span>
-            </li>
-          `
-          )
-          .join('');
-
-        const consHtml = (consList.length > 0 ? consList : ['Advanced customization requires higher-tier plans', 'Integration ecosystem is tailored toward core workflows'])
-          .slice(0, 3)
-          .map(
-            (con) => `
-            <li class="pc-bullet-item">
-              <span class="pc-icon-con">✗</span>
-              <span class="pc-bullet-text">${escapeHtml(shortenBullet(con))}</span>
-            </li>
-          `
-          )
-          .join('');
-
-        const specs = prod.specs || {};
-        const isSaved = savedProductIds.has(prod.id);
-        const cleanHighlight = String(prod.highlightTag || '').replace(/^@/, '');
-        const bestForText = prod.bestFor || (cleanHighlight ? `Best for ${cleanHighlight}` : '');
-
-        return `
-          <section class="clean-product-item card-product-node" itemscope itemprop="itemListElement" itemtype="https://schema.org/Product">
-            <div class="product-card-box minimal-unified-card ${rankClass ? 'card-' + rankClass : ''} ${prod.claimed ? 'is-claimed' : ''}" id="prod-card-${escapeHtml(prod.id)}">
-              <!-- Unified Header Row inside Card Box -->
-              <div class="minimal-card-header">
-                <div class="product-header-left">
-                  <!-- Rank Badge -->
-                  <div class="rank-node-badge ${rankClass}" title="Rank #${rankNum}">
-                    <span class="rank-hash">#</span><span class="rank-num">${rankNum}</span>
-                  </div>
-
-                  <!-- 34px Brand Logo with rounded squircle -->
-                  <div class="brand-logo-container">
-                    ${renderBrandLogo(prod, 34)}
-                  </div>
-
-                  <!-- Title, Verified Badge, Rating, Subtitle -->
-                  <div class="prod-identity-info">
-                    <div class="prod-title-row">
-                      <h3 class="minimal-prod-title">
-                        <a href="${escapeHtml(prod.website)}" target="_blank" rel="noopener" class="prod-title-link" itemprop="url" data-click-prod="${escapeHtml(prod.id)}">
-                          <span itemprop="name">${escapeHtml(prod.name)}</span>
-                        </a>
-                      </h3>
-
-                      <button
-                      type="button"
-                      class="btn-share-ranking icon-btn"
-                      data-share-prod="${escapeHtml(prod.id)}"
-                      title="Share #${rankNum} ${escapeHtml(prod.name)} ranking"
-                      aria-label="Share platform ranking"
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="18" cy="5" r="3"></circle>
-                        <circle cx="6" cy="12" r="3"></circle>
-                        <circle cx="18" cy="19" r="3"></circle>
-                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                      </svg>
-                    </button>
-
-                    <button
-                      type="button"
-                      class="btn-embed-badge icon-btn hidden-accessible"
-                      data-badge-prod="${escapeHtml(prod.id)}"
-                      title="Get 'Featured on Top 10' embed badge for ${escapeHtml(prod.name)}"
-                      aria-label="Embed badge"
-                    >
-                      ${SVG_ICON_BADGE}
-                    </button>
-
-                    <button
-                      type="button"
-                      class="btn-save-bookmark icon-btn ${isSaved ? 'saved' : ''}"
-                      data-save-prod="${escapeHtml(prod.id)}"
-                      data-save-name="${escapeHtml(prod.name)}"
-                      title="${isSaved ? 'Remove from Saved shortlist' : 'Save to shortlist'}"
-                      aria-label="Save platform"
-                    >
-                      ${SVG_ICON_BOOKMARK}
-                    </button>
-                  </div>
-
-                  <a
-                    href="${escapeHtml(prod.website)}"
-                    target="_blank"
-                    rel="noopener"
-                    class="btn-reader-visit"
-                    data-click-prod="${escapeHtml(prod.id)}"
-                    title="Visit official website"
-                  >
-                    <span>Visit</span>
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M4 12L12 4M12 4H6M12 4V10"/>
-                    </svg>
-                  </a>
-                </div>
-              </div>
-
-              <!-- Option A: Studio Media Showcase (TVs, Hardware & Screenshots) -->
-              ${prod.media && prod.media.heroImage ? `
-                <div class="card-media-stage" data-lightbox-src="${escapeHtml(prod.media.heroImage)}" data-lightbox-title="${escapeHtml(prod.name)}" data-lightbox-tag="${escapeHtml(prod.media.overlayTag || '')}" data-lightbox-company="${escapeHtml(prod.companyName)}" data-lightbox-link="${escapeHtml(prod.website)}">
-                  <img
-                    src="${escapeHtml(prod.media.heroImage)}"
-                    alt="${escapeHtml(prod.name)}"
-                    class="card-media-img"
-                    loading="lazy"
-                    decoding="async"
-                    onerror="this.closest('.card-media-stage').style.display='none'"
-                  />
-                  <button type="button" class="media-zoom-btn" title="View high-res photo" aria-label="Zoom photo">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="7" cy="7" r="4.5"/>
-                      <path d="M10.5 10.5L14 14M7 5v4M5 7h4"/>
-                    </svg>
-                  </button>
-                </div>
-              ` : ''}
-
-              <!-- Clean Description Only -->
-              <p class="minimal-card-desc" itemprop="description">
-                ${escapeHtml(prod.editorialSummary || prod.tagline)}
-              </p>
-            </div>
-          </section>
-        `;
-      })
-      .join('');
-    }
-
-    // 1b. All listings are now rendered continuously in the main list
-    if (moreListingsSection) {
-      moreListingsSection.classList.add('hidden');
-      moreListingsSection.style.display = 'none';
-    }
-    if (moreListingsTimeline) {
-      moreListingsTimeline.innerHTML = '';
-    }
-
-    // Boost Existing Platform Handler (Opens + Add Your Platform Modal in "Boost Existing" Mode)
-    document.querySelectorAll('[data-boost-existing]').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const prodId = btn.getAttribute('data-boost-existing');
-        openBidModal(1, 'existing', prodId);
-      });
-    });
-
-    // Head-to-Head Comparison "VS" Button Handler
-    document.querySelectorAll('[data-compare-vs]').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const prodId = btn.getAttribute('data-compare-vs');
-        const idx = allCatProds.findIndex((p) => p.id === prodId);
-        let otherProd = null;
-        if (idx === 0 && allCatProds.length > 1) {
-          otherProd = allCatProds[1];
-        } else if (idx > 0) {
-          otherProd = allCatProds[0];
-        } else if (allCatProds.length > 1) {
-          otherProd = allCatProds[1];
-        }
-        if (otherProd) {
-          navigateToCompare(cat.slug, prodId, otherProd.id);
-        } else {
-          showToast('Need at least 2 platforms in this directory to compare.');
-        }
-      });
-    });
-
-    // Founder Self-Serve Portal "Manage" Button Handler
-    document.querySelectorAll('[data-manage-prod]').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const prodId = btn.getAttribute('data-manage-prod');
-        openFounderPortal(prodId);
-      });
-    });
-
-    // B2B Custom Quote / RFP Button Handler
-    document.querySelectorAll('[data-rfp-prod]').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const prodId = btn.getAttribute('data-rfp-prod');
-        openRequestRfpModal(cat, prodId);
-      });
-    });
-
-    // Claim Listing Button Handler
-    document.querySelectorAll('[data-claim-prod]').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const prodId = btn.getAttribute('data-claim-prod');
-        const targetProd = allCatProds.find((p) => p.id === prodId);
-        if (targetProd) {
-          openClaimModal(targetProd);
-        }
-      });
-    });
-
-    // Share Product Ranking Button Handler
-    document.querySelectorAll('[data-share-prod]').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const prodId = btn.getAttribute('data-share-prod');
-        const targetProd = allCatProds.find((p) => p.id === prodId);
-        openShareRankingModal(cat, targetProd);
-      });
-    });
-
-    // Embed Badge Button Handler
-    document.querySelectorAll('[data-badge-prod]').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const prodId = btn.getAttribute('data-badge-prod');
-        const targetProd = allCatProds.find((p) => p.id === prodId);
-        if (targetProd) {
-          openEmbedBadgeModal(cat, targetProd);
-        }
-      });
-    });
-
-    // Bookmark Shortlist Button Handler
-    document.querySelectorAll('[data-save-prod]').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const prodId = btn.getAttribute('data-save-prod');
-        const prodName = btn.getAttribute('data-save-name') || 'Platform';
-        if (savedProductIds.has(prodId)) {
-          savedProductIds.delete(prodId);
-          persistSavedProducts();
-          showToast(`Removed ${prodName} from Saved`);
-        } else {
-          savedProductIds.add(prodId);
-          persistSavedProducts();
-          showToast(`Saved ${prodName} to shortlist`);
-        }
-        renderSingleListPage(cat);
-      });
-    });
-
-    // Populate Product Tag Selector in Review Composer
-    if (commentProductTag) {
-      commentProductTag.innerHTML =
-        `<option value="">Tag platform (optional)</option>` +
-        allCatProds
-          .map((p) => `<option value="${escapeHtml(p.name)}">@${escapeHtml(p.name)}</option>`)
-          .join('');
-    }
-
-    // Outbound Website Click handler
-
-
-    // Lightbox Studio Photo Click Handler
-    document.querySelectorAll('.card-media-stage').forEach((stage) => {
-      stage.addEventListener('click', (e) => {
-        // Don't trigger if clicked directly on an embedded link
-        if (e.target.closest('a')) return;
-        const src = stage.getAttribute('data-lightbox-src');
-        const title = stage.getAttribute('data-lightbox-title');
-        const tag = stage.getAttribute('data-lightbox-tag');
-        const comp = stage.getAttribute('data-lightbox-company');
-        const link = stage.getAttribute('data-lightbox-link');
-        openImageLightbox(src, title, tag, comp, link);
-      });
-    });
-
-    // 3. Render FAQ Accordion (Closed by Default)
-    if (methodologyText) {
-      methodologyText.textContent = '';
-    }
-
-    faqAccordionList.innerHTML = (guide.faqs || [])
-      .map(
-        (faq) => `
-        <details class="faq-item">
-          <summary class="faq-question">
-            <span>${escapeHtml(faq.q)}</span>
-          </summary>
-          <p class="faq-answer">${escapeHtml(faq.a)}</p>
-        </details>
-      `
-      )
-      .join('');
-
-    renderContextStream(cat);
-    renderRelatedDirectories(cat);
+    const related = getThematicRelatedCategories(cat, appState.categories || []);
+    relatedDirectoriesSection.hidden = related.length === 0;
+    relatedDirectoriesGrid.innerHTML = related.map(other =>
+      `<li><a href="/list/${encodeURIComponent(other.slug)}">${escapeHtml(getCategoryFeatureMeta(other).editorialTitle)}</a></li>`
+    ).join('');
   }
 
   function escapeRegex(string) {
@@ -2638,7 +2169,7 @@
 
     tabPanelRankings.classList.toggle('hidden', currentTab !== 'rankings');
     if (tabPanelCompare) tabPanelCompare.classList.toggle('hidden', currentTab !== 'compare');
-    tabPanelContext.classList.toggle('hidden', currentTab !== 'context');
+    tabPanelContext?.classList.toggle('hidden', currentTab !== 'context');
     if (tabPanelFaq) tabPanelFaq.classList.toggle('hidden', currentTab !== 'faq');
   }
 

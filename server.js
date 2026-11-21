@@ -2103,86 +2103,44 @@ ${items}
 
     function renderSsrListBody(rawHtml, cat, allCats) {
       const meta = getCategoryFeatureMeta(cat);
-      const top10 = cat.top10 || [];
-      const allProds = [...top10, ...(cat.pushedOut || [])];
+      const image = typeof meta.coverImage === 'string' ? meta.coverImage : '';
+      const cover = /^(?:https:\/\/|\/(?![\/\\]))/i.test(image) ? image : '';
+      const products = [...(cat.top10 || []), ...(cat.pushedOut || [])];
+      const intro = cat.editorialGuide?.intro?.trim() || '';
+      const related = allCats.filter(other => other.slug !== cat.slug).slice(0, 3);
+      const list = products.map((product, index) => {
+        const url = getSsrProductLink(product);
+        const title = escapeXml(product.name);
+        const summary = product.editorialSummary || product.tagline;
+        const link = url === '#' ? title : `<a href="${escapeXml(url)}" target="_blank" rel="noopener">${title}</a>`;
+        return `<li class="guide-reading-item card-product-node" id="prod-card-${escapeXml(product.id)}" value="${product.rank || index + 1}">
+          <h3>${link}</h3>
+          ${summary ? `<p>${escapeXml(summary)}</p>` : ''}
+        </li>`;
+      }).join('');
+      const relatedLinks = related.map(other =>
+        `<li><a href="/list/${encodeURIComponent(other.slug)}">${escapeXml(getCategoryFeatureMeta(other).editorialTitle)}</a></li>`
+      ).join('');
 
-      const listHtml = allProds
-        .map((prod) => {
-          const rankNum = prod.rank || 1;
-          const rankClass = rankNum <= 3 ? `rank-${rankNum}` : '';
-          return `
-            <section class="clean-product-item card-product-node">
-              <div class="product-card-box minimal-unified-card ${rankClass ? 'card-' + rankClass : ''}" id="prod-card-${escapeXml(prod.id)}">
-                <div class="minimal-card-header">
-                  <div class="product-header-left">
-                    <div class="rank-node-badge ${rankClass}"><span class="rank-hash">#</span><span class="rank-num">${rankNum}</span></div>
-                    <div class="prod-identity-info">
-                      <div class="prod-title-row">
-                        <h3 class="minimal-prod-title"><a href="${escapeXml(prod.website)}" target="_blank" rel="noopener" class="prod-title-link">${escapeXml(prod.name)}</a></h3>
-                      </div>
-                      <div class="prod-sub-row"><span class="prod-company-muted">by ${escapeXml(prod.companyName)}</span></div>
-                    </div>
-                  </div>
-                  <div class="product-header-actions">
-                    <a href="${escapeXml(prod.website)}" target="_blank" rel="noopener" class="btn-reader-visit"><span>Visit</span></a>
-                  </div>
-                </div>
-                ${prod.media && prod.media.heroImage ? `<div class="card-media-stage"><img src="${escapeXml(prod.media.heroImage)}" alt="${escapeXml(prod.name)}" class="card-media-img" loading="lazy" /></div>` : ''}
-                <p class="minimal-card-desc">${escapeXml(prod.editorialSummary || prod.tagline)}</p>
-              </div>
-            </section>`;
-        })
-        .join('');
-
-      const relatedHtml = allCats
-        .filter((c) => c.slug !== cat.slug)
-        .slice(0, 3)
-        .map((c) => {
-          const m = getCategoryFeatureMeta(c);
-          return `
-            <article class="related-dir-card editorial-feature-card">
-              <div class="rdc-top-content">
-                <div class="rdc-media-wrap"><img src="${escapeXml(m.coverImage)}" alt="${escapeXml(c.title)}" class="rdc-feature-img" loading="lazy" /></div>
-                <div class="rdc-body">
-                  <div class="rdc-date">${escapeXml(m.dateText)}</div>
-                  <h3 class="rdc-title"><a href="/list/${escapeXml(c.slug)}" style="color:inherit;text-decoration:none;">${escapeXml(m.editorialTitle)}</a></h3>
-                  <p class="rdc-desc">${escapeXml(m.description)}</p>
-                </div>
-              </div>
-              <div class="rdc-author-row">
-                <img src="${escapeXml(m.authorAvatar)}" alt="${escapeXml(m.authorName)}" class="rdc-author-avatar" loading="lazy" />
-                <div class="rdc-author-meta"><span class="rdc-author-name">${escapeXml(m.authorName)}</span><span class="rdc-author-role">${escapeXml(m.authorRole)}</span></div>
-              </div>
-            </article>`;
-        })
-        .join('');
-
-      let out = rawHtml;
-      out = out.replace('<main id="homePageView" class="home-container">', '<main id="homePageView" class="home-container hidden">');
-      out = out.replace('<main id="singleListPageView" class="workspace-container hidden">', '<main id="singleListPageView" class="workspace-container">');
-      out = out.replace('id="heroCatPillLabel">Top 10 Guide<', `id="heroCatPillLabel">${escapeXml(cat.shortName || 'Top 10 Guide')}<`);
-      out = out.replace('id="heroCatSubtitle">18 Oct 2026<', `id="heroCatSubtitle">${escapeXml(meta.dateText)} · ${allProds.length} Platforms Ranked<`);
-      out = out.replace(
-        '<h2 class="entity-title ehc-title" id="heroCatTitle">Top 10 Billing Software</h2>',
-        `<h1 class="entity-title ehc-title" id="heroCatTitle">${escapeXml(cat.title)}</h1>`
-      );
-      out = out.replace(
-        /<p class="ehc-desc" id="heroCatDesc">[\s\S]*?<\/p>/i,
-        `<p class="ehc-desc" id="heroCatDesc">${escapeXml(meta.description)}</p>`
-      );
-      out = out.replace(
-        /<img id="heroCatFeatureImg" class="ehc-feature-img" src="[^"]*" alt="[^"]*"/i,
-        `<img id="heroCatFeatureImg" class="ehc-feature-img" src="${escapeXml(meta.coverImage)}" alt="${escapeXml(cat.title)}"`
-      );
-      out = out.replace(
-        '<div class="clean-product-list" id="top10TimelineList"></div>',
-        `<div class="clean-product-list" id="top10TimelineList">${listHtml}</div>`
-      );
-      out = out.replace(
-        '<div class="related-dirs-grid" id="relatedDirectoriesGrid"></div>',
-        `<div class="related-dirs-grid" id="relatedDirectoriesGrid">${relatedHtml}</div>`
-      );
-      return out;
+      return rawHtml
+        .replace('<main id="homePageView" class="home-container">', '<main id="homePageView" class="home-container hidden">')
+        .replace('<main id="singleListPageView" class="guide-reading-view hidden">', '<main id="singleListPageView" class="guide-reading-view">')
+        .replace('<h2 id="heroCatTitle">Top 10 Buying Guide</h2>', () =>
+          `<h1 id="heroCatTitle">${escapeXml(cat.title)}</h1>`)
+        .replace('<p id="heroCatDesc"></p>', () => `<p id="heroCatDesc">${escapeXml(meta.description)}</p>`)
+        .replace('id="guideReadingCover" alt="" width="1200" height="675" decoding="async" hidden', () =>
+          cover ? `id="guideReadingCover" alt="" width="1200" height="675" decoding="async" src="${escapeXml(cover)}"`
+            : 'id="guideReadingCover" alt="" width="1200" height="675" decoding="async" hidden')
+        .replace('<p class="guide-reading-intro" id="guideReadingIntro" hidden></p>', () =>
+          intro && intro !== meta.description?.trim() ? `<p class="guide-reading-intro" id="guideReadingIntro">${escapeXml(intro)}</p>`
+            : '<p class="guide-reading-intro" id="guideReadingIntro" hidden></p>')
+        .replace('<ol class="guide-reading-list" id="top10TimelineList"></ol>', () =>
+          `<ol class="guide-reading-list" id="top10TimelineList">${list}</ol>`)
+        .replace('<p id="guideReadingEmpty">', products.length ? '<p id="guideReadingEmpty" hidden>' : '<p id="guideReadingEmpty">')
+        .replace('id="relatedDirectoriesSection" aria-labelledby="relatedDirsHeading" hidden', related.length
+          ? 'id="relatedDirectoriesSection" aria-labelledby="relatedDirsHeading"'
+          : 'id="relatedDirectoriesSection" aria-labelledby="relatedDirsHeading" hidden')
+        .replace('<ul id="relatedDirectoriesGrid"></ul>', () => `<ul id="relatedDirectoriesGrid">${relatedLinks}</ul>`);
     }
 
     function getSsrProductLink(product) {
