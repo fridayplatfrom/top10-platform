@@ -10219,7 +10219,7 @@ html[data-theme="dark"] .home-topic-pill.active {
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 20 / 9;
   object-fit: cover;
 }
 
