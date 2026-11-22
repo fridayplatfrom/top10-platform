@@ -10201,10 +10201,15 @@ html[data-theme="dark"] .home-topic-pill.active {
   line-height: 1.55;
 }
 
-.guide-index-feature,
-.guide-index-library {
+.guide-index-feature {
   margin-top: clamp(24px, 4vw, 40px);
   padding-top: clamp(20px, 3vw, 28px);
+  border-top: 1px solid var(--reading-rule);
+}
+
+.guide-index-library {
+  margin-top: clamp(8px, 1.5vw, 20px);
+  padding-top: clamp(8px, 1vw, 14px);
   border-top: 1px solid var(--reading-rule);
 }
 
@@ -10251,7 +10256,7 @@ html[data-theme="dark"] .home-topic-pill.active {
 }
 
 .guide-index-library h2 {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   font-size: clamp(1.45rem, 3vw, 2rem);
   line-height: 1.15;
   letter-spacing: -.035em;
@@ -10334,7 +10339,12 @@ html[data-theme="dark"] .home-topic-pill.active {
 
 @media (max-width: 720px) {
   .guide-index-shell { width: calc(100% - 32px); }
-  .guide-index-controls { flex-direction: column; }
+  .guide-index-library h2 { margin-bottom: 4px; }
+  .guide-index-controls {
+    flex-direction: column;
+    gap: 4px;
+    padding-bottom: 6px;
+  }
   .guide-index-search { width: 100%; }
 }
 
