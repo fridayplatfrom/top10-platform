@@ -10362,6 +10362,13 @@ html[data-theme="dark"] .home-topic-pill.active {
   .guide-index-feature-image { margin-top: 14px; }
 }
 
+@media (max-width: 480px) and (max-height: 700px) {
+  .guide-index-shell { padding-top: 16px; }
+  .guide-index-head > p,
+  .guide-index-feature > .guide-index-excerpt { display: none; }
+  .guide-index-feature-image img { max-height: 104px; }
+}
+
 /* Blog navigation is separate from the main site navigation. */
 .blog-shell-only { display: none; }
 
