@@ -4424,6 +4424,7 @@
     const controls = blogIndexSection?.querySelector('.guide-index-controls');
     if (!controls) return;
     const search = controls.querySelector('input');
+    const topicSelect = controls.querySelector('.guide-index-topic-select');
     const filters = [...controls.querySelectorAll('[data-guide-filter]')];
     const rows = [...blogIndexSection.querySelectorAll('[data-guide-topic]')];
     const empty = blogIndexSection.querySelector('.guide-index-empty');
@@ -4437,13 +4438,16 @@
       }
       empty.hidden = results > 0;
     };
+    const selectTopic = value => {
+      topic = value;
+      if (topicSelect) topicSelect.value = value;
+      for (const button of filters) button.setAttribute('aria-pressed', String(button.dataset.guideFilter === value));
+      update();
+    };
     for (const filter of filters) {
-      filter.addEventListener('click', () => {
-        topic = filter.dataset.guideFilter;
-        for (const button of filters) button.setAttribute('aria-pressed', String(button === filter));
-        update();
-      });
+      filter.addEventListener('click', () => selectTopic(filter.dataset.guideFilter));
     }
+    topicSelect?.addEventListener('change', () => selectTopic(topicSelect.value));
     search.addEventListener('input', update);
     controls.hidden = false;
   }

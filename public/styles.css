@@ -10265,7 +10265,8 @@ html[data-theme="dark"] .home-topic-pill.active {
 .guide-archive a { color: inherit; text-decoration: none; }
 .guide-archive a:focus-visible,
 .guide-archive button:focus-visible,
-.guide-archive input:focus-visible {
+.guide-archive input:focus-visible,
+.guide-archive select:focus-visible {
   outline: 2px solid var(--reading-blue);
   outline-offset: 3px;
 }
@@ -10307,7 +10308,8 @@ html[data-theme="dark"] .home-topic-pill.active {
 .guide-index-filters { display: flex; flex-wrap: wrap; gap: 0 16px; }
 
 .guide-index-filters button,
-.guide-index-search {
+.guide-index-search,
+.guide-index-topic-select {
   min-height: 44px;
   border: 0;
   border-bottom: 1px solid var(--reading-rule);
@@ -10324,6 +10326,7 @@ html[data-theme="dark"] .home-topic-pill.active {
 
 .guide-index-search { width: min(100%, 200px); align-self: flex-start; padding-inline: 8px; }
 .guide-index-search::placeholder { color: var(--reading-muted); }
+.guide-index-topic-select { display: none; }
 .guide-index-list { list-style: none; }
 .guide-index-row { border-top: 1px solid var(--reading-rule); }
 .guide-index-row-link { display: block; padding-block: 16px; }
@@ -10341,11 +10344,22 @@ html[data-theme="dark"] .home-topic-pill.active {
   .guide-index-shell { width: calc(100% - 32px); }
   .guide-index-library h2 { margin-bottom: 4px; }
   .guide-index-controls {
-    flex-direction: column;
-    gap: 4px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
     padding-bottom: 6px;
   }
-  .guide-index-search { width: 100%; }
+
+  .guide-index-filters { display: none; }
+  .guide-index-search,
+  .guide-index-topic-select { width: 100%; min-width: 0; }
+  .guide-index-topic-select { display: block; padding-inline: 8px; }
+}
+
+@media (max-width: 420px) {
+  .guide-index-shell { padding-top: 22px; }
+  .guide-index-feature { margin-top: 16px; padding-top: 12px; }
+  .guide-index-feature-image { margin-top: 14px; }
 }
 
 /* Blog navigation is separate from the main site navigation. */

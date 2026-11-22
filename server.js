@@ -568,6 +568,8 @@ function renderGuideArchive(categories, topicCategories) {
     <span aria-hidden="true">·</span><time datetime="${new Date(guide.date).toISOString()}">${dateFormat.format(guide.date)}</time>` : ''}</p>`;
   const topicFilters = [...topics].map(([slug, name]) => `
     <button type="button" data-guide-filter="${escapeXml(slug)}" aria-pressed="false">${escapeXml(name)}</button>`).join('');
+  const topicOptions = [...topics].map(([slug, name]) => `
+    <option value="${escapeXml(slug)}">${escapeXml(name)}</option>`).join('');
   const rows = guides.map(guide => `
     <li class="guide-index-row" data-guide-topic="${escapeXml(guide.topic)}">
       <a class="guide-index-row-link" href="${escapeXml(guide.url)}">
@@ -598,6 +600,9 @@ function renderGuideArchive(categories, topicCategories) {
             <button type="button" data-guide-filter="" aria-pressed="true">All topics</button>${topicFilters}
           </div>
           <input type="search" class="guide-index-search" aria-label="Search guides" placeholder="Search guides">
+          <select class="guide-index-topic-select" aria-label="Filter by topic">
+            <option value="">All topics</option>${topicOptions}
+          </select>
         </div>
         <ul class="guide-index-list" role="list">${rows}</ul>
         <p class="guide-index-empty" role="status"${guides.length ? ' hidden' : ''}>${guides.length ? 'No guides match your filters.' : 'No guides are published yet.'}</p>
