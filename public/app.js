@@ -1888,6 +1888,14 @@
     top10TimelineList.innerHTML = products.map((product, index) => {
       const title = escapeHtml(product.name);
       const summary = product.editorialSummary || product.tagline;
+      const hasText = value => typeof value === 'string' && value.trim() && value.trim().toLowerCase() !== 'not specified';
+      const details = [
+        ['Who it’s for', product.specs?.idealFor],
+        ['Strength', Array.isArray(product.pros) && product.pros.find(hasText)],
+        ['Trade-off', Array.isArray(product.cons) && product.cons.find(hasText)]
+      ].filter(([, value]) => hasText(value)).map(([label, value]) =>
+        `<div><dt>${label}</dt><dd>${escapeHtml(value.trim())}</dd></div>`
+      ).join('');
       let link = title;
       try {
         const url = new URL(product.website || product.url);
@@ -1900,6 +1908,7 @@
       return `<li class="guide-reading-item card-product-node" id="prod-card-${escapeHtml(product.id)}" value="${product.rank || index + 1}">
         <h3>${link}</h3>
         ${summary ? `<p>${escapeHtml(summary)}</p>` : ''}
+        ${details ? `<dl class="guide-product-details">${details}</dl>` : ''}
       </li>`;
     }).join('');
     document.getElementById('guideReadingEmpty').hidden = products.length > 0;

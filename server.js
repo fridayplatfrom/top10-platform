@@ -2174,10 +2174,19 @@ ${items}
         const url = getSsrProductLink(product);
         const title = escapeXml(product.name);
         const summary = product.editorialSummary || product.tagline;
+        const hasText = value => typeof value === 'string' && value.trim() && value.trim().toLowerCase() !== 'not specified';
+        const details = [
+          ['Who it’s for', product.specs?.idealFor],
+          ['Strength', Array.isArray(product.pros) && product.pros.find(hasText)],
+          ['Trade-off', Array.isArray(product.cons) && product.cons.find(hasText)]
+        ].filter(([, value]) => hasText(value)).map(([label, value]) =>
+          `<div><dt>${label}</dt><dd>${escapeXml(value.trim())}</dd></div>`
+        ).join('');
         const link = url === '#' ? title : `<a href="${escapeXml(url)}" target="_blank" rel="noopener">${title}</a>`;
         return `<li class="guide-reading-item card-product-node" id="prod-card-${escapeXml(product.id)}" value="${product.rank || index + 1}">
           <h3>${link}</h3>
           ${summary ? `<p>${escapeXml(summary)}</p>` : ''}
+          ${details ? `<dl class="guide-product-details">${details}</dl>` : ''}
         </li>`;
       }).join('');
       const relatedLinks = related.map(other =>

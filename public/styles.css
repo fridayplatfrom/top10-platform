@@ -10605,6 +10605,23 @@ html[data-theme="dark"] .home-topic-pill.active {
 }
 .guide-reading-item h3 a:hover { color: var(--reading-blue); }
 
+.guide-product-details {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding-inline-start: 12px;
+  border-inline-start: 2px solid var(--reading-rule);
+  color: var(--reading-muted);
+  font-size: .94rem;
+  line-height: 1.5;
+}
+
+.guide-product-details dt,
+.guide-product-details dd { display: inline; }
+.guide-product-details dt { color: var(--reading-ink); font-weight: 700; }
+.guide-product-details dt::after { content: " · "; }
+.guide-product-details dd { margin: 0; }
+
 .guide-reading-related {
   margin-top: clamp(24px, 4vw, 38px);
   padding-top: clamp(20px, 3vw, 28px);
