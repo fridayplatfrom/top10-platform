@@ -564,9 +564,6 @@ function renderGuideArchive(categories, topicCategories) {
   }).sort((a, b) => b.date - a.date);
   const featured = guides.find(guide => guide.cover && guide.hasRankings) || guides[0];
   const topics = new Map(guides.map(guide => [guide.topic, guide.topicName]));
-  const image = (guide, eager = false) => guide.cover
-    ? `<img src="${escapeXml(guide.cover)}" alt="" width="1200" height="675" decoding="async" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'}>`
-    : '';
   const byline = guide => `<p class="guide-index-byline">${escapeXml(guide.author)}${guide.date ? `
     <span aria-hidden="true">·</span><time datetime="${new Date(guide.date).toISOString()}">${dateFormat.format(guide.date)}</time>` : ''}</p>`;
   const topicFilters = [...topics].map(([slug, name]) => `
@@ -574,14 +571,10 @@ function renderGuideArchive(categories, topicCategories) {
   const rows = guides.map(guide => `
     <li class="guide-index-row" data-guide-topic="${escapeXml(guide.topic)}">
       <a class="guide-index-row-link" href="${escapeXml(guide.url)}">
-        <span class="guide-index-thumb">${image(guide)}</span>
-        <div class="guide-index-row-copy">
-          <p class="guide-index-topic">${escapeXml(guide.topicName)}</p>
-          <h3>${escapeXml(guide.title)}</h3>
-          <p class="guide-index-excerpt">${escapeXml(guide.description)}</p>
-          ${byline(guide)}
-        </div>
-        <span class="guide-index-arrow" aria-hidden="true">↗</span>
+        <p class="guide-index-topic">${escapeXml(guide.topicName)}</p>
+        <h3>${escapeXml(guide.title)}</h3>
+        <p class="guide-index-excerpt">${escapeXml(guide.description)}</p>
+        ${byline(guide)}
       </a>
     </li>`).join('');
 
@@ -592,14 +585,11 @@ function renderGuideArchive(categories, topicCategories) {
         <p>Browse ranked picks and buying advice across software, hardware, and everyday products.</p>
       </header>
       ${featured ? `<section class="guide-index-feature" aria-labelledby="guide-feature-title">
-        <a class="guide-index-feature-image" href="${escapeXml(featured.url)}" tabindex="-1" aria-hidden="true">${image(featured, true)}</a>
-        <div class="guide-index-feature-copy">
-          <p class="guide-index-topic">Featured guide · ${escapeXml(featured.topicName)}</p>
-          <h2 id="guide-feature-title"><a href="${escapeXml(featured.url)}">${escapeXml(featured.title)}</a></h2>
-          <p class="guide-index-excerpt">${escapeXml(featured.description)}</p>
-          ${byline(featured)}
-          <a class="guide-index-feature-cta" href="${escapeXml(featured.url)}">Read the guide <span aria-hidden="true">↗</span></a>
-        </div>
+        <p class="guide-index-topic">Featured guide · ${escapeXml(featured.topicName)}</p>
+        <h2 id="guide-feature-title"><a href="${escapeXml(featured.url)}">${escapeXml(featured.title)}</a></h2>
+        <p class="guide-index-excerpt">${escapeXml(featured.description)}</p>
+        ${byline(featured)}
+        ${featured.cover ? `<a class="guide-index-feature-image" href="${escapeXml(featured.url)}" tabindex="-1" aria-hidden="true"><img src="${escapeXml(featured.cover)}" alt="" width="1200" height="675" decoding="async" fetchpriority="high"></a>` : ''}
       </section>` : ''}
       <section class="guide-index-library" aria-labelledby="guide-index-title">
         <h2 id="guide-index-title">All guides</h2>
@@ -609,7 +599,7 @@ function renderGuideArchive(categories, topicCategories) {
           </div>
           <input type="search" class="guide-index-search" aria-label="Search guides" placeholder="Search guides">
         </div>
-        <ul class="guide-index-list">${rows}</ul>
+        <ul class="guide-index-list" role="list">${rows}</ul>
         <p class="guide-index-empty" role="status"${guides.length ? ' hidden' : ''}>${guides.length ? 'No guides match your filters.' : 'No guides are published yet.'}</p>
       </section>
     </div>
