@@ -10369,6 +10369,11 @@ html[data-theme="dark"] .home-topic-pill.active {
   .guide-index-feature-image img { max-height: 104px; }
 }
 
+@media (max-width: 360px) and (max-height: 600px) {
+  .guide-index-head h1 { font-size: 1.75rem; }
+  .guide-index-feature-image img { max-height: 88px; }
+}
+
 /* Blog navigation is separate from the main site navigation. */
 .blog-shell-only { display: none; }
 
