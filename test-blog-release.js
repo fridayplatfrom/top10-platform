@@ -114,7 +114,10 @@ test('blog launch routes, editor sessions and durable publishing', async () => {
     assert.equal((await (await api(server, '/api/auth/me', { cookie })).json()).user.role, 'admin');
     const created = await api(server, '/api/publish/article', {
       method: 'POST', publishing: true,
-      body: { slug, title: 'Top 10 Smoke Test', status: 'draft', summary: 'Temporary test guide.', products: [] }
+      body: {
+        slug, title: 'Top 10 Smoke Test', status: 'draft', summary: 'Temporary test guide.', products: [],
+        articleMarkdown: '## Buyer notes\n\n| Plan | Price |\n|---|---|\n| India | ₹199 |\n\n<script>articleScript()</script>\n\n[Unsafe](javascript:alert(1))'
+      }
     });
     assert.ok(created.ok);
     assert.equal((await api(server, '/list/' + slug)).status, 404);
@@ -125,7 +128,13 @@ test('blog launch routes, editor sessions and durable publishing', async () => {
     await stop(server);
     server = second;
     second = null;
-    assert.equal((await api(server, '/list/' + slug)).status, 200);
+    const article = await api(server, '/list/' + slug);
+    assert.equal(article.status, 200);
+    const html = await article.text();
+    assert.match(html, /<h2 id="article-buyer-notes">Buyer notes<\/h2>/);
+    assert.match(html, /<td>₹199<\/td>/);
+    assert.match(html, /&lt;script&gt;articleScript\(\)&lt;\/script&gt;/);
+    assert.doesNotMatch(html, /href="javascript:|<script>articleScript/);
     assert.equal((await (await api(server, '/api/auth/me', { cookie })).json()).user.role, 'admin');
     assert.equal((await api(server, '/api/auth/logout', { method: 'POST', cookie })).status, 200);
     assert.equal((await (await api(server, '/api/auth/me', { cookie })).json()).user, null);

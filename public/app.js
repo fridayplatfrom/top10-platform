@@ -555,7 +555,7 @@
 
   function navigateToCategory(slug, pushHistory = true) {
     const targetPath = `/list/${slug}`;
-    const usesArticleLayout = appState?.categories?.some(cat => cat.slug === slug && cat.articleLayout);
+    const usesArticleLayout = appState?.categories?.some(cat => cat.slug === slug && (cat.hasArticleBody || cat.articleMarkdown));
     if (pushHistory && window.location.pathname !== targetPath && (usesArticleLayout || document.querySelector('.guide-longform'))) {
       window.location.assign(targetPath);
       return;
@@ -1847,7 +1847,8 @@
     intro.textContent = cat.editorialGuide?.intro?.trim() || '';
     intro.hidden = !intro.textContent || intro.textContent === meta.description?.trim();
 
-    top10TimelineList.innerHTML = products.map((product, index) => {
+    const hasArticleBody = Boolean(cat.hasArticleBody || cat.articleMarkdown);
+    top10TimelineList.innerHTML = (hasArticleBody ? [] : products).map((product, index) => {
       const title = escapeHtml(product.name);
       const summary = product.editorialSummary || product.tagline;
       const hasText = value => typeof value === 'string' && value.trim() && value.trim().toLowerCase() !== 'not specified';
@@ -1876,7 +1877,7 @@
     document.getElementById('guideReadingEmpty').hidden = products.length > 0;
 
     const comparison = document.getElementById('guideComparison');
-    const comparisonHtml = cat.articleLayout ? '' : window.top10GuideExtras.renderComparison(cat.top10 || []);
+    const comparisonHtml = hasArticleBody ? '' : window.top10GuideExtras.renderComparison(cat.top10 || []);
     comparison.innerHTML = comparisonHtml;
     comparison.hidden = !comparisonHtml;
 
@@ -5388,6 +5389,9 @@
   const catEditTags = document.getElementById('catEditTags');
   const catEditCoverImage = document.getElementById('catEditCoverImage');
   const catEditEditorialTitle = document.getElementById('catEditEditorialTitle');
+  const catEditArticleMarkdown = document.getElementById('catEditArticleMarkdown');
+  const catEditCoverAlt = document.getElementById('catEditCoverAlt');
+  const insertArticleTemplate = document.getElementById('insertArticleTemplate');
 
   function updateAuthorPreviewPill() {
     if (!catEditAuthorPreview || !catEditAuthorSelect) return;
@@ -5414,6 +5418,29 @@
 
   if (catEditAuthorSelect) catEditAuthorSelect.addEventListener('change', updateAuthorPreviewPill);
   if (catEditStatus) catEditStatus.addEventListener('change', syncScheduleFieldVisibility);
+
+  function updateArticleTemplateButton() {
+    insertArticleTemplate.disabled = Boolean(catEditArticleMarkdown.value.trim());
+  }
+
+  catEditArticleMarkdown.addEventListener('input', updateArticleTemplateButton);
+  insertArticleTemplate.addEventListener('click', () => {
+    if (catEditArticleMarkdown.value.trim()) return;
+    catEditArticleMarkdown.value = [
+      '> **Quick answer.** Summarize the decision the reader needs to make.',
+      '## At a glance',
+      '| Product | Best fit | Price or terms |\n' +
+        '| --- | --- | --- |\n' +
+        '| Product name | Who it suits | [Official source](https://example.com) |',
+      '## Product notes',
+      '### Product name',
+      '**Best for:**\n\n**Trade-off:**\n\n[Vendor documentation](https://example.com)',
+      '## Before you buy',
+      '- Check the current price and what the plan includes.'
+    ].join('\n\n');
+    updateArticleTemplateButton();
+    catEditArticleMarkdown.focus();
+  });
 
   function openCategoryEditorModal(cat = null) {
     if (!categoryEditorModalBackdrop) return;
@@ -5459,6 +5486,8 @@
       if (catEditTags) catEditTags.value = Array.isArray(cat.tags) ? cat.tags.join(', ') : '';
       if (catEditCoverImage) catEditCoverImage.value = cat.coverImage || meta.coverImage || '';
       if (catEditEditorialTitle) catEditEditorialTitle.value = cat.editorialTitle || meta.editorialTitle || '';
+      catEditArticleMarkdown.value = cat.articleMarkdown || '';
+      catEditCoverAlt.value = cat.coverAlt || '';
     } else {
       catModalHeading.textContent = 'Publish or Schedule Top 10 Article';
       catEditIsUpdate.value = 'false';
@@ -5470,6 +5499,7 @@
     }
     updateAuthorPreviewPill();
     syncScheduleFieldVisibility();
+    updateArticleTemplateButton();
     categoryEditorModalBackdrop.classList.remove('hidden');
   }
 
@@ -5533,6 +5563,8 @@
         monthlyViews: Number(catEditViews.value) || 12000,
         tagline: catEditTagline.value.trim(),
         description: catEditDescription.value.trim(),
+        articleMarkdown: catEditArticleMarkdown.value,
+        coverAlt: catEditCoverAlt.value,
         editorialTitle: catEditEditorialTitle ? catEditEditorialTitle.value.trim() || undefined : undefined,
         authorId: catEditAuthorSelect ? catEditAuthorSelect.value || undefined : undefined,
         topic: catEditTopicSelect ? catEditTopicSelect.value || undefined : undefined,

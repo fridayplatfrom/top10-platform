@@ -2413,7 +2413,7 @@ function buildSeoJsonLd(cat, allCategories, baseUrl, comparePair = null) {
             { '@type': 'ListItem', position: 2, name: cat.title, item: listUrl }
           ]
         },
-        {
+        ...(!cat.articleMarkdown ? [{
           '@type': 'ItemList',
           '@id': `${listUrl}#top10`,
           name: cat.title,
@@ -2434,7 +2434,7 @@ function buildSeoJsonLd(cat, allCategories, baseUrl, comparePair = null) {
               image: p.media?.heroImage || undefined
             }
           }))
-        }
+        }] : [])
       ]
     },
     null,

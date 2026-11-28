@@ -1862,7 +1862,7 @@ Body: { "title", "authorId", "topic", "tags": [...], "status": "scheduled", "sch
           </div>
           <div class="form-field">
             <label for="catEditCoverImage">Cover Image URL</label>
-            <input type="url" id="catEditCoverImage" class="modal-input" placeholder="https://images.unsplash.com/..." />
+            <input type="text" id="catEditCoverImage" inputmode="url" class="modal-input" placeholder="https://… or /images/…" />
           </div>
         </div>
 
@@ -1879,6 +1879,18 @@ Body: { "title", "authorId", "topic", "tags": [...], "status": "scheduled", "sch
         <div class="form-field" style="margin-top:10px;">
           <label for="catEditDescription">Full Editorial Description</label>
           <textarea id="catEditDescription" class="modal-textarea" rows="2" placeholder="Comprehensive buyer benchmark and side-by-side comparison for modern video workflows..."></textarea>
+        </div>
+
+        <div class="form-field" style="margin-top:10px;">
+          <label for="catEditCoverAlt">Cover image description</label>
+          <input type="text" id="catEditCoverAlt" class="modal-input" maxlength="240" />
+        </div>
+
+        <div class="form-field article-body-editor">
+          <label for="catEditArticleMarkdown">Article body (Markdown)</label>
+          <textarea id="catEditArticleMarkdown" class="modal-textarea" rows="12" maxlength="60000" aria-describedby="articleMarkdownHelp"></textarea>
+          <p id="articleMarkdownHelp">Use Markdown headings, tables and source links. Leave this blank for the standard ranked-list layout.</p>
+          <button type="button" class="btn-secondary" id="insertArticleTemplate">Insert article template</button>
         </div>
 
         <div class="form-field" style="margin-top:10px;">

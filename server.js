@@ -13,6 +13,7 @@ const {
   buildLlmsTxt
 } = require('./editorial-enrichment');
 const { BLOG_ARTICLES } = require('./blog-data');
+const { renderArticleMarkdown } = require('./article-markdown');
 const { renderComparison, renderRelated } = require('./public/guide-extras');
 const { EDITORIAL_AUTHORS, DEFAULT_TOPIC_CATEGORIES, getAuthorsPool, resolveAuthor } = require('./authors-data');
 const { initMariaDb, withDb, getDbState, saveDbState, getDbStatus } = require('./db');
@@ -27,14 +28,15 @@ const restaurantPosGuide = {
   description: 'Compare six restaurant POS systems in India, see what vendors publish about pricing, and get a checklist for evaluating quotes and demos.',
   coverImage: '/images/restaurant-pos-india.webp',
   authorName: 'Top 10 Editorial Team',
-  articleLayout: 'restaurant-pos',
+  coverAlt: 'Point-of-sale terminal and receipt printer at an Indian café counter',
   topic: 'software',
   tags: ['restaurant-pos', 'india', 'software-pricing'],
   status: 'published',
   products: [],
   seo: { metaTitle: 'Restaurant POS Pricing in India (2026): 6 Systems Compared | Top 10' }
 };
-const restaurantPosBody = fs.readFileSync(path.join(__dirname, 'data', 'restaurant-pos-india.html'), 'utf8');
+const restaurantPosBody = fs.readFileSync(path.join(__dirname, 'data', 'restaurant-pos-india.md'), 'utf8').trim();
+const audiobookBody = fs.readFileSync(path.join(__dirname, 'data', 'audiobook-apps-india.md'), 'utf8').trim();
 
 // ============================================================================
 // PRODUCTION-GRADE AUTHENTICATION & SECURE SESSIONS
@@ -343,11 +345,8 @@ function getPublicState(user) {
       return cmt.status === 'approved' || !cmt.status || cmt.type === 'system_event';
     });
     if (isAdmin) return { ...enriched, comments };
-    const publicComments = [];
-    return {
-      ...enriched,
-      comments: publicComments
-    };
+    const { articleMarkdown, ...publicGuide } = enriched;
+    return { ...publicGuide, hasArticleBody: Boolean(articleMarkdown), comments: [] };
   });
 
   const categories = allEnriched.filter(isPubliclyPublished);
@@ -425,8 +424,9 @@ function getFullState() {
 function parseBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
+    req.setEncoding('utf8');
     req.on('data', (chunk) => {
-      body += chunk.toString();
+      body += chunk;
       if (body.length > 2e6) req.destroy();
     });
     req.on('end', () => {
@@ -1003,6 +1003,15 @@ async function handleRequest(req, res, base, parsedUrl, pathname) {
       if (body.editorialTitle !== undefined) cat.editorialTitle = String(body.editorialTitle).trim();
       if (body.editorialIntro !== undefined) cat.editorialIntro = String(body.editorialIntro).trim();
       if (body.methodology !== undefined) cat.methodology = String(body.methodology).trim();
+      if (body.articleMarkdown !== undefined) {
+        if (typeof body.articleMarkdown !== 'string' || body.articleMarkdown.length > 60000) {
+          const error = new Error('Article body must be text and at most 60,000 characters.');
+          error.statusCode = 400;
+          throw error;
+        }
+        cat.articleMarkdown = body.articleMarkdown.trim();
+      }
+      if (body.coverAlt !== undefined) cat.coverAlt = String(body.coverAlt).trim().slice(0, 240);
       if (body.coverImage !== undefined && String(body.coverImage).trim()) {
         cat.coverImage = String(body.coverImage).trim();
       }
@@ -2186,10 +2195,10 @@ ${items}
       const cover = guideCoverUrl(meta.coverImage);
       const products = [...(cat.top10 || []), ...(cat.pushedOut || [])];
       const intro = cat.editorialGuide?.intro?.trim() || '';
-      const isRestaurantPos = cat.articleLayout === 'restaurant-pos' && cat.slug === restaurantPosGuide.slug;
-      const comparison = isRestaurantPos ? '' : renderComparison(cat.top10 || []);
+      const articleBody = cat.articleMarkdown ? renderArticleMarkdown(cat.articleMarkdown) : '';
+      const comparison = articleBody ? '' : renderComparison(cat.top10 || []);
       const relatedLinks = renderRelated(cat, allCats, getCategoryFeatureMeta);
-      const list = products.map((product, index) => {
+      const list = (articleBody ? [] : products).map((product, index) => {
         const url = getSsrProductLink(product);
         const title = escapeXml(product.name);
         const summary = product.editorialSummary || product.tagline;
@@ -2221,7 +2230,7 @@ ${items}
           `<p id="guideReadingByline">${escapeXml(meta.authorName)}${meta.isoDate ? ' · ' + escapeXml(meta.dateText) : ''}</p>`)
         .replace('<p id="heroCatDesc"></p>', () => `<p id="heroCatDesc">${escapeXml(meta.description)}</p>`)
         .replace('id="guideReadingCover" alt="" width="1200" height="675" decoding="async" hidden', () =>
-          cover ? `id="guideReadingCover" alt="" width="1200" height="675" decoding="async" src="${escapeXml(cover)}"`
+          cover ? `id="guideReadingCover" alt="${escapeXml(cat.coverAlt || '')}" width="1200" height="675" decoding="async" src="${escapeXml(cover)}"`
             : 'id="guideReadingCover" alt="" width="1200" height="675" decoding="async" hidden')
         .replace('<p class="guide-reading-intro" id="guideReadingIntro" hidden></p>', () =>
           intro && intro !== meta.description?.trim() ? `<p class="guide-reading-intro" id="guideReadingIntro">${escapeXml(intro)}</p>`
@@ -2238,11 +2247,12 @@ ${items}
         .replace('<ul id="relatedDirectoriesGrid" class="guide-related-list" role="list"></ul>', () =>
           `<ul id="relatedDirectoriesGrid" class="guide-related-list" role="list">${relatedLinks}</ul>`);
 
-      if (isRestaurantPos) {
-        html = html
-          .replace('id="heroCatPillLabel">Buying guide', 'id="heroCatPillLabel">Restaurant technology')
-          .replace('id="guideReadingCover" alt=""', 'id="guideReadingCover" alt="Point-of-sale terminal and receipt printer at an Indian café counter"')
-          .replace('<section id="tabPanelRankings"', () => `<div class="guide-longform">${restaurantPosBody}</div>\n          <section hidden id="tabPanelRankings"`);
+      if (articleBody) {
+        html = html.replace('<section id="tabPanelRankings"', () =>
+          `<div class="guide-longform">${articleBody}</div>\n          <section hidden id="tabPanelRankings"`);
+      }
+      if (cat.slug === restaurantPosGuide.slug) {
+        html = html.replace('id="heroCatPillLabel">Buying guide', 'id="heroCatPillLabel">Restaurant technology');
       }
       return html;
     }
@@ -2338,7 +2348,7 @@ ${items}
       pageDesc = truncateMetaDesc(activeCat.seo?.metaDescription || (topPickName ? `#1 Pick: ${topPickName} — ${meta.description}` : meta.description));
       canonicalUrl = `${base}/list/${activeCat.slug}`;
       ogType = 'article';
-      ogImage = activeCat.articleLayout === 'restaurant-pos' && meta.coverImage.startsWith('/') && !meta.coverImage.startsWith('//')
+      ogImage = meta.coverImage.startsWith('/') && !meta.coverImage.startsWith('//')
         ? base + meta.coverImage : meta.coverImage;
       ogImageAlt = activeCat.title;
     } else if (blogArticleMatch) {
@@ -2420,19 +2430,35 @@ ${items}
     });
 }
 
-async function publishRestaurantPosGuide() {
+async function applyEditorialReleases() {
   // Mark the release as applied so removing the guide in the editor stays permanent.
   for (let attempt = 0; ; attempt++) {
     try {
       await withDb(async () => {
         const db = getDbState();
         const releases = db.publishedEditorialReleases || [];
-        if (releases.includes(restaurantPosGuide.slug)) return;
-        if (!db.categories.some(cat => cat.slug === restaurantPosGuide.slug)) {
-          const publishedAt = new Date().toISOString();
-          db.categories.push({ ...restaurantPosGuide, createdAt: publishedAt, publishedAt });
+        const bodyRelease = 'article-bodies-v1';
+        if (releases.includes(bodyRelease)) return;
+        const publishedAt = new Date().toISOString();
+        let pos = db.categories.find(cat => cat.slug === restaurantPosGuide.slug);
+        if (!pos && !releases.includes(restaurantPosGuide.slug)) {
+          pos = { ...restaurantPosGuide, createdAt: publishedAt, publishedAt };
+          db.categories.push(pos);
         }
-        db.publishedEditorialReleases = [...releases, restaurantPosGuide.slug];
+        if (pos && (pos.articleLayout === 'restaurant-pos' || !releases.includes(restaurantPosGuide.slug))) {
+          if (pos.articleMarkdown === undefined) pos.articleMarkdown = restaurantPosBody;
+          if (pos.coverAlt === undefined) pos.coverAlt = restaurantPosGuide.coverAlt;
+          delete pos.articleLayout;
+        }
+        const audiobooks = db.categories.find(cat => cat.slug === 'audiobook-apps');
+        if (audiobooks && audiobooks.articleMarkdown === undefined) {
+          audiobooks.articleMarkdown = audiobookBody;
+          audiobooks.editorialTitle = 'Audiobook Apps in India: 10 Options Compared';
+          audiobooks.title = audiobooks.editorialTitle;
+          audiobooks.description = 'Compare audiobook apps by India availability, local pricing, and what happens to your books when you cancel.';
+          audiobooks.updatedAt = publishedAt;
+        }
+        db.publishedEditorialReleases = [...new Set([...releases, restaurantPosGuide.slug, bodyRelease])];
         await saveDbState(db);
       });
       return;
@@ -2450,7 +2476,7 @@ async function start() {
     throw new Error('EDITORIAL_PUBLISH_KEY must be at least 32 characters in production');
   }
   await initMariaDb();
-  await publishRestaurantPosGuide();
+  await applyEditorialReleases();
   await withDb(runScheduledPublisher);
   server.listen(PORT, () => {
     console.log('Top 10 Auction Directory running at http://localhost:' + server.address().port);
