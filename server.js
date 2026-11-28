@@ -13,6 +13,7 @@ const {
   buildLlmsTxt
 } = require('./editorial-enrichment');
 const { BLOG_ARTICLES } = require('./blog-data');
+const { renderComparison, renderRelated } = require('./public/guide-extras');
 const { EDITORIAL_AUTHORS, DEFAULT_TOPIC_CATEGORIES, getAuthorsPool, resolveAuthor } = require('./authors-data');
 const { initMariaDb, withDb, getDbState, saveDbState, getDbStatus } = require('./db');
 
@@ -2186,7 +2187,8 @@ ${items}
       const products = [...(cat.top10 || []), ...(cat.pushedOut || [])];
       const intro = cat.editorialGuide?.intro?.trim() || '';
       const isRestaurantPos = cat.articleLayout === 'restaurant-pos' && cat.slug === restaurantPosGuide.slug;
-      const related = allCats.filter(other => other.slug !== cat.slug).slice(0, 3);
+      const comparison = isRestaurantPos ? '' : renderComparison(cat.top10 || []);
+      const relatedLinks = renderRelated(cat, allCats, getCategoryFeatureMeta);
       const list = products.map((product, index) => {
         const url = getSsrProductLink(product);
         const title = escapeXml(product.name);
@@ -2206,9 +2208,7 @@ ${items}
           ${details ? `<dl class="guide-product-details">${details}</dl>` : ''}
         </li>`;
       }).join('');
-      const relatedLinks = related.map(other =>
-        `<li><a href="/list/${encodeURIComponent(other.slug)}">${escapeXml(getCategoryFeatureMeta(other).editorialTitle)}</a></li>`
-      ).join('');
+
 
       let html = rawHtml
         .replace('<main id="homePageView" class="home-container">', '<main id="homePageView" class="home-container hidden">')
@@ -2226,17 +2226,20 @@ ${items}
         .replace('<p class="guide-reading-intro" id="guideReadingIntro" hidden></p>', () =>
           intro && intro !== meta.description?.trim() ? `<p class="guide-reading-intro" id="guideReadingIntro">${escapeXml(intro)}</p>`
             : '<p class="guide-reading-intro" id="guideReadingIntro" hidden></p>')
+        .replace('<section class="guide-comparison" id="guideComparison" aria-labelledby="guideComparisonHeading" hidden></section>', () =>
+          comparison ? `<section class="guide-comparison" id="guideComparison" aria-labelledby="guideComparisonHeading">${comparison}</section>`
+            : '<section class="guide-comparison" id="guideComparison" aria-labelledby="guideComparisonHeading" hidden></section>')
         .replace('<ol class="guide-reading-list" id="top10TimelineList"></ol>', () =>
           `<ol class="guide-reading-list" id="top10TimelineList">${list}</ol>`)
         .replace('<p id="guideReadingEmpty">', products.length ? '<p id="guideReadingEmpty" hidden>' : '<p id="guideReadingEmpty">')
-        .replace('id="relatedDirectoriesSection" aria-labelledby="relatedDirsHeading" hidden', related.length
+        .replace('id="relatedDirectoriesSection" aria-labelledby="relatedDirsHeading" hidden', relatedLinks
           ? 'id="relatedDirectoriesSection" aria-labelledby="relatedDirsHeading"'
           : 'id="relatedDirectoriesSection" aria-labelledby="relatedDirsHeading" hidden')
-        .replace('<ul id="relatedDirectoriesGrid"></ul>', () => `<ul id="relatedDirectoriesGrid">${relatedLinks}</ul>`);
+        .replace('<ul id="relatedDirectoriesGrid" class="guide-related-list" role="list"></ul>', () =>
+          `<ul id="relatedDirectoriesGrid" class="guide-related-list" role="list">${relatedLinks}</ul>`);
 
       if (isRestaurantPos) {
         html = html
-          .replace('<article class="guide-reading">', '<article class="guide-reading guide-reading-feature">')
           .replace('id="heroCatPillLabel">Buying guide', 'id="heroCatPillLabel">Restaurant technology')
           .replace('id="guideReadingCover" alt=""', 'id="guideReadingCover" alt="Point-of-sale terminal and receipt printer at an Indian café counter"')
           .replace('<section id="tabPanelRankings"', () => `<div class="guide-longform">${restaurantPosBody}</div>\n          <section hidden id="tabPanelRankings"`);

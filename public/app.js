@@ -1578,49 +1578,6 @@
     lifestyle: ['mobile-games', 'audiobook-apps', 'gambling-platforms']
   };
 
-  function getThematicRelatedCategories(cat, allCats) {
-    const currentSlug = cat.slug;
-    let matchedClusterKey = null;
-    for (const [key, slugs] of Object.entries(THEMATIC_CLUSTERS)) {
-      if (slugs.includes(currentSlug)) {
-        matchedClusterKey = key;
-        break;
-      }
-    }
-
-    const others = [];
-    if (matchedClusterKey) {
-      const clusterSlugs = THEMATIC_CLUSTERS[matchedClusterKey];
-      for (const slug of clusterSlugs) {
-        if (slug !== currentSlug) {
-          const found = allCats.find((c) => c.slug === slug);
-          if (found && !others.some((o) => o.slug === found.slug)) {
-            others.push(found);
-            if (others.length >= 3) break;
-          }
-        }
-      }
-    }
-
-    if (others.length < 3) {
-      const sortedByViews = allCats
-        .filter((c) => c.slug !== currentSlug && !others.some((o) => o.slug === c.slug))
-        .slice()
-        .sort((a, b) => {
-          const aViews = parseFloat(String(a.metrics?.monthlyViews || '0').replace(/[^0-9.]/g, '')) || 0;
-          const bViews = parseFloat(String(b.metrics?.monthlyViews || '0').replace(/[^0-9.]/g, '')) || 0;
-          return bViews - aViews;
-        });
-
-      for (const c of sortedByViews) {
-        others.push(c);
-        if (others.length >= 3) break;
-      }
-    }
-
-    return others.slice(0, 3);
-  }
-
   // Helper: Render Interactive 7D / 30D / 1Y Analytics State
   function renderAnalyticsRange(cat) {
     if (!cat) return;
@@ -1918,11 +1875,14 @@
     }).join('');
     document.getElementById('guideReadingEmpty').hidden = products.length > 0;
 
-    const related = getThematicRelatedCategories(cat, appState.categories || []);
-    relatedDirectoriesSection.hidden = related.length === 0;
-    relatedDirectoriesGrid.innerHTML = related.map(other =>
-      `<li><a href="/list/${encodeURIComponent(other.slug)}">${escapeHtml(getCategoryFeatureMeta(other).editorialTitle)}</a></li>`
-    ).join('');
+    const comparison = document.getElementById('guideComparison');
+    const comparisonHtml = cat.articleLayout ? '' : window.top10GuideExtras.renderComparison(cat.top10 || []);
+    comparison.innerHTML = comparisonHtml;
+    comparison.hidden = !comparisonHtml;
+
+    const related = window.top10GuideExtras.renderRelated(cat, appState.categories || [], getCategoryFeatureMeta);
+    relatedDirectoriesSection.hidden = !related;
+    relatedDirectoriesGrid.innerHTML = related;
   }
 
   function escapeRegex(string) {
