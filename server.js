@@ -14,7 +14,8 @@ const {
 } = require('./editorial-enrichment');
 const { BLOG_ARTICLES } = require('./blog-data');
 const { renderArticleMarkdown } = require('./article-markdown');
-const { renderComparison, renderRelated } = require('./public/guide-extras');
+const articleSourceCorrections = require('./data/article-source-corrections.json');
+const { getArticleHeader, renderComparison, renderRelated } = require('./public/guide-extras');
 const { EDITORIAL_AUTHORS, DEFAULT_TOPIC_CATEGORIES, getAuthorsPool, resolveAuthor } = require('./authors-data');
 const { initMariaDb, withDb, getDbState, saveDbState, getDbStatus } = require('./db');
 
@@ -2343,9 +2344,11 @@ ${items}
       }
       routeKind = 'list';
       const meta = getCategoryFeatureMeta(activeCat);
+      const header = getArticleHeader(activeCat, meta);
+      activeCat = { ...activeCat, ...header };
       pageTitle = activeCat.seo?.metaTitle || `${activeCat.title} (${new Date().getFullYear()}) — Best Picks & Buying Guide | Top 10`;
       const topPickName = activeCat.top10[0]?.name || '';
-      pageDesc = truncateMetaDesc(activeCat.seo?.metaDescription || (topPickName ? `#1 Pick: ${topPickName} — ${meta.description}` : meta.description));
+      pageDesc = truncateMetaDesc(activeCat.seo?.metaDescription || (topPickName ? `#1 Pick: ${topPickName} — ${header.description}` : header.description));
       canonicalUrl = `${base}/list/${activeCat.slug}`;
       ogType = 'article';
       ogImage = meta.coverImage.startsWith('/') && !meta.coverImage.startsWith('//')
@@ -2439,7 +2442,8 @@ async function applyEditorialReleases() {
         const releases = db.publishedEditorialReleases || [];
         const bodyRelease = 'article-bodies-v1';
         const reviewRelease = 'source-checked-buying-guides-v1';
-        if (releases.includes(bodyRelease) && releases.includes(reviewRelease)) return;
+        const sourceCorrectionRelease = 'article-source-corrections-v1';
+        if ([bodyRelease, reviewRelease, sourceCorrectionRelease].every(release => releases.includes(release))) return;
         if (!releases.includes(bodyRelease)) {
           const publishedAt = new Date().toISOString();
           let pos = db.categories.find(cat => cat.slug === restaurantPosGuide.slug);
@@ -2471,6 +2475,16 @@ async function applyEditorialReleases() {
             return { ...category, articleMarkdown };
           });
           releases.push(reviewRelease);
+        }
+        if (!releases.includes(sourceCorrectionRelease)) {
+          for (const category of db.categories) {
+            const changes = articleSourceCorrections[category.slug];
+            if (!Array.isArray(changes) || !isPubliclyPublished(category) || !category.articleMarkdown) continue;
+            for (const [before, after] of changes) {
+              category.articleMarkdown = category.articleMarkdown.replaceAll(before, after);
+            }
+          }
+          releases.push(sourceCorrectionRelease);
         }
         db.publishedEditorialReleases = [...new Set(releases)];
         await saveDbState(db);

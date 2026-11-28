@@ -12,7 +12,7 @@ We used published vendor plans, product pages, support documentation and officia
 | Stripe Billing | Pay-as-you-go is 0.7% of Billing volume; payment processing is priced separately | [Check source](https://stripe.com/billing/pricing) |
 | Chargebee | Plan and revenue-volume thresholds; higher tiers may require a quote | [Check source](https://www.chargebee.com/pricing/) |
 | Lemon Squeezy | Base fee of 5% + US$0.50 per transaction. Additional fees apply in some scenarios | [Check source](https://www.lemonsqueezy.com/pricing) |
-| Orb Billing | Contact sales for a quote | [Check source](https://www.withorb.com/) |
+| Orb Billing | Business is US$6 per credit before volume discounts; Enterprise uses custom pricing | [Check source](https://www.withorb.com/pricing) |
 | Zoho Billing | Regional subscription tiers; select your country and billing term | [Check source](https://www.zoho.com/billing/pricing/) |
 | Recurly | Request pricing for subscription and recovery requirements | [Check source](https://recurly.com/pricing/) |
 | Maxio | Plans and quotes depend on billing and financial operations scope | [Check source](https://www.maxio.com/pricing) |
@@ -49,7 +49,7 @@ We used published vendor plans, product pages, support documentation and officia
 
 **Best for** — Usage-priced products that need to turn event streams into invoices.
 
-**Trade-off** — Usage events need stable identifiers and a reconciliation plan before migration. [Official source](https://www.withorb.com/)
+**Trade-off** — Usage events need stable identifiers and a reconciliation plan before migration. [Official source](https://www.withorb.com/pricing)
 
 ### 6. Zoho Billing
 

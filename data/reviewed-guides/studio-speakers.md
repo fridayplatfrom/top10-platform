@@ -13,11 +13,11 @@ We used published vendor plans, product pages, support documentation and officia
 | Genelec 8030C | Ask an authorised local dealer for single-unit and pair totals | [Check source](https://www.genelec.com/8030c) |
 | Bose Smart Ultra Soundbar | Region-dependent hardware price; surround speakers and bass modules are separate | [Check source](https://www.bose.com/pxp/bose-smart-ultra-soundbar) |
 | JBL Authentics 500 | Look up the retailer or JBL price for your country | [Check source](https://www.jbl.com/AUTHENTICS-500.html) |
-| Audioengine A5+ Wireless | Check the local powered-pair price and the exact wireless variant | [Check source](https://audioengine.com/) |
+| Audioengine A5+ Wireless | Check the local powered-pair price and the exact wireless variant | [Check source](https://audioengine.com/shop/wirelessspeakers/a5-wireless/) |
 | Devialet Phantom I 108 dB | Verify current availability and price per unit for this generation | [Check source](https://www.devialet.com/en-us/product/2XMM615/) |
 | Klipsch The Fives | Check current pair pricing and stock for the exact speaker generation | [Check source](https://www.klipsch.com/uk/products/the-fives-powered-speakers) |
 | Edifier S3000Pro | Price and stock depend on market; distinguish S3000Pro from later versions | [Check source](https://www.edifier.com/int/us/p/bookshelf-speakers/s3000-pro) |
-| Bang & Olufsen Beosound A5 | Price varies by finish and market | [Check source](https://www.bang-olufsen.com/) |
+| Bang & Olufsen Beosound A5 | Price varies by finish and market | [Check source](https://www.bang-olufsen.com/en/us/speakers/beosound-a5) |
 
 ## Who each pick suits
 
@@ -55,7 +55,7 @@ We used published vendor plans, product pages, support documentation and officia
 
 **Best for** — Desk listeners who want a compact stereo setup.
 
-**Trade-off** — Check input connectivity and measure the footprint on the desk. [Official source](https://audioengine.com/)
+**Trade-off** — Check input connectivity and measure the footprint on the desk. [Official source](https://audioengine.com/shop/wirelessspeakers/a5-wireless/)
 
 ### 7. Devialet Phantom I 108 dB
 
@@ -79,7 +79,7 @@ We used published vendor plans, product pages, support documentation and officia
 
 **Best for** — Listeners who want a portable premium speaker for shared spaces.
 
-**Trade-off** — A portable all-in-one fills a different need from a fixed studio pair. [Official source](https://www.bang-olufsen.com/)
+**Trade-off** — A portable all-in-one fills a different need from a fixed studio pair. [Official source](https://www.bang-olufsen.com/en/us/speakers/beosound-a5)
 
 ## More options to compare
 

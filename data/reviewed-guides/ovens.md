@@ -9,7 +9,7 @@ We used published vendor plans, product pages, support documentation and officia
 | Pick | Pricing or availability | Official source |
 | --- | --- | --- |
 | Breville Smart Oven Air Fryer Pro | Breville US lists US$399.95 as the regular price for BOV900; check stock before using a displayed offer | [Check source](https://www.breville.com/en-us/product/bov900) |
-| Anova Precision Oven | Get an offer for the exact generation; first-generation and 2.0 prices are not interchangeable | [Check source](https://anovaculinary.com/) |
+| Anova Precision Oven | Get an offer for the exact generation; first-generation and 2.0 prices are not interchangeable | [Check source](https://anovaculinary.com/products/anova-precision-oven) |
 | Bosch 800 Series Convection Oven | Dealer pricing depends on the model, finish and country | [Check source](https://www.bosch-home.com/us/en/product/cooking-baking/wall-ovens/single-ovens/HBL8454UC) |
 | Wolf M Series Built-in Oven | Ask a local dealer for model-specific installed pricing | [Check source](https://www.subzero-wolf.com/assistance/answers/wolf/m-series-oven/m-series-ovens-sales-feature-amp-accessory-information) |
 | GE Profile Smart Indoor Smoker | Look up the current GE Profile smoker offer or dealer stock | [Check source](https://www.geappliances.com/indoor-pellet-smoker) |
@@ -31,7 +31,7 @@ We used published vendor plans, product pages, support documentation and officia
 
 **Best for** — Cooks who will use steam and temperature control often.
 
-**Trade-off** — Confirm cleaning, water requirements and any app subscription separately. [Official source](https://anovaculinary.com/)
+**Trade-off** — Confirm cleaning, water requirements and any app subscription separately. [Official source](https://anovaculinary.com/products/anova-precision-oven)
 
 ### 3. Bosch 800 Series Convection Oven
 

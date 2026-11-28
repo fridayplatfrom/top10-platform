@@ -41,6 +41,52 @@
       </div>`;
   }
 
+  // Keep article copy aligned with the source-based review while respecting editor changes.
+  const articleDescriptionCorrections = new Map([
+    ["cloud-hosting", [
+      "We evaluate global deployment speed, managed Kubernetes clusters, and predictable bandwidth pricing for modern web applications.",
+      "Compare cloud hosting providers by deployment model, usage charges, bandwidth and the infrastructure your team will need to manage."
+    ]],
+    ["project-management", [
+      "Streamline sprint planning, issue tracking, and cross-functional roadmaps with our hands-on review of the best workspace platforms.",
+      "Compare project management tools by pricing, issue tracking, planning and how each one fits your team’s workflow."
+    ]],
+    ["ovens", [
+      "From countertop precision ovens to commercial-style induction ranges, discover our tested picks for even baking and smart temperature probes.",
+      "Compare countertop ovens, built-in convection models and a dedicated indoor smoker by size, installation and cooking features."
+    ]],
+    ["smart-tvs", [
+      "We tested peak HDR brightness, black-level uniformity, 144Hz gaming input lag, and anti-reflective coatings across flagship displays.",
+      "Compare OLED and Mini-LED TVs by room conditions, gaming needs, screen size and current availability."
+    ]],
+    ["phone-covers", [
+      "Compare aramid fiber, full-grain leather, and military-grade shockproof MagSafe cases designed to protect without adding bulk.",
+      "Compare phone cases by device fit, bulk, materials and compatibility with your mounts and chargers."
+    ]],
+    ["gambling-platforms", [
+      "Compare licensed sportsbooks across live in-play odds, instant withdrawal speeds, parlay builders, and mobile app reliability.",
+      "Compare published fees, payment terms and regional availability for sportsbooks, casinos and prediction markets."
+    ]],
+    ["vector-search-7084", [
+      "Comprehensive benchmarks and verified directory for production vector databases.",
+      "Compare managed and self-hosted vector search by pricing, filtering, scaling and infrastructure costs."
+    ]]
+  ]);
+
+  function getArticleHeader(category, meta) {
+    const correction = articleDescriptionCorrections.get(category.slug);
+    return {
+      title: category.slug === 'vector-search-7084' && category.title === 'Top 10 Vector Search Engines 7084'
+        ? 'Top 10 Vector Search Engines' : category.title,
+      description: correction && correction[0] === meta.description ? correction[1] : meta.description
+    };
+  }
+
+  const relatedTitleCorrections = new Map([
+    ['How to Protect Your Phone: Top 10 Drop-Tested Cases & Covers', 'How to Protect Your Phone: 10 Cases Compared'],
+    ['Top 10 Regulated Sportsbooks & Gaming Apps: Complete Breakdown', 'Top 10 Gambling Platforms: Fees and Availability']
+  ]);
+
   // Product artwork from the respective vendor pages and app-store listings.
   const productThumbnails = new Map([
     ['prod_datadog', 'datadog-apm'],
@@ -71,7 +117,7 @@
       const src = productThumbnail ? '/images/related-guides/' + productThumbnail + '.webp' : productImage || cover;
       const fallback = cover && cover !== src ? ' data-related-fallback="' + escape(cover) + '"' : '';
       const image = src ? '<img src="' + escape(src) + '"' + fallback + ' alt="" width="112" height="76" loading="lazy" decoding="async">' : '';
-      return '<li><a href="/list/' + encodeURIComponent(other.slug) + '">' + image + '<span>' + escape(meta.editorialTitle) + '</span></a></li>';
+      return '<li><a href="/list/' + encodeURIComponent(other.slug) + '">' + image + '<span>' + escape(relatedTitleCorrections.get(meta.editorialTitle) || meta.editorialTitle) + '</span></a></li>';
     }).join('');
   }
 
@@ -84,7 +130,7 @@
     else image.remove();
   }
 
-  const guideExtras = { renderComparison, renderRelated };
+  const guideExtras = { getArticleHeader, renderComparison, renderRelated };
   if (typeof module === 'object' && module.exports) module.exports = guideExtras;
   else {
     root.top10GuideExtras = guideExtras;

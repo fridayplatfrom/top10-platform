@@ -672,13 +672,14 @@
       ogAlt = `${nameA} vs ${nameB}`;
     } else if (isList) {
       const meta = getCategoryFeatureMeta(cat);
-      title = `${cat.title} (2026) — Best Picks & Buying Guide | Top 10`;
+      const header = window.top10GuideExtras.getArticleHeader(cat, meta);
+      title = cat.seo?.metaTitle || `${header.title} (2026) — Best Picks & Buying Guide | Top 10`;
       const topPickName = cat.top10?.[0]?.name || '';
-      desc = truncDesc(topPickName ? `#1 Pick: ${topPickName} — ${meta.description}` : meta.description);
+      desc = truncDesc(cat.seo?.metaDescription || (topPickName ? `#1 Pick: ${topPickName} — ${header.description}` : header.description));
       canonical = `${baseUrl}/list/${cat.slug}`;
       ogType = 'article';
       ogImg = meta.coverImage;
-      ogAlt = cat.title;
+      ogAlt = header.title;
     } else if (isAdmin) {
       title = 'Admin Operations Dashboard — Top 10 Platform';
       desc = 'Internal command center for managing Top 10 listings and transactions.';
@@ -1826,9 +1827,10 @@
   function renderSingleListPage(cat) {
     const meta = getCategoryFeatureMeta(cat);
     const products = [...(cat.top10 || []), ...(cat.pushedOut || [])];
-    heroCatTitle.textContent = cat.title;
-    document.getElementById('guideBreadcrumbTitle').textContent = cat.title;
-    document.getElementById('heroCatDesc').textContent = meta.description;
+    const header = window.top10GuideExtras.getArticleHeader(cat, meta);
+    heroCatTitle.textContent = header.title;
+    document.getElementById('guideBreadcrumbTitle').textContent = header.title;
+    document.getElementById('heroCatDesc').textContent = header.description;
     const byline = document.getElementById('guideReadingByline');
     if (byline) byline.textContent = [meta.authorName, meta.dateText === 'Date not supplied' ? '' : meta.dateText].filter(Boolean).join(' · ');
     const cover = document.getElementById('guideReadingCover');

@@ -14,10 +14,10 @@ We used published vendor plans, product pages, support documentation and officia
 | Nomad Modern Leather Case | Nomad lists its iPhone 17 Camino leather version at US$69; other leather and phone variants can differ | [Check source](https://checkout.nomadgoods.com/products/modern-leather-case-brown-iphone-17) |
 | Peak Design Everyday Case | Case prices vary by device and variant; mounts are usually separate | [Check source](https://www.peakdesign.com/global/collections/phone-cases) |
 | Caudabe Sheath | Check the exact phone case and colour on Caudabe’s store | [Check source](https://caudabe.com/products/sheath-iphone-17) |
-| Mous Limitless | Match the generation and device; prices vary by finish | [Check source](https://www.mous.co/) |
+| Mous Limitless 5.0 | Check availability and price for your phone model and finish | [Check source](https://uk.mous.co/collections/limitless-5-0-case) |
 | OtterBox Defender Series XT | Compare the series and exact device on OtterBox’s local store | [Check source](https://www.otterbox.com/collections/defender-xt) |
 | PITAKA MagEZ Case 5 | Availability depends on exact phone generation; compare official current offers | [Check source](https://www.ipitaka.com/products/awa-magez-case-5) |
-| Bellroy Leather Case | Model and finish set the price | [Check source](https://bellroy.com/) |
+| Bellroy Leather Case | Model and finish set the price | [Check source](https://bellroy.com/products/category/phone-cases) |
 
 ## Who each pick suits
 
@@ -57,11 +57,11 @@ We used published vendor plans, product pages, support documentation and officia
 
 **Trade-off** — Choose the right camera-button and magnetic variant where offered. [Official source](https://caudabe.com/products/sheath-iphone-17)
 
-### 7. Mous Limitless
+### 7. Mous Limitless 5.0
 
 **Best for** — Buyers comparing a protective magnetic case with a distinct finish.
 
-**Trade-off** — Accessories can change total cost; verify device-specific compatibility. [Official source](https://www.mous.co/)
+**Trade-off** — Accessories can change total cost; verify device-specific compatibility. [Official source](https://uk.mous.co/collections/limitless-5-0-case)
 
 ### 8. OtterBox Defender Series XT
 
@@ -79,7 +79,7 @@ We used published vendor plans, product pages, support documentation and officia
 
 **Best for** — Buyers who prefer a simple leather look without a bulky case.
 
-**Trade-off** — Check which models include magnets and expect the leather finish to age with use. [Official source](https://bellroy.com/)
+**Trade-off** — Check which models include magnets and expect the leather finish to age with use. [Official source](https://bellroy.com/products/category/phone-cases)
 
 ## More options to compare
 
