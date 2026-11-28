@@ -41,21 +41,53 @@
       </div>`;
   }
 
+  // Product artwork from the respective vendor pages and app-store listings.
+  const productThumbnails = new Map([
+    ['prod_datadog', 'datadog-apm'],
+    ['prod_stripe', 'stripe-billing'],
+    ['ai_cursor', 'cursor'],
+    ['crm_attio', 'attio'],
+    ['spk_kef', 'kef-ls50-wireless-ii'],
+    ['ov_breville', 'breville-bov900'],
+    ['tv_hisense_u8n', 'hisense-u8n'],
+    ['pc_caudabe', 'caudabe-sheath'],
+    ['gp_fanduel', 'fanduel-sportsbook'],
+    ['mg_genshin', 'genshin-impact'],
+    ['ab_audible', 'audible']
+  ]);
+
   function renderRelated(category, categories, getMeta) {
-    const topic = getMeta(category).topic;
+    const topic = category.topic || getMeta(category).topic;
     const others = categories.filter(other => other.slug !== category.slug)
       .map(other => ({ other, meta: getMeta(other) }));
-    const ranked = others.filter(({ meta }) => meta.topic === topic)
-      .concat(others.filter(({ meta }) => meta.topic !== topic)).slice(0, 3);
+    const sameTopic = ({ other, meta }) => (other.topic || meta.topic) === topic;
+    const ranked = others.filter(sameTopic)
+      .concat(others.filter(item => !sameTopic(item))).slice(0, 3);
     return ranked.map(({ other, meta }) => {
-      const productImage = (other.top10 || []).map(product => imageUrl(product.media?.heroImage)).find(Boolean);
-      const cover = productImage || imageUrl(meta.coverImage);
-      const image = cover ? `<img src="${escape(cover)}" alt="" width="112" height="76" loading="lazy" decoding="async">` : '';
-      return `<li><a href="/list/${encodeURIComponent(other.slug)}">${image}<span>${escape(meta.editorialTitle)}</span></a></li>`;
+      const products = other.top10 || [];
+      const productThumbnail = products.map(product => productThumbnails.get(product.id)).find(Boolean);
+      const productImage = products.map(product => imageUrl(product.media?.heroImage)).find(Boolean);
+      const cover = imageUrl(meta.coverImage);
+      const src = productThumbnail ? '/images/related-guides/' + productThumbnail + '.webp' : productImage || cover;
+      const fallback = cover && cover !== src ? ' data-related-fallback="' + escape(cover) + '"' : '';
+      const image = src ? '<img src="' + escape(src) + '"' + fallback + ' alt="" width="112" height="76" loading="lazy" decoding="async">' : '';
+      return '<li><a href="/list/' + encodeURIComponent(other.slug) + '">' + image + '<span>' + escape(meta.editorialTitle) + '</span></a></li>';
     }).join('');
+  }
+
+  function handleRelatedImageError(event) {
+    const image = event.target;
+    if (!image.matches?.('#relatedDirectoriesGrid img')) return;
+    const fallback = image.dataset.relatedFallback;
+    delete image.dataset.relatedFallback;
+    if (fallback) image.src = fallback;
+    else image.remove();
   }
 
   const guideExtras = { renderComparison, renderRelated };
   if (typeof module === 'object' && module.exports) module.exports = guideExtras;
-  else root.top10GuideExtras = guideExtras;
+  else {
+    root.top10GuideExtras = guideExtras;
+    root.document.addEventListener('error', handleRelatedImageError, true);
+  }
 })(typeof window === 'object' ? window : null);
