@@ -24,6 +24,10 @@ const { initMariaDb, withDb, getDbState, saveDbState, getDbStatus } = require('.
 
 const PORT = process.env.PORT || 3456;
 const PUBLIC_DIR = path.join(__dirname, 'public');
+const editorScriptUrls = ['app.js', 'guide-extras.js'].map(file => {
+  const version = crypto.createHash('sha256').update(fs.readFileSync(path.join(PUBLIC_DIR, file))).digest('hex').slice(0, 16);
+  return [file, file + '?v=' + version];
+});
 const restaurantPosGuide = {
   id: 'restaurant-pos-pricing-india',
   slug: 'restaurant-pos-pricing-india',
@@ -2411,6 +2415,11 @@ ${items}
       html = renderSsrListBody(html, activeCat, categories);
     } else if (routeKind === 'compare' && activeCat && comparePair) {
       html = renderSsrCompareBody(html, activeCat, comparePair);
+    } else if (routeKind === 'admin') {
+      // A cached editor bundle can open the form but silently omit newer fields.
+      for (const [file, versionedFile] of editorScriptUrls) {
+        html = html.replace('src="/' + file + '"', 'src="/' + versionedFile + '"');
+      }
     }
 
     // Replace SEO, OpenGraph, Twitter & JSON-LD tags cleanly in-place
@@ -2432,7 +2441,7 @@ ${items}
     html = html.replace(/<script type="application\/ld\+json" id="seoJsonLdScript">[\s\S]*?<\/script>/i, () => `<script type="application/ld+json" id="seoJsonLdScript">${jsonLd}</script>`);
 
     return sendResponse(req, res, 200, 'text/html; charset=utf-8', html, {
-      'Cache-Control': 'no-cache'
+      'Cache-Control': routeKind === 'admin' ? 'no-store' : 'no-cache'
     });
 }
 

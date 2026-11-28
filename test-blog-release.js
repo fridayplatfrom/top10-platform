@@ -91,6 +91,16 @@ test('blog launch routes, editor sessions and durable publishing', async () => {
       assert.equal((await api(server, path, { method })).status, 404, path);
     }
 
+    const adminPage = await api(server, '/admin');
+    assert.equal(adminPage.headers.get('cache-control'), 'no-store');
+    const adminHtml = await adminPage.text();
+    const editorScript = adminHtml.match(/<script src="(\/app\.js\?v=[a-f0-9]{16})">/)?.[1];
+    assert.ok(editorScript, 'admin page must load a versioned editor script');
+    const editorBundle = await api(server, editorScript);
+    assert.equal(editorBundle.status, 200);
+    assert.match(await editorBundle.text(), /articleMarkdown: catEditArticleMarkdown\.value/);
+    assert.match(await (await api(server, '/')).text(), /<script src="\/app\.js">/);
+
     const archive = await api(server, '/blog');
     assert.equal(archive.status, 200);
     const archiveHtml = await archive.text();
@@ -112,14 +122,15 @@ test('blog launch routes, editor sessions and durable publishing', async () => {
     if (process.env.TOP10_TEST_DB_NAME) assert.match(cookieHeader, /; Secure/);
     const cookie = cookieHeader.split(';')[0];
     assert.equal((await (await api(server, '/api/auth/me', { cookie })).json()).user.role, 'admin');
-    const created = await api(server, '/api/publish/article', {
-      method: 'POST', publishing: true,
+    const created = await api(server, '/api/admin/categories', {
+      method: 'POST', cookie,
       body: {
         slug, title: 'Top 10 Smoke Test', status: 'draft', summary: 'Temporary test guide.', products: [],
         articleMarkdown: '## Buyer notes\n\n| Plan | Price |\n|---|---|\n| India | ₹199 |\n\n<script>articleScript()</script>\n\n[Unsafe](javascript:alert(1))'
       }
     });
     assert.ok(created.ok);
+    assert.match((await created.json()).category.articleMarkdown, /Buyer notes/);
     assert.equal((await api(server, '/list/' + slug)).status, 404);
 
     const published = await api(server, '/api/publish/article/' + slug + '/publish-now', { method: 'POST', cookie });
@@ -139,6 +150,7 @@ test('blog launch routes, editor sessions and durable publishing', async () => {
     assert.equal((await api(server, '/api/auth/logout', { method: 'POST', cookie })).status, 200);
     assert.equal((await (await api(server, '/api/auth/me', { cookie })).json()).user, null);
     assert.equal((await api(server, '/api/publish/article/' + slug, { method: 'DELETE', publishing: true })).status, 200);
+    assert.equal((await api(server, '/list/' + slug)).status, 404);
   } finally {
     if (server) await api(server, '/api/publish/article/' + slug, { method: 'DELETE', publishing: true }).catch(() => {});
     await stop(server);

@@ -592,11 +592,12 @@
     renderAll();
   }
 
-  function navigateToAdmin(pushHistory = true) {
-    currentView = 'admin';
-    if (pushHistory && window.location.pathname !== '/admin') {
-      window.history.pushState({ view: 'admin' }, '', '/admin');
+  function navigateToAdmin() {
+    if (window.location.pathname !== '/admin') {
+      window.location.assign('/admin');
+      return;
     }
+    currentView = 'admin';
     window.scrollTo({ top: 0, behavior: 'smooth' });
     renderAll();
   }
