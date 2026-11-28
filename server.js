@@ -2438,27 +2438,41 @@ async function applyEditorialReleases() {
         const db = getDbState();
         const releases = db.publishedEditorialReleases || [];
         const bodyRelease = 'article-bodies-v1';
-        if (releases.includes(bodyRelease)) return;
-        const publishedAt = new Date().toISOString();
-        let pos = db.categories.find(cat => cat.slug === restaurantPosGuide.slug);
-        if (!pos && !releases.includes(restaurantPosGuide.slug)) {
-          pos = { ...restaurantPosGuide, createdAt: publishedAt, publishedAt };
-          db.categories.push(pos);
+        const reviewRelease = 'source-checked-buying-guides-v1';
+        if (releases.includes(bodyRelease) && releases.includes(reviewRelease)) return;
+        if (!releases.includes(bodyRelease)) {
+          const publishedAt = new Date().toISOString();
+          let pos = db.categories.find(cat => cat.slug === restaurantPosGuide.slug);
+          if (!pos && !releases.includes(restaurantPosGuide.slug)) {
+            pos = { ...restaurantPosGuide, createdAt: publishedAt, publishedAt };
+            db.categories.push(pos);
+          }
+          if (pos && (pos.articleLayout === 'restaurant-pos' || !releases.includes(restaurantPosGuide.slug))) {
+            if (pos.articleMarkdown === undefined) pos.articleMarkdown = restaurantPosBody;
+            if (pos.coverAlt === undefined) pos.coverAlt = restaurantPosGuide.coverAlt;
+            delete pos.articleLayout;
+          }
+          const audiobooks = db.categories.find(cat => cat.slug === 'audiobook-apps');
+          if (audiobooks && audiobooks.articleMarkdown === undefined) {
+            audiobooks.articleMarkdown = audiobookBody;
+            audiobooks.editorialTitle = 'Audiobook Apps in India: 10 Options Compared';
+            audiobooks.title = audiobooks.editorialTitle;
+            audiobooks.description = 'Compare audiobook apps by India availability, local pricing, and what happens to your books when you cancel.';
+            audiobooks.updatedAt = publishedAt;
+          }
+          releases.push(restaurantPosGuide.slug, bodyRelease);
         }
-        if (pos && (pos.articleLayout === 'restaurant-pos' || !releases.includes(restaurantPosGuide.slug))) {
-          if (pos.articleMarkdown === undefined) pos.articleMarkdown = restaurantPosBody;
-          if (pos.coverAlt === undefined) pos.coverAlt = restaurantPosGuide.coverAlt;
-          delete pos.articleLayout;
+        if (!releases.includes(reviewRelease)) {
+          const reviewed = path.join(__dirname, 'data', 'reviewed-guides');
+          const reviewedSlugs = new Set(fs.readdirSync(reviewed).filter(name => name.endsWith('.md')).map(name => name.slice(0, -3)));
+          db.categories = ensureDefaultEightCategories(db.categories).map(category => {
+            if (!reviewedSlugs.has(category.slug) || !isPubliclyPublished(category) || category.articleMarkdown?.trim()) return category;
+            const articleMarkdown = fs.readFileSync(path.join(reviewed, category.slug + '.md'), 'utf8').trim();
+            return { ...category, articleMarkdown };
+          });
+          releases.push(reviewRelease);
         }
-        const audiobooks = db.categories.find(cat => cat.slug === 'audiobook-apps');
-        if (audiobooks && audiobooks.articleMarkdown === undefined) {
-          audiobooks.articleMarkdown = audiobookBody;
-          audiobooks.editorialTitle = 'Audiobook Apps in India: 10 Options Compared';
-          audiobooks.title = audiobooks.editorialTitle;
-          audiobooks.description = 'Compare audiobook apps by India availability, local pricing, and what happens to your books when you cancel.';
-          audiobooks.updatedAt = publishedAt;
-        }
-        db.publishedEditorialReleases = [...new Set([...releases, restaurantPosGuide.slug, bodyRelease])];
+        db.publishedEditorialReleases = [...new Set(releases)];
         await saveDbState(db);
       });
       return;
