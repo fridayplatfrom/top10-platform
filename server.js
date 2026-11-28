@@ -14,7 +14,10 @@ const {
 } = require('./editorial-enrichment');
 const { BLOG_ARTICLES } = require('./blog-data');
 const { renderArticleMarkdown } = require('./article-markdown');
-const articleSourceCorrections = require('./data/article-source-corrections.json');
+const articleSourceReleases = [
+  ['article-source-corrections-v1', require('./data/article-source-corrections.json')],
+  ['article-source-repairs-v1', require('./data/article-source-repairs.json')]
+];
 const { getArticleHeader, renderComparison, renderRelated } = require('./public/guide-extras');
 const { EDITORIAL_AUTHORS, DEFAULT_TOPIC_CATEGORIES, getAuthorsPool, resolveAuthor } = require('./authors-data');
 const { initMariaDb, withDb, getDbState, saveDbState, getDbStatus } = require('./db');
@@ -2442,8 +2445,8 @@ async function applyEditorialReleases() {
         const releases = db.publishedEditorialReleases || [];
         const bodyRelease = 'article-bodies-v1';
         const reviewRelease = 'source-checked-buying-guides-v1';
-        const sourceCorrectionRelease = 'article-source-corrections-v1';
-        if ([bodyRelease, reviewRelease, sourceCorrectionRelease].every(release => releases.includes(release))) return;
+        const sourceReleases = articleSourceReleases.filter(([release]) => !releases.includes(release));
+        if (releases.includes(bodyRelease) && releases.includes(reviewRelease) && !sourceReleases.length) return;
         if (!releases.includes(bodyRelease)) {
           const publishedAt = new Date().toISOString();
           let pos = db.categories.find(cat => cat.slug === restaurantPosGuide.slug);
@@ -2476,15 +2479,15 @@ async function applyEditorialReleases() {
           });
           releases.push(reviewRelease);
         }
-        if (!releases.includes(sourceCorrectionRelease)) {
+        for (const [release, corrections] of sourceReleases) {
           for (const category of db.categories) {
-            const changes = articleSourceCorrections[category.slug];
+            const changes = corrections[category.slug];
             if (!Array.isArray(changes) || !isPubliclyPublished(category) || !category.articleMarkdown) continue;
             for (const [before, after] of changes) {
               category.articleMarkdown = category.articleMarkdown.replaceAll(before, after);
             }
           }
-          releases.push(sourceCorrectionRelease);
+          releases.push(release);
         }
         db.publishedEditorialReleases = [...new Set(releases)];
         await saveDbState(db);

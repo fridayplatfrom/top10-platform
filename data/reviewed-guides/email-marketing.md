@@ -16,7 +16,7 @@ We used published vendor plans, product pages, support documentation and officia
 | Kit | Free and paid plans scaled by subscribers and features | [Check source](https://kit.com/pricing) |
 | Postmark | Basic starts at US$15 per month; compare the volume allowance and overage rate | [Check source](https://postmarkapp.com/pricing) |
 | Mailchimp | Plans depend on contacts, sends and feature tier | [Check source](https://mailchimp.com/pricing/marketing/) |
-| Twilio SendGrid | Email API and Marketing Campaigns have distinct plans | [Check source](https://sendgrid.com/en-us/pricing) |
+| Twilio SendGrid | Email API and Marketing Campaigns have distinct plans | [Check source](https://www.twilio.com/en-us/products/email-api/pricing) |
 | Brevo | Plan tiers and send volumes vary by product and region | [Check source](https://www.brevo.com/pricing/) |
 
 ## Who each pick suits
@@ -73,7 +73,7 @@ We used published vendor plans, product pages, support documentation and officia
 
 **Best for** — Engineering teams needing API or SMTP email delivery.
 
-**Trade-off** — Buying API capacity may not include the campaign tools marketers expect. [Official source](https://sendgrid.com/en-us/pricing)
+**Trade-off** — Buying API capacity may not include the campaign tools marketers expect. [Official source](https://www.twilio.com/en-us/products/email-api/pricing) · [Marketing Campaigns pricing](https://www.twilio.com/en-us/products/marketing-campaigns/pricing)
 
 ### 10. Brevo
 

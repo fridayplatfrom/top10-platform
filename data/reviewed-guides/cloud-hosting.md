@@ -17,7 +17,7 @@ We used published vendor plans, product pages, support documentation and officia
 | Cloudflare Workers & Pages | Free and paid Workers tiers; runtime usage and add-on products have their own meters | [Check source](https://developers.cloudflare.com/workers/platform/pricing/) |
 | AWS | Service-specific regional rates; use the calculator for the proposed architecture | [Check source](https://aws.amazon.com/pricing/) |
 | Supabase Cloud | Pro starts at US$25 per month; included compute credits and variable charges apply | [Check source](https://supabase.com/pricing) |
-| Vultr Cloud Compute | Instance rates vary by family, region and configuration | [Check source](https://www.vultr.com/pricing/) |
+| Vultr Cloud Compute | Instance rates vary by family, region and configuration | [Check source](https://docs.vultr.com/product-overviews/cloud-compute) |
 
 ## Who each pick suits
 
@@ -79,7 +79,7 @@ We used published vendor plans, product pages, support documentation and officia
 
 **Best for** — Teams who want control over a virtual machine and regional placement.
 
-**Trade-off** — Compare the exact machine family and include operating costs. [Official source](https://www.vultr.com/pricing/)
+**Trade-off** — Compare the exact machine family and include operating costs. [Official source](https://docs.vultr.com/product-overviews/cloud-compute)
 
 ## More options to compare
 

@@ -17,7 +17,7 @@ We used published vendor plans, product pages, support documentation and officia
 | Replit Agent | Subscription and usage charges are listed separately on Replit’s plan page | [Check source](https://replit.com/pricing) |
 | Sourcegraph Cody | Sourcegraph lists January 31, 2027 as the end-of-life date for Cody | [Check source](https://sourcegraph.com/blog/sunsetting-cody-future-of-code-intelligence) |
 | Continue | Open-source tooling with configuration and hosted offerings; model usage is separate | [Check source](https://docs.continue.dev/) |
-| Tabnine | Paid business and enterprise plans; verify deployment terms | [Check source](https://www.tabnine.com/pricing/) |
+| Tabnine | Enterprise plans include hosted and private deployment options; ask for pricing | [Check source](https://docs.tabnine.com/main/welcome/readme/tabnine-subscription-plans) |
 
 ## Who each pick suits
 
@@ -79,7 +79,7 @@ We used published vendor plans, product pages, support documentation and officia
 
 **Best for** — Organizations prioritizing policy controls and deployment choice.
 
-**Trade-off** — Ask whether a particular deployment topology and support level are included. [Official source](https://www.tabnine.com/pricing/)
+**Trade-off** — Ask whether a particular deployment topology and support level are included. [Official source](https://docs.tabnine.com/main/welcome/readme/tabnine-subscription-plans)
 
 ## More options to compare
 

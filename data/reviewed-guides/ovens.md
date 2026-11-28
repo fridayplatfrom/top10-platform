@@ -14,7 +14,7 @@ We used published vendor plans, product pages, support documentation and officia
 | Wolf M Series Built-in Oven | Ask a local dealer for model-specific installed pricing | [Check source](https://www.subzero-wolf.com/assistance/answers/wolf/m-series-oven/m-series-ovens-sales-feature-amp-accessory-information) |
 | GE Profile Smart Indoor Smoker | Look up the current GE Profile smoker offer or dealer stock | [Check source](https://www.geappliances.com/indoor-pellet-smoker) |
 | BALMUDA The Toaster Pro | BALMUDA US lists US$379 for The Toaster Pro | [Check source](https://us.balmuda.com/products/balmuda-the-toaster-pro) |
-| Ninja Foodi XL Pro Air Oven | Check local pricing for the exact model and included accessories | [Check source](https://www.ninjakitchen.com/) |
+| Ninja Foodi XL Pro Air Oven | SharkNinja Mexico lists model DT201; check local pricing and included accessories | [Check source](https://www.sharkninja.mx/horno-electrico-con-air-fryer-xl-pro-10-en-1/DT201.html) |
 | KitchenAid 30-Inch Smart Wall Oven | Find a quote using the exact 30-inch model number | [Check source](https://www.kitchenaid.com/major-appliances/wall-ovens.html) |
 | LG InstaView ProBake Convection | Price depends on the specific range or oven model | [Check source](https://www.lg.com/us/business/cooking-appliances/lg-lsel6335f) |
 | Samsung Bespoke AI Wall Oven | Check the specific single, double or combination unit and regional price | [Check source](https://www.samsung.com/us/cooking-appliances/wall-ovens/bespoke-30-double-wall-oven-with-ai-pro-cooking-camera-in-stainless-steel-sku-nv51cg700dsraa/) |
@@ -61,7 +61,7 @@ We used published vendor plans, product pages, support documentation and officia
 
 **Best for** — Families who need a large countertop oven with air-fry capability.
 
-**Trade-off** — Compare rack configurations and external countertop clearance. [Official source](https://www.ninjakitchen.com/)
+**Trade-off** — Compare rack configurations and external countertop clearance. [Official source](https://www.sharkninja.mx/horno-electrico-con-air-fryer-xl-pro-10-en-1/DT201.html)
 
 ### 8. KitchenAid 30-Inch Smart Wall Oven
 
@@ -86,7 +86,7 @@ We used published vendor plans, product pages, support documentation and officia
 | Pick | Pricing or availability | Official source |
 | --- | --- | --- |
 | Panasonic FlashXpress NB-G110P | Panasonic US displayed US$149.99 for the 1300 W four-slice model | [Check source](https://shop.panasonic.com/products/flashxpress-toaster-oven-1300w) |
-| Cuisinart Deluxe Convection Toaster Oven | Cuisinart marks the referenced TOB-135NNAS as discontinued; no current maker price | [Check source](https://www.cuisinart.com/discontinued-deluxe-convection-toaster-oven-broiler/TOB-135NNAS.html) |
+| Cuisinart Deluxe Convection Toaster Oven | Cuisinart marks the referenced TOB-135NNAS as discontinued; no current maker price | [Check source](https://www.cuisinart.com/manuals/toaster-ovens/) |
 
 ### 11. Panasonic FlashXpress NB-G110P
 
@@ -98,4 +98,4 @@ We used published vendor plans, product pages, support documentation and officia
 
 **Best for** — Owners seeking documentation for an existing unit.
 
-**Trade-off** — Verify condition and parts if considering old stock or a used unit. [Official source](https://www.cuisinart.com/discontinued-deluxe-convection-toaster-oven-broiler/TOB-135NNAS.html)
+**Trade-off** — Verify condition and parts if considering old stock or a used unit. [Official source](https://www.cuisinart.com/manuals/toaster-ovens/)

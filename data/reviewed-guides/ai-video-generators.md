@@ -12,7 +12,7 @@ We used published vendor plans, product pages, support documentation and officia
 | OpenAI Sora | Discontinued. The web and app ended April 26, 2026, followed by the API on September 24, 2026 | [Check source](https://help.openai.com/en/articles/20001152-what-to-know-about-the-sora-discontinuation) |
 | Kling AI | Credit or subscription offers depend on region and account; confirm checkout | [Check source](https://klingai.com/) |
 | HeyGen | Creator is US$29 monthly or US$24 per month billed annually; compare generation limits | [Check source](https://www.heygen.com/pricing) |
-| Luma Dream Machine | Credit-based tiers; check current commercial rights and export limits | [Check source](https://lumalabs.ai/dream-machine/pricing) |
+| Luma Dream Machine | Credit-based tiers; check current commercial rights and export limits | [Check source](https://lumalabs.ai/learning-hub/payments-subscriptions) |
 | Synthesia | Paid and enterprise plans with features and limits for video production | [Check source](https://www.synthesia.io/pricing) |
 | Descript | Plans tier editing, transcription and AI features | [Check source](https://www.descript.com/pricing) |
 | Pika | Free and paid credit plans; use the current plan page for model access | [Check source](https://pika.art/pricing) |
@@ -49,7 +49,7 @@ We used published vendor plans, product pages, support documentation and officia
 
 **Best for** — Creators experimenting with short shots from text or an image.
 
-**Trade-off** — Generation settings and multiple attempts can consume the monthly allowance. [Official source](https://lumalabs.ai/dream-machine/pricing)
+**Trade-off** — Generation settings and multiple attempts can consume the monthly allowance. [Official source](https://lumalabs.ai/learning-hub/payments-subscriptions)
 
 ### 6. Synthesia
 

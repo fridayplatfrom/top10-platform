@@ -17,7 +17,7 @@ We used published vendor plans, product pages, support documentation and officia
 | Recurly | Request pricing for subscription and recovery requirements | [Check source](https://recurly.com/pricing/) |
 | Maxio | Plans and quotes depend on billing and financial operations scope | [Check source](https://www.maxio.com/pricing) |
 | Lago | Open-source self-hosted option and paid managed tiers | [Check source](https://getlago.com/pricing) |
-| Zuora | Contact sales for modules and implementation | [Check source](https://www.zuora.com/products/billing/) |
+| Zuora | Contact sales for modules and implementation | [Check source](https://www.zuora.com/products/billing-software/) |
 
 ## Who each pick suits
 
@@ -79,7 +79,7 @@ We used published vendor plans, product pages, support documentation and officia
 
 **Best for** — Enterprises with multiple product lines and complex contract changes.
 
-**Trade-off** — Ask for year-one implementation cost as well as the ongoing software contract. [Official source](https://www.zuora.com/products/billing/)
+**Trade-off** — Ask for year-one implementation cost as well as the ongoing software contract. [Official source](https://www.zuora.com/products/billing-software/)
 
 ## More options to compare
 
