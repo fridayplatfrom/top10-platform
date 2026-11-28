@@ -554,6 +554,12 @@
   }
 
   function navigateToCategory(slug, pushHistory = true) {
+    const targetPath = `/list/${slug}`;
+    const usesArticleLayout = appState?.categories?.some(cat => cat.slug === slug && cat.articleLayout);
+    if (pushHistory && window.location.pathname !== targetPath && (usesArticleLayout || document.querySelector('.guide-longform'))) {
+      window.location.assign(targetPath);
+      return;
+    }
     currentCategorySlug = slug;
     currentView = 'list';
     currentTab = 'rankings';
@@ -564,7 +570,6 @@
     if (catInlineSearchClear) catInlineSearchClear.classList.add('hidden');
     if (catSortSelect) catSortSelect.value = 'rank';
     bumpCategoryViewCount(slug);
-    const targetPath = `/list/${slug}`;
     if (pushHistory && window.location.pathname !== targetPath) {
       window.history.pushState({ view: 'list', slug }, '', targetPath);
     }

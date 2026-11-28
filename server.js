@@ -18,6 +18,22 @@ const { initMariaDb, withDb, getDbState, saveDbState, getDbStatus } = require('.
 
 const PORT = process.env.PORT || 3456;
 const PUBLIC_DIR = path.join(__dirname, 'public');
+const restaurantPosGuide = {
+  id: 'restaurant-pos-pricing-india',
+  slug: 'restaurant-pos-pricing-india',
+  title: 'Restaurant POS Pricing in India (2026): What to Budget Beyond the Licence',
+  shortName: 'Restaurant POS Pricing in India',
+  description: 'Compare six restaurant POS systems in India, see what vendors publish about pricing, and get a checklist for evaluating quotes and demos.',
+  coverImage: '/images/restaurant-pos-india.webp',
+  authorName: 'Top 10 Editorial Team',
+  articleLayout: 'restaurant-pos',
+  topic: 'software',
+  tags: ['restaurant-pos', 'india', 'software-pricing'],
+  status: 'published',
+  products: [],
+  seo: { metaTitle: 'Restaurant POS Pricing in India (2026): 6 Systems Compared | Top 10' }
+};
+const restaurantPosBody = fs.readFileSync(path.join(__dirname, 'data', 'restaurant-pos-india.html'), 'utf8');
 
 // ============================================================================
 // PRODUCTION-GRADE AUTHENTICATION & SECURE SESSIONS
@@ -2169,6 +2185,7 @@ ${items}
       const cover = guideCoverUrl(meta.coverImage);
       const products = [...(cat.top10 || []), ...(cat.pushedOut || [])];
       const intro = cat.editorialGuide?.intro?.trim() || '';
+      const isRestaurantPos = cat.articleLayout === 'restaurant-pos' && cat.slug === restaurantPosGuide.slug;
       const related = allCats.filter(other => other.slug !== cat.slug).slice(0, 3);
       const list = products.map((product, index) => {
         const url = getSsrProductLink(product);
@@ -2193,7 +2210,7 @@ ${items}
         `<li><a href="/list/${encodeURIComponent(other.slug)}">${escapeXml(getCategoryFeatureMeta(other).editorialTitle)}</a></li>`
       ).join('');
 
-      return rawHtml
+      let html = rawHtml
         .replace('<main id="homePageView" class="home-container">', '<main id="homePageView" class="home-container hidden">')
         .replace('<main id="singleListPageView" class="guide-reading-view hidden">', '<main id="singleListPageView" class="guide-reading-view">')
         .replace('<h2 id="heroCatTitle">Top 10 Buying Guide</h2>', () =>
@@ -2216,6 +2233,15 @@ ${items}
           ? 'id="relatedDirectoriesSection" aria-labelledby="relatedDirsHeading"'
           : 'id="relatedDirectoriesSection" aria-labelledby="relatedDirsHeading" hidden')
         .replace('<ul id="relatedDirectoriesGrid"></ul>', () => `<ul id="relatedDirectoriesGrid">${relatedLinks}</ul>`);
+
+      if (isRestaurantPos) {
+        html = html
+          .replace('<article class="guide-reading">', '<article class="guide-reading guide-reading-feature">')
+          .replace('id="heroCatPillLabel">Buying guide', 'id="heroCatPillLabel">Restaurant technology')
+          .replace('id="guideReadingCover" alt=""', 'id="guideReadingCover" alt="Point-of-sale terminal and receipt printer at an Indian café counter"')
+          .replace('<section id="tabPanelRankings"', () => `<div class="guide-longform">${restaurantPosBody}</div>\n          <section hidden id="tabPanelRankings"`);
+      }
+      return html;
     }
 
     function getSsrProductLink(product) {
@@ -2309,7 +2335,8 @@ ${items}
       pageDesc = truncateMetaDesc(activeCat.seo?.metaDescription || (topPickName ? `#1 Pick: ${topPickName} — ${meta.description}` : meta.description));
       canonicalUrl = `${base}/list/${activeCat.slug}`;
       ogType = 'article';
-      ogImage = meta.coverImage;
+      ogImage = activeCat.articleLayout === 'restaurant-pos' && meta.coverImage.startsWith('/') && !meta.coverImage.startsWith('//')
+        ? base + meta.coverImage : meta.coverImage;
       ogImageAlt = activeCat.title;
     } else if (blogArticleMatch) {
       const article = categories.find(c => c.slug === blogArticleMatch[1]);
@@ -2390,6 +2417,28 @@ ${items}
     });
 }
 
+async function publishRestaurantPosGuide() {
+  // Mark the release as applied so removing the guide in the editor stays permanent.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await withDb(async () => {
+        const db = getDbState();
+        const releases = db.publishedEditorialReleases || [];
+        if (releases.includes(restaurantPosGuide.slug)) return;
+        if (!db.categories.some(cat => cat.slug === restaurantPosGuide.slug)) {
+          const publishedAt = new Date().toISOString();
+          db.categories.push({ ...restaurantPosGuide, createdAt: publishedAt, publishedAt });
+        }
+        db.publishedEditorialReleases = [...releases, restaurantPosGuide.slug];
+        await saveDbState(db);
+      });
+      return;
+    } catch (error) {
+      if (error.statusCode !== 409 || attempt >= 2) throw error;
+    }
+  }
+}
+
 async function start() {
   if (isProduction && adminPassword && adminPassword.length < 20) {
     throw new Error('ADMIN_PASSWORD must be at least 20 characters in production');
@@ -2398,6 +2447,7 @@ async function start() {
     throw new Error('EDITORIAL_PUBLISH_KEY must be at least 32 characters in production');
   }
   await initMariaDb();
+  await publishRestaurantPosGuide();
   await withDb(runScheduledPublisher);
   server.listen(PORT, () => {
     console.log('Top 10 Auction Directory running at http://localhost:' + server.address().port);
